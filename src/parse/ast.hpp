@@ -50,11 +50,11 @@ class Binary : public Node {
  public:
   Node::Kind kind() { return Node::Kind::BINARY; };
 
-  Node* lhs;
-  Node* rhs;
+  unique_ptr<Node> lhs;
+  unique_ptr<Node> rhs;
   BinOp op;
 
-  Binary(Node* lhs, BinOp op, Node* rhs)
+  Binary(unique_ptr<Node> lhs, BinOp op, unique_ptr<Node> rhs)
       : lhs(move(lhs)), rhs(move(rhs)), op(op){};
 };
 

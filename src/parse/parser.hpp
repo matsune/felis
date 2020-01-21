@@ -14,7 +14,7 @@ class Parser {
   Lexer lexer;
   Token peek, peek2;
   Token next();
-  Node* parsePrimary();
+  unique_ptr<Node> parsePrimary();
   bool isNext(TokenKind kind);
 
  public:
@@ -24,7 +24,7 @@ class Parser {
     lexer.yylex(peek2);
   };
   void parse();
-  Node* parseExpr(uint8_t prec = 0);
+  unique_ptr<Node> parseExpr(uint8_t prec = 0);
 };
 
 #endif

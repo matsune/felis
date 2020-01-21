@@ -55,7 +55,7 @@ Token Parser::next() {
 
 void Parser::parse() {}
 
-Node* Parser::parseExpr(uint8_t prec) {
+unique_ptr<Node> Parser::parseExpr(uint8_t prec) {
   UnOp* unOp(NULL);
   if (isNext(TokenKind::MINUS)) {
     next();
@@ -90,16 +90,16 @@ Node* Parser::parseExpr(uint8_t prec) {
 
     next();
     auto rhs = parseExpr(binOp);
-    lhs = new Binary(move(lhs), binOp, move(rhs));
+    lhs = make_unique<Node>(Binary(move(lhs), binOp, move(rhs)));
   }
 };
 
-Node* Parser::parsePrimary() {
+unique_ptr<Node> Parser::parsePrimary() {
   auto token = next();
   if (token.kind == TokenKind::IDENT) {
-    return new Ident(token.str);
+    return make_unique<Node>(Ident(token.str));
   } else if (token.kind == TokenKind::LIT_INT) {
-    return new LitInt(token.num);
+    return make_unique<Node>(LitInt(token.num));
   } else {
     UNIMPLEMENTED("primary")
   }
