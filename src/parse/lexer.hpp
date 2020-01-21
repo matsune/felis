@@ -13,7 +13,7 @@ class Lexer : public yyFlexLexer {
   uint32_t offset;
   vector<uint32_t> lineCols;
 
-  bool makeToken(Token& token, int kind);
+  bool makeToken(Token& token, TokenKind kind);
 
  public:
   bool yylex(Token& token);

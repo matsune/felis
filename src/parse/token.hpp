@@ -3,11 +3,52 @@
 #include <string>
 using namespace std;
 
-enum Kind { IDENT = 258, NL = 259, SPACE = 260, LIT_INT = 261 };
-
 class Token {
  public:
-  int kind;
+  enum Kind {
+    END,  // '\0'
+    IDENT,
+    LIT_INT,
+    LIT_FLOAT,
+    LIT_BOOL,
+    LIT_CHAR,
+    LIT_STR,
+    // arith_op
+    PLUS,     // +
+    MINUS,    // -
+    STAR,     // *
+    SLASH,    // /
+    PERCENT,  // %
+    // bitwise_op
+    AND,    // &
+    OR,     // |
+    CARET,  // ^
+    SHL,    // <<
+    SHR,    // >>
+    // lazy_bool_op
+    ANDAND,  // &&
+    OROR,    // ||
+    // comp_op
+    LT,    // <
+    LE,    // <=
+    GT,    // >
+    GE,    // >=
+    EQEQ,  // ==
+    NEQ,   // !=
+    // symbol
+    NOT,     // !
+    LPAREN,  // (
+    RPAREN,  // )
+    LBRACE,  // {
+    RBRACE,  // }
+    EQ,      // =
+    SEMI,    // ;
+    COLON,   // :
+    COMMA,   // ,
+    ARROW,   // ->
+  };
+
+  Kind kind;
   bool nl;
   bool ws;
   uint32_t offset, len;
@@ -15,8 +56,10 @@ class Token {
   string str;
   uint64_t num;
 
-  Token() : kind(0), nl(false), ws(false), offset(0), len(0){};
+  Token() : kind(Kind::END), nl(false), ws(false), offset(0), len(0){};
 };
+
+using TokenKind = Token::Kind;
 
 class Pos {
  public:

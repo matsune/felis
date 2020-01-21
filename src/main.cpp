@@ -22,7 +22,8 @@ int main(int argc, char *argv[]) {
   }
 
   Parser parser(in, cout);
-  parser.parse();
+  auto expr = parser.parseExpr();
+  cout << expr->kind() << endl;
 
   in.close();
 }
