@@ -90,16 +90,18 @@ unique_ptr<Node> Parser::parseExpr(uint8_t prec) {
 
     next();
     auto rhs = parseExpr(binOp);
-    lhs = make_unique<Node>(Binary(move(lhs), binOp, move(rhs)));
+    lhs = make_unique<Binary>(Binary(move(lhs), binOp, move(rhs)));
   }
 };
 
 unique_ptr<Node> Parser::parsePrimary() {
   auto token = next();
   if (token.kind == TokenKind::IDENT) {
-    return make_unique<Node>(Ident(token.str));
+    return make_unique<Ident>(Ident(token.sval));
   } else if (token.kind == TokenKind::LIT_INT) {
-    return make_unique<Node>(LitInt(token.num));
+    return make_unique<LitInt>(LitInt(token.ival));
+  } else if (token.kind == TokenKind::LIT_BOOL) {
+    return make_unique<LitBool>(LitBool(token.bval));
   } else {
     UNIMPLEMENTED("primary")
   }

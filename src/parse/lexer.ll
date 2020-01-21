@@ -49,13 +49,18 @@ IDENT	[a-zA-Z_][0-9a-zA-Z_]*
 }
 
 {IDENT} { 
-  token.str = move(yytext);
+  token.sval = move(yytext);
   return makeToken(token, TokenKind::IDENT);
 }
 
 [1-9][0-9]* {
-  token.num = strtoull(yytext, 0, 10);
+  token.ival = strtoull(yytext, 0, 10);
   return makeToken(token, TokenKind::LIT_INT);
+}
+
+"true"|"false" {
+  token.bval = yytext == "true";
+  return makeToken(token, TokenKind::LIT_BOOL);
 }
 
 "+"  { return makeToken(token, TokenKind::PLUS); }

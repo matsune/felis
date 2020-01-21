@@ -48,15 +48,16 @@ class Token {
     ARROW,   // ->
   };
 
-  Kind kind;
-  bool nl;
-  bool ws;
-  uint32_t offset, len;
+  Kind kind = Kind::END;
+  bool nl = false;
+  bool ws = false;
+  uint32_t offset = 0, len = 0;
 
-  string str;
-  uint64_t num;
+  string sval = "";
+  uint64_t ival = 0;
+  bool bval = false;
 
-  Token() : kind(Kind::END), nl(false), ws(false), offset(0), len(0){};
+  Token(){};
 };
 
 using TokenKind = Token::Kind;
