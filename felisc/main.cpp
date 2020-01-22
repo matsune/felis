@@ -1,10 +1,10 @@
-/* #include <llvm/IR/IRBuilder.h> */
-/* #include <llvm/IR/LLVMContext.h> */
-/* #include <llvm/IR/Module.h> */
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
 #include <fstream>
 #include <iostream>
+#include <parse/parser.hpp>
 #include <string>
-#include "parse/parser.hpp"
 
 using namespace std;
 

@@ -1,6 +1,6 @@
-#line 2 "lexer.cpp"
+#line 2 "/root/workspace/Felis/src/parse/lexer.cpp"
 
-#line 4 "lexer.cpp"
+#line 4 "/root/workspace/Felis/src/parse/lexer.cpp"
 
 #define  YY_INT_ALIGNED short int
 
@@ -459,8 +459,8 @@ static yyconst flex_int16_t yy_chk[107] =
 #define yymore() yymore_used_but_not_detected
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
-#line 1 "lexer.ll"
-#line 2 "lexer.ll"
+#line 1 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 2 "/root/workspace/Felis/src/parse/lexer.ll"
 #include <iostream>
 #include <string>
 #include <memory>
@@ -475,7 +475,7 @@ using namespace std;
 #undef YY_NULL
 #define YY_NULL false
 
-#line 479 "lexer.cpp"
+#line 479 "/root/workspace/Felis/src/parse/lexer.cpp"
 
 #define INITIAL 0
 
@@ -607,13 +607,13 @@ YY_DECL
 		}
 
 	{
-#line 25 "lexer.ll"
+#line 25 "/root/workspace/Felis/src/parse/lexer.ll"
 
 
   nl = ws = false;
 
 
-#line 617 "lexer.cpp"
+#line 617 "/root/workspace/Felis/src/parse/lexer.cpp"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -672,7 +672,7 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 30 "lexer.ll"
+#line 30 "/root/workspace/Felis/src/parse/lexer.ll"
 { 
   ws = true;
 }
@@ -680,7 +680,7 @@ YY_RULE_SETUP
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 34 "lexer.ll"
+#line 34 "/root/workspace/Felis/src/parse/lexer.ll"
 {
   lineCols.back() -= yyleng;
   for (int i = 0; i < yyleng; ++i) {
@@ -700,7 +700,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 51 "lexer.ll"
+#line 51 "/root/workspace/Felis/src/parse/lexer.ll"
 { 
   token.sval = move(yytext);
   return makeToken(token, TokenKind::IDENT);
@@ -708,7 +708,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 56 "lexer.ll"
+#line 56 "/root/workspace/Felis/src/parse/lexer.ll"
 {
   token.ival = strtoull(yytext, 0, 10);
   return makeToken(token, TokenKind::LIT_INT);
@@ -716,7 +716,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 61 "lexer.ll"
+#line 61 "/root/workspace/Felis/src/parse/lexer.ll"
 {
   token.bval = yytext == "true";
   return makeToken(token, TokenKind::LIT_BOOL);
@@ -724,153 +724,153 @@ YY_RULE_SETUP
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 66 "lexer.ll"
+#line 66 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::PLUS); }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 67 "lexer.ll"
+#line 67 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::MINUS); }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 68 "lexer.ll"
+#line 68 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::STAR); }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 69 "lexer.ll"
+#line 69 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::SLASH); }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 70 "lexer.ll"
+#line 70 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::PERCENT); }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 71 "lexer.ll"
+#line 71 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::AND); }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 72 "lexer.ll"
+#line 72 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::OR); }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 73 "lexer.ll"
+#line 73 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::CARET); }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 74 "lexer.ll"
+#line 74 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::SHL); }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 75 "lexer.ll"
+#line 75 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::SHR); }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 76 "lexer.ll"
+#line 76 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::ANDAND); }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 77 "lexer.ll"
+#line 77 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::OROR); }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 78 "lexer.ll"
+#line 78 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::LT); }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 79 "lexer.ll"
+#line 79 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::LE); }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 80 "lexer.ll"
+#line 80 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::GT); }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 81 "lexer.ll"
+#line 81 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::GE); }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 82 "lexer.ll"
+#line 82 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::EQEQ); }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 83 "lexer.ll"
+#line 83 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::NEQ); }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 84 "lexer.ll"
+#line 84 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::NOT); }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 85 "lexer.ll"
+#line 85 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::LPAREN); }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 86 "lexer.ll"
+#line 86 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::RPAREN); }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 87 "lexer.ll"
+#line 87 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::LBRACE); }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 88 "lexer.ll"
+#line 88 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::RBRACE); }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 89 "lexer.ll"
+#line 89 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::EQ); }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 90 "lexer.ll"
+#line 90 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::SEMI); } 
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 91 "lexer.ll"
+#line 91 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::COLON); } 
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 92 "lexer.ll"
+#line 92 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::COMMA); } 
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 93 "lexer.ll"
+#line 93 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::ARROW); } 
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-#line 95 "lexer.ll"
+#line 95 "/root/workspace/Felis/src/parse/lexer.ll"
 {
   return makeToken(token, TokenKind::END);
 }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 99 "lexer.ll"
+#line 99 "/root/workspace/Felis/src/parse/lexer.ll"
 { 
   Pos p = getPos(offset - yyleng);
   cerr << "Error: illegal character at line "
@@ -880,10 +880,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 106 "lexer.ll"
+#line 106 "/root/workspace/Felis/src/parse/lexer.ll"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 887 "lexer.cpp"
+#line 887 "/root/workspace/Felis/src/parse/lexer.cpp"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -1836,7 +1836,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 106 "lexer.ll"
+#line 106 "/root/workspace/Felis/src/parse/lexer.ll"
 
 
 
