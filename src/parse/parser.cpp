@@ -46,29 +46,47 @@ BinOp binOpFrom(TokenKind kind) {
   }
 }
 
+Parser::Parser(unique_ptr<Lexer> lexer, FLEX_STD istream& yyin,
+               FLEX_STD ostream& yyout) {
+  lexer->switch_streams(yyin, yyout);
+  lexer->yylex(peek);
+  lexer->yylex(peek2);
+  this->lexer = move(lexer);
+};
+
 Token Parser::next() {
   auto p = move(peek);
   peek = move(peek2);
-  lexer.yylex(peek2);
+  lexer->yylex(peek2);
   return p;
 }
 
-void Parser::parse() {}
+unique_ptr<Node> Parser::parse() {
+  auto expr = parseExpr();
+  if (!expr) {
+    cerr << "Error occcurred!" << endl;
+    // TODO: recover error
+  }
+  return expr;
+}
 
 unique_ptr<Node> Parser::parseExpr(uint8_t prec) {
   UnOp* unOp(NULL);
-  if (isNext(TokenKind::MINUS)) {
+  if (peek.is(TokenKind::MINUS)) {
     next();
     unOp = new UnOp{UnOp::NEG};
-  } else if (isNext(TokenKind::NOT)) {
+  } else if (peek.is(TokenKind::NOT)) {
     next();
     unOp = new UnOp{UnOp::NOT};
   }
 
-  // TODO: check LPAREN or IDENT or LIT
+  if (!peek.is(TokenKind::LPAREN) && !peek.isIdent() && !peek.isLit()) {
+    // TODO: push unexpected token error
+    return nullptr;
+  }
 
   auto lhs = parsePrimary();
-  if (isNext(TokenKind::LPAREN)) {
+  if (peek.is(TokenKind::LPAREN)) {
     // TODO: call
     UNIMPLEMENTED("call")
   }
@@ -96,16 +114,14 @@ unique_ptr<Node> Parser::parseExpr(uint8_t prec) {
 
 unique_ptr<Node> Parser::parsePrimary() {
   auto token = next();
-  if (token.kind == TokenKind::IDENT) {
+  if (token.is(TokenKind::IDENT)) {
     return make_unique<Ident>(Ident(token.sval));
-  } else if (token.kind == TokenKind::LIT_INT) {
+  } else if (token.is(TokenKind::LIT_INT)) {
     return make_unique<LitInt>(LitInt(token.ival));
-  } else if (token.kind == TokenKind::LIT_BOOL) {
+  } else if (token.is(TokenKind::LIT_BOOL)) {
     return make_unique<LitBool>(LitBool(token.bval));
   } else {
     UNIMPLEMENTED("primary")
   }
 };
-
-bool Parser::isNext(TokenKind kind) { return peek.kind == kind; };
 

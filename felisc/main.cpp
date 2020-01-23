@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <parse/parser.hpp>
+#include <parse/source.hpp>
 #include <string>
 
 using namespace std;
@@ -21,9 +22,11 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  Parser parser(in, cout);
-  auto expr = parser.parseExpr();
-  cout << expr->kind() << endl;
+  Source src(filename);
+  auto lexer = make_unique<Lexer>(src);
+  Parser parser(move(lexer), in, cout);
+  auto expr = parser.parse();
+  if (expr) cout << expr->kind() << endl;
 
   in.close();
 }

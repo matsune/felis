@@ -8,7 +8,7 @@ using namespace std;
 
 #undef YY_DECL
 #define YY_DECL bool Lexer::yylex(Token &token)
-#define YY_USER_ACTION offset += yyleng; lineCols.back() += yyleng;
+#define YY_USER_ACTION offset += yyleng; src.columns(yyleng);
 
 #undef YY_NULL
 #define YY_NULL false
@@ -32,13 +32,13 @@ IDENT	[a-zA-Z_][0-9a-zA-Z_]*
 }
 
 [ \t\n\r]+ {
-  lineCols.back() -= yyleng;
+  src.columns(-yyleng);
   for (int i = 0; i < yyleng; ++i) {
-    ++lineCols.back();
+    src.columns();
     switch (yytext[i]) {
       case '\n':
       case '\r':
-        lineCols.push_back(0);
+        src.line();
         break;
       default:
         break;
@@ -97,7 +97,7 @@ IDENT	[a-zA-Z_][0-9a-zA-Z_]*
 }
 
 . { 
-  Pos p = getPos(offset - yyleng);
+  Pos p = src.getPos(offset - yyleng);
   cerr << "Error: illegal character at line "
        << p.line+1 << ", col " << p.column+1 << endl;
   return makeToken(token, TokenKind::END);
@@ -112,27 +112,4 @@ bool Lexer::makeToken(Token &token, TokenKind kind) {
   token.offset = offset - yyleng;
   token.len = yyleng;
   return kind != TokenKind::END;
-}
-
-Pos Lexer::getPos(uint32_t offset) {
-  Pos pos;
-  for(int i = 0; i < lineCols.size(); ++i) {
-    auto lineCol = lineCols[i];
-    if (offset < lineCol) {
-      pos.columns(offset);
-      offset = 0;
-      break;
-    } else {
-      if (i < lineCols.size()-1) {
-        pos.lines();
-        offset -= lineCol;
-      } else {
-        pos.columns(offset);
-        offset -= lineCol;
-        break;
-      }
-    }
-  }
-  pos.columns(offset);
-  return pos;
 }

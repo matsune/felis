@@ -58,33 +58,12 @@ class Token {
   bool bval = false;
 
   Token(){};
+
+  bool is(Kind kind) { return this->kind == kind; };
+  bool isIdent() { return kind == Kind::IDENT; }
+  bool isLit() { return Kind::LIT_INT <= kind && kind <= Kind::LIT_STR; };
 };
 
 using TokenKind = Token::Kind;
-
-class Pos {
- public:
-  unsigned int line, column;
-
-  Pos(int line = 0, int column = 0) : line(line), column(column){};
-
-  void lines(int ln = 1) {
-    line += ln;
-    column = 0;
-  }
-  void columns(int col = 1) { column += col; }
-};
-
-class Loc {
- public:
-  Pos begin, end;
-
-  Loc(){};
-  Loc(Pos &begin, Pos &end) : begin(begin), end(end){};
-
-  void step() { begin = end; }
-  void columns(int col = 1) { end.columns(col); }
-  void lines(int ln = 1) { end.lines(ln); }
-};
 
 #endif

@@ -5,6 +5,7 @@ SET(FLEX_SRC ${CMAKE_CURRENT_SOURCE_DIR}/lexer.ll)
 IF(FLEX_FOUND)
     ADD_CUSTOM_COMMAND(
       OUTPUT ${FLEX_OUT}
+      DEPENDS ${FLEX_SRC}
       COMMAND ${FLEX_EXECUTABLE}
               --outfile=${FLEX_OUT}
               ${FLEX_SRC}

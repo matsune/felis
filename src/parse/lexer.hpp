@@ -4,6 +4,7 @@
 #ifndef FLEX_SCANNER
 #include <FlexLexer.h>
 #endif
+#include "source.hpp"
 #include "token.hpp"
 
 class Lexer : public yyFlexLexer {
@@ -11,14 +12,13 @@ class Lexer : public yyFlexLexer {
   bool nl;
   bool ws;
   uint32_t offset;
-  vector<uint32_t> lineCols;
+  Source& src;
 
   bool makeToken(Token& token, TokenKind kind);
 
  public:
   bool yylex(Token& token);
-  Lexer() : nl(false), ws(false), offset(0), lineCols({0}){};
-  Pos getPos(uint32_t offset);
+  Lexer(Source& src) : src(src), nl(false), ws(false), offset(0){};
 };
 
 #endif

@@ -7,23 +7,20 @@ using namespace std;
 
 #include "ast.hpp"
 #include "lexer.hpp"
+#include "source.hpp"
 #include "token.hpp"
 
 class Parser {
  private:
-  Lexer lexer;
+  unique_ptr<Lexer> lexer;
   Token peek, peek2;
   Token next();
   unique_ptr<Node> parsePrimary();
-  bool isNext(TokenKind kind);
 
  public:
-  Parser(FLEX_STD istream& arg_yyin, FLEX_STD ostream& arg_yyout) {
-    lexer.switch_streams(arg_yyin, arg_yyout);
-    lexer.yylex(peek);
-    lexer.yylex(peek2);
-  };
-  void parse();
+  Parser(unique_ptr<Lexer> lexer, FLEX_STD istream& arg_yyin = cin,
+         FLEX_STD ostream& arg_yyout = cout);
+  unique_ptr<Node> parse();
   unique_ptr<Node> parseExpr(uint8_t prec = 0);
 };
 
