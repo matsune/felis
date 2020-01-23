@@ -46,8 +46,9 @@ BinOp binOpFrom(TokenKind kind) {
   }
 }
 
-Parser::Parser(unique_ptr<Lexer> lexer, FLEX_STD istream& yyin,
-               FLEX_STD ostream& yyout) {
+Parser::Parser(unique_ptr<Lexer> lexer, ErrorHandler& handler,
+               FLEX_STD istream& yyin, FLEX_STD ostream& yyout)
+    : handler(handler) {
   lexer->switch_streams(yyin, yyout);
   lexer->yylex(peek);
   lexer->yylex(peek2);
@@ -82,6 +83,8 @@ unique_ptr<Node> Parser::parseExpr(uint8_t prec) {
 
   if (!peek.is(TokenKind::LPAREN) && !peek.isIdent() && !peek.isLit()) {
     // TODO: push unexpected token error
+    handler.errors.emplace_back(
+        new Error("Invalid Token", lexer->getPos(peek.offset)));
     return nullptr;
   }
 

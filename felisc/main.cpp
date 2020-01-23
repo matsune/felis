@@ -3,6 +3,7 @@
 #include <llvm/IR/Module.h>
 #include <fstream>
 #include <iostream>
+#include <parse/error.hpp>
 #include <parse/parser.hpp>
 #include <parse/source.hpp>
 #include <string>
@@ -22,12 +23,17 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  ErrorHandler handler(filename);
   Source src(filename);
   auto lexer = make_unique<Lexer>(src);
-  Parser parser(move(lexer), in, cout);
+  Parser parser(move(lexer), handler, in, cout);
   auto expr = parser.parse();
+  if (handler.report()) {
+    goto defer;
+  }
   if (expr) cout << expr->kind() << endl;
 
+defer:
   in.close();
 }
 

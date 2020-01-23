@@ -57,8 +57,6 @@ class Token {
   uint64_t ival = 0;
   bool bval = false;
 
-  Token(){};
-
   bool is(Kind kind) { return this->kind == kind; };
   bool isIdent() { return kind == Kind::IDENT; }
   bool isLit() { return Kind::LIT_INT <= kind && kind <= Kind::LIT_STR; };

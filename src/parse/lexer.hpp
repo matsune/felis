@@ -19,6 +19,7 @@ class Lexer : public yyFlexLexer {
  public:
   bool yylex(Token& token);
   Lexer(Source& src) : src(src), nl(false), ws(false), offset(0){};
+  Pos getPos(uint32_t offset) { return src.getPos(offset); };
 };
 
 #endif
