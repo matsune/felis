@@ -4,7 +4,7 @@
 #ifndef FLEX_SCANNER
 #include <FlexLexer.h>
 #endif
-#include "source.hpp"
+#include "common/source.hpp"
 #include "token.hpp"
 
 class Lexer : public yyFlexLexer {

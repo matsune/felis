@@ -6,9 +6,9 @@
 using namespace std;
 
 #include "ast.hpp"
-#include "error.hpp"
+#include "common/error.hpp"
+#include "common/source.hpp"
 #include "lexer.hpp"
-#include "source.hpp"
 #include "token.hpp"
 
 class Parser {

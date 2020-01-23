@@ -15,3 +15,4 @@ ENDIF()
 
 file(GLOB parse_SRCS *.cpp *.hpp)
 add_library(parse STATIC ${parse_SRCS} ${FLEX_OUT})
+target_link_libraries(parse common)

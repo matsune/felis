@@ -8,8 +8,6 @@
 
 using namespace std;
 
-enum ErrorCode {};
-
 class Error {
  public:
   string msg;

@@ -18,5 +18,6 @@ llvm_map_components_to_libnames(llvm_libs core)
 
 include_directories(src)
 
+add_subdirectory(src/common)
 add_subdirectory(src/parse)
 add_subdirectory(felisc)
