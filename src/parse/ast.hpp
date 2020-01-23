@@ -24,7 +24,7 @@ enum UnOp { NEG, NOT };
 
 class Node {
  public:
-  enum Kind { IDENT, LIT_INT, LIT_BOOL, BINARY };
+  enum Kind { IDENT, LIT_INT, LIT_BOOL, LIT_CHAR, BINARY };
   virtual Kind kind() = 0;
 };
 
@@ -53,6 +53,15 @@ class LitBool : public Node {
   bool bval;
 
   LitBool(bool bval = false) : bval(bval){};
+};
+
+class LitChar : public Node {
+ public:
+  Node::Kind kind() { return Node::Kind::LIT_CHAR; };
+
+  char cval;
+
+  LitChar(char cval = 0) : cval(cval){};
 };
 
 class Binary : public Node {

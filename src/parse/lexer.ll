@@ -44,8 +44,7 @@ IDENT	[a-zA-Z_][0-9a-zA-Z_]*
         break;
     }
   }
-
-  nl = true; 
+  nl = true;
 }
 
 {IDENT} { 
@@ -61,6 +60,11 @@ IDENT	[a-zA-Z_][0-9a-zA-Z_]*
 "true"|"false" {
   token.bval = yytext == "true";
   return makeToken(token, TokenKind::LIT_BOOL);
+}
+
+"'"[a-zA-Z]"'" {
+  token.ival = yytext[1];
+  return makeToken(token, TokenKind::LIT_CHAR);
 }
 
 "+"  { return makeToken(token, TokenKind::PLUS); }

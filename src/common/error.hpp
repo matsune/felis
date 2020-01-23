@@ -20,7 +20,7 @@ class ErrorHandler {
  public:
   string &filename;
   vector<unique_ptr<Error>> errors;
-  bool report();
+  void report();
 
   ErrorHandler(string &filename) : filename(filename){};
 };
