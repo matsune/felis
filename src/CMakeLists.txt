@@ -1,6 +1,6 @@
 FIND_PACKAGE(FLEX)
-SET(FLEX_OUT ${CMAKE_CURRENT_SOURCE_DIR}/lexer.cpp)
-SET(FLEX_SRC ${CMAKE_CURRENT_SOURCE_DIR}/lexer.ll)
+SET(FLEX_OUT ${CMAKE_CURRENT_SOURCE_DIR}/parse/lexer.cpp)
+SET(FLEX_SRC ${CMAKE_CURRENT_SOURCE_DIR}/parse/lexer.ll)
 
 IF(FLEX_FOUND)
     ADD_CUSTOM_COMMAND(
@@ -13,6 +13,5 @@ IF(FLEX_FOUND)
     )
 ENDIF()
 
-file(GLOB parse_SRCS *.cpp *.hpp)
-add_library(parse STATIC ${parse_SRCS} ${FLEX_OUT})
-target_link_libraries(parse common)
+file(GLOB SRCS **/*.cpp **/*.hpp)
+add_library(felis STATIC ${SRCS} ${FLEX_OUT})
