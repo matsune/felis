@@ -7,6 +7,7 @@
 #include "common/error.hpp"
 #include "common/source.hpp"
 #include "parse/parser.hpp"
+#include "parse/printer.hpp"
 
 using namespace std;
 
@@ -28,10 +29,12 @@ int main(int argc, char *argv[]) {
   auto lexer = make_unique<Lexer>(src);
   Parser parser(move(lexer), handler, in, cout);
   auto expr = parser.parse();
-  if (handler.report()) {
-    goto defer;
+  if (expr) {
+    Printer printer;
+    printer.print(expr);
+  } else {
+    handler.report();
   }
-  if (expr) cout << expr->kind() << endl;
 
 defer:
   in.close();

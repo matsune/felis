@@ -18,6 +18,7 @@ class Parser {
   Token next();
   unique_ptr<Node> parsePrimary();
   ErrorHandler& handler;
+  void error(string msg);
 
  public:
   Parser(unique_ptr<Lexer>, ErrorHandler&, FLEX_STD istream& arg_yyin = cin,

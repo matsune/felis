@@ -71,6 +71,10 @@ unique_ptr<Node> Parser::parse() {
   return expr;
 }
 
+void Parser::error(string msg) {
+  handler.errors.emplace_back(new Error(msg, lexer->getPos(peek.offset)));
+};
+
 unique_ptr<Node> Parser::parseExpr(uint8_t prec) {
   UnOp* unOp(NULL);
   if (peek.is(TokenKind::MINUS)) {
@@ -82,9 +86,7 @@ unique_ptr<Node> Parser::parseExpr(uint8_t prec) {
   }
 
   if (!peek.is(TokenKind::LPAREN) && !peek.isIdent() && !peek.isLit()) {
-    // TODO: push unexpected token error
-    handler.errors.emplace_back(
-        new Error("Invalid Token", lexer->getPos(peek.offset)));
+    error("unexpected token '" + peek.to_string() + "'");
     return nullptr;
   }
 
