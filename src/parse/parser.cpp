@@ -127,6 +127,8 @@ unique_ptr<Node> Parser::parsePrimary() {
     return make_unique<LitBool>(LitBool(token.bval));
   } else if (token.is(TokenKind::LIT_CHAR)) {
     return make_unique<LitChar>(LitChar(token.ival));
+  } else if (token.is(TokenKind::LIT_STR)) {
+    return make_unique<LitStr>(LitStr(token.sval));
   } else {
     UNIMPLEMENTED("primary")
   }

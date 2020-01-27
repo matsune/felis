@@ -102,6 +102,14 @@ void Printer::print(unique_ptr<Node> &node) {
       }
       up("}");
       break;
+    case Node::Kind::LIT_STR:
+      down("LitSTR {");
+      {
+        auto lit = (LitStr *)node.get();
+        writeln("literal: \"" + lit->sval + "\"");
+      }
+      up("}");
+      break;
     case Node::Kind::BINARY:
       down("Binary {");
       {

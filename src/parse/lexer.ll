@@ -13,6 +13,8 @@ using namespace std;
 #undef YY_NULL
 #define YY_NULL false
 
+void unescape(string& str);
+
 %}
 
 %option nodefault
@@ -21,6 +23,7 @@ using namespace std;
 %option c++
 
 IDENT	[a-zA-Z_][0-9a-zA-Z_]*
+ESCAPED \\[0abfnrtv?\\'"]
 
 %%
 %{
@@ -62,10 +65,33 @@ IDENT	[a-zA-Z_][0-9a-zA-Z_]*
   return makeToken(token, TokenKind::LIT_BOOL);
 }
 
-"'"[a-zA-Z]"'" {
-  token.ival = yytext[1];
+'({ESCAPED}|[^\\'])+' {
+  if (yytext[1] == '\\') {
+    if (yyleng > 4) {
+      YY_FATAL_ERROR(
+          "invalid char" );
+    } else {
+      string str(yytext+1,yyleng-2);
+      unescape(str);
+      token.ival = str[0];
+    }
+  } else {
+    if (yyleng > 3) {
+      YY_FATAL_ERROR(
+          "unsupported multibyte char" );
+    }
+    token.ival = yytext[1];
+  }
   return makeToken(token, TokenKind::LIT_CHAR);
 }
+
+\"({ESCAPED}|[^\\"])*\" {
+  string str(yytext+1,yyleng-2);
+  unescape(str);
+  token.sval = str;
+  return makeToken(token, TokenKind::LIT_STR);
+}
+
 
 "+"  { return makeToken(token, TokenKind::PLUS); }
 "-"  { return makeToken(token, TokenKind::MINUS); }
@@ -104,7 +130,7 @@ IDENT	[a-zA-Z_][0-9a-zA-Z_]*
   Pos p = src.getPos(offset - yyleng);
   cerr << "Error: illegal character at line "
        << p.line+1 << ", col " << p.column+1 << endl;
-  return makeToken(token, TokenKind::END);
+  return makeToken(token, TokenKind::UNKNOWN);
 }
 
 %%
@@ -117,3 +143,48 @@ bool Lexer::makeToken(Token &token, TokenKind kind) {
   token.len = yyleng;
   return kind != TokenKind::END;
 }
+
+inline int hexc(int c)
+{
+  if (c>='0' && c<='9') return c-'0';
+  if (c>='a' && c<='f') return 10+c-'a';
+  if (c>='A' && c<='F') return 10+c-'A';
+  return -1;
+}
+
+void unescape(string& str)
+{
+  int sz = str.size();
+  int d=0;
+  for (int s=0; s<sz; ++s,++d) {
+    if (str[s] != '\\') {
+      str[d] = str[s];
+      continue;
+    }
+
+    ++s;
+
+    switch (str[s]) {
+      case 'a': str[d] = '\a'; break;
+      case 'b': str[d] = '\b'; break;
+      case 'n': str[d] = '\n'; break;
+      case 'r': str[d] = '\r'; break;
+      case 't': str[d] = '\t'; break;
+      case 'v': str[d] = '\v'; break;
+      case '0': str[d] = '\0'; break;
+      case 'x': 
+        {
+          int h1 = hexc(str[s+1]), h2 = hexc(str[s+2]);
+          if (h1 >= 0 && h2 >= 0) {
+            str[d] = 16*h1 + h2; s+=2;
+          } else {
+            str[d] = 'x';
+          }
+        } 
+        break;
+      default: str[d] = str[s];
+    } 
+  }
+  str.resize(d);
+}
+

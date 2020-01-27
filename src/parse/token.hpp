@@ -16,6 +16,7 @@ static string tostring(const T& t) {
 class Token {
  public:
   enum Kind {
+    UNKNOWN,
     END,  // '\0'
     IDENT,
     LIT_INT,
