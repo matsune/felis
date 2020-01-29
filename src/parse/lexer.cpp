@@ -351,14 +351,15 @@ struct yy_trans_info
 	flex_int32_t yy_verify;
 	flex_int32_t yy_nxt;
 	};
-static yyconst flex_int16_t yy_accept[59] =
+static yyconst flex_int16_t yy_accept[63] =
     {   0,
         0,    0,   38,   36,    1,    2,    2,   26,   36,   12,
        13,   36,   27,   28,   10,    8,   34,    9,   11,    4,
        33,   32,   20,   31,   22,    3,   15,    3,    3,   29,
        14,   30,    1,    2,   25,    0,    7,    0,   18,    0,
         0,   35,    4,   16,   21,   24,   23,   17,    3,    3,
-        3,   19,    6,    3,    3,    3,    3,    0
+        3,   19,    0,    6,    0,    3,    3,    0,    0,    3,
+        3,    0
     } ;
 
 static yyconst YY_CHAR yy_ec[256] =
@@ -372,11 +373,11 @@ static yyconst YY_CHAR yy_ec[256] =
        22,   23,   24,    1,   25,   25,   25,   25,   25,   25,
        25,   25,   25,   25,   25,   25,   25,   25,   25,   25,
        25,   25,   25,   25,   25,   25,   25,   25,   25,   25,
-        1,   26,    1,   27,   25,    1,   28,   29,   25,   25,
+        1,   26,    1,   27,   28,    1,   29,   30,   25,   25,
 
-       30,   31,   25,   25,   25,   25,   25,   32,   25,   29,
-       25,   25,   25,   33,   34,   35,   36,   29,   25,   25,
-       25,   25,   37,   38,   39,    1,    1,    1,    1,    1,
+       31,   32,   25,   25,   25,   25,   25,   33,   25,   30,
+       25,   25,   25,   34,   35,   36,   37,   30,   25,   38,
+       25,   25,   39,   40,   41,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
@@ -393,72 +394,79 @@ static yyconst YY_CHAR yy_ec[256] =
         1,    1,    1,    1,    1
     } ;
 
-static yyconst YY_CHAR yy_meta[40] =
+static yyconst YY_CHAR yy_meta[42] =
     {   0,
         1,    1,    1,    1,    1,    2,    1,    1,    3,    1,
         1,    1,    1,    1,    1,    1,    4,    5,    1,    1,
-        1,    1,    1,    2,    5,    2,    1,    4,    4,    5,
-        4,    5,    4,    5,    4,    5,    1,    1,    1
+        1,    1,    1,    2,    5,    2,    1,    6,    4,    4,
+        5,    4,    5,    4,    5,    4,    5,    4,    1,    1,
+        1
     } ;
 
-static yyconst flex_uint16_t yy_base[64] =
+static yyconst flex_uint16_t yy_base[72] =
     {   0,
-        0,    0,   81,  101,   38,   41,   44,   57,   43,  101,
-       70,   51,  101,  101,  101,  101,  101,   53,  101,   33,
-      101,  101,   31,   53,   32,    0,  101,   46,   40,  101,
-       34,  101,   54,   57,  101,   56,  101,    0,  101,   54,
-        0,  101,   47,  101,  101,  101,  101,  101,    0,   39,
-       34,  101,  101,   34,   37,   36,    0,  101,   82,   87,
-       89,   93,   96
+        0,    0,  114,  115,   40,   43,   46,   71,   45,  115,
+       75,   55,  115,  115,  115,  115,  115,   57,  115,   35,
+      115,  115,   33,   57,   34,    0,  115,   49,   43,  115,
+       36,  115,   56,   59,  115,   58,  115,   37,  115,   56,
+       36,  115,   49,  115,  115,  115,  115,  115,    0,   40,
+       35,  115,    0,  115,    0,   35,   38,    0,    0,   37,
+        0,  115,   84,   90,   93,   98,  101,  102,  104,  106,
+      108
     } ;
 
-static yyconst flex_int16_t yy_def[64] =
+static yyconst flex_int16_t yy_def[72] =
     {   0,
-       58,    1,   58,   58,   58,   58,   58,   58,   59,   58,
-       58,   60,   58,   58,   58,   58,   58,   58,   58,   58,
-       58,   58,   58,   58,   58,   61,   58,   61,   61,   58,
-       58,   58,   58,   58,   58,   59,   58,   62,   58,   60,
-       63,   58,   58,   58,   58,   58,   58,   58,   61,   61,
-       61,   58,   58,   61,   61,   61,   61,    0,   58,   58,
-       58,   58,   58
+       62,    1,   62,   62,   62,   62,   62,   62,   63,   62,
+       62,   64,   62,   62,   62,   62,   62,   62,   62,   62,
+       62,   62,   62,   62,   62,   65,   62,   65,   65,   62,
+       62,   62,   62,   62,   62,   63,   62,   66,   62,   64,
+       67,   62,   62,   62,   62,   62,   62,   62,   65,   65,
+       65,   62,   68,   62,   69,   65,   65,   70,   71,   65,
+       65,    0,   62,   62,   62,   62,   62,   62,   62,   62,
+       62
     } ;
 
-static yyconst flex_uint16_t yy_nxt[141] =
+static yyconst flex_uint16_t yy_nxt[157] =
     {   0,
         4,    5,    6,    7,    8,    9,   10,   11,   12,   13,
        14,   15,   16,   17,   18,   19,    4,   20,   21,   22,
        23,   24,   25,    4,   26,    4,   27,   26,   26,   26,
-       28,   26,   26,   26,   29,   26,   30,   31,   32,   33,
-       34,   34,   34,   34,   34,   34,   34,   34,   37,   43,
-       43,   44,   45,   47,   48,   33,   34,   34,   34,   34,
-       34,   37,   53,   43,   43,   57,   57,   56,   38,   55,
-       54,   52,   51,   50,   46,   42,   41,   39,   35,   41,
-       58,   38,   36,   36,   36,   36,   36,   40,   40,   58,
-       40,   40,   49,   49,   36,   36,   36,   40,   40,   40,
+       26,   28,   26,   26,   26,   29,   26,   26,   30,   31,
+       32,   33,   34,   34,   34,   34,   34,   34,   34,   34,
+       37,   43,   43,   44,   45,   47,   48,   33,   34,   34,
+       34,   34,   34,   37,   54,   43,   43,   61,   61,   60,
+       38,   57,   56,   55,   53,   52,   51,   50,   46,   42,
+       41,   41,   39,   38,   36,   36,   36,   36,   36,   36,
+       40,   40,   35,   40,   40,   40,   49,   49,   49,   36,
 
-        3,   58,   58,   58,   58,   58,   58,   58,   58,   58,
-       58,   58,   58,   58,   58,   58,   58,   58,   58,   58,
-       58,   58,   58,   58,   58,   58,   58,   58,   58,   58,
-       58,   58,   58,   58,   58,   58,   58,   58,   58,   58
+       36,   36,   40,   40,   40,   58,   58,   59,   59,   36,
+       36,   40,   40,   62,    3,   62,   62,   62,   62,   62,
+       62,   62,   62,   62,   62,   62,   62,   62,   62,   62,
+       62,   62,   62,   62,   62,   62,   62,   62,   62,   62,
+       62,   62,   62,   62,   62,   62,   62,   62,   62,   62,
+       62,   62,   62,   62,   62,   62
     } ;
 
-static yyconst flex_int16_t yy_chk[141] =
+static yyconst flex_int16_t yy_chk[157] =
     {   0,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    1,    1,    1,    1,    1,    1,    1,    1,    5,
-        5,    5,    6,    6,    6,    7,    7,    7,    9,   20,
-       20,   23,   23,   25,   25,   33,   33,   33,   34,   34,
-       34,   36,   40,   43,   43,   56,   55,   54,    9,   51,
-       50,   31,   29,   28,   24,   18,   12,   11,    8,   40,
-        3,   36,   59,   59,   59,   59,   59,   60,   60,    0,
-       60,   60,   61,   61,   62,   62,   62,   63,   63,   63,
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+        1,    5,    5,    5,    6,    6,    6,    7,    7,    7,
+        9,   20,   20,   23,   23,   25,   25,   33,   33,   33,
+       34,   34,   34,   36,   40,   43,   43,   60,   57,   56,
+        9,   51,   50,   41,   38,   31,   29,   28,   24,   18,
+       12,   40,   11,   36,   63,   63,   63,   63,   63,   63,
+       64,   64,    8,   64,   64,   64,   65,   65,   65,   66,
 
-       58,   58,   58,   58,   58,   58,   58,   58,   58,   58,
-       58,   58,   58,   58,   58,   58,   58,   58,   58,   58,
-       58,   58,   58,   58,   58,   58,   58,   58,   58,   58,
-       58,   58,   58,   58,   58,   58,   58,   58,   58,   58
+       66,   66,   67,   67,   67,   68,   68,   69,   69,   70,
+       70,   71,   71,    3,   62,   62,   62,   62,   62,   62,
+       62,   62,   62,   62,   62,   62,   62,   62,   62,   62,
+       62,   62,   62,   62,   62,   62,   62,   62,   62,   62,
+       62,   62,   62,   62,   62,   62,   62,   62,   62,   62,
+       62,   62,   62,   62,   62,   62
     } ;
 
 /* The intent behind this definition is that it'll catch
@@ -486,7 +494,7 @@ using namespace std;
 
 void unescape(string& str);
 
-#line 490 "/root/workspace/Felis/src/parse/lexer.cpp"
+#line 498 "/root/workspace/Felis/src/parse/lexer.cpp"
 
 #define INITIAL 0
 
@@ -624,7 +632,7 @@ YY_DECL
   nl = ws = false;
 
 
-#line 628 "/root/workspace/Felis/src/parse/lexer.cpp"
+#line 636 "/root/workspace/Felis/src/parse/lexer.cpp"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -651,13 +659,13 @@ yy_match:
 			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 				{
 				yy_current_state = (int) yy_def[yy_current_state];
-				if ( yy_current_state >= 59 )
+				if ( yy_current_state >= 63 )
 					yy_c = yy_meta[(unsigned int) yy_c];
 				}
 			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
 			++yy_cp;
 			}
-		while ( yy_base[yy_current_state] != 101 );
+		while ( yy_base[yy_current_state] != 115 );
 
 yy_find_action:
 		yy_act = yy_accept[yy_current_state];
@@ -737,29 +745,20 @@ case 6:
 YY_RULE_SETUP
 #line 68 "/root/workspace/Felis/src/parse/lexer.ll"
 {
-  if (yytext[1] == '\\') {
-    if (yyleng > 4) {
-      YY_FATAL_ERROR(
-          "invalid char" );
-    } else {
       string str(yytext+1,yyleng-2);
       unescape(str);
-      token.ival = str[0];
-    }
-  } else {
-    if (yyleng > 3) {
+    if (str.size() > 1) {
       YY_FATAL_ERROR(
           "unsupported multibyte char" );
     }
-    token.ival = yytext[1];
-  }
+    token.ival = str[0];
   return makeToken(token, TokenKind::LIT_CHAR);
 }
 	YY_BREAK
 case 7:
 /* rule 7 can match eol */
 YY_RULE_SETUP
-#line 88 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 79 "/root/workspace/Felis/src/parse/lexer.ll"
 {
   string str(yytext+1,yyleng-2);
   unescape(str);
@@ -769,153 +768,153 @@ YY_RULE_SETUP
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 96 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 87 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::PLUS); }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 97 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 88 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::MINUS); }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 98 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 89 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::STAR); }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 99 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 90 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::SLASH); }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 100 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 91 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::PERCENT); }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 101 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 92 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::AND); }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 102 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 93 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::OR); }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 103 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 94 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::CARET); }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 104 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 95 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::SHL); }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 105 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 96 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::SHR); }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 106 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 97 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::ANDAND); }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 107 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 98 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::OROR); }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 108 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 99 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::LT); }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 109 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 100 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::LE); }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 110 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 101 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::GT); }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 111 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 102 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::GE); }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 112 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 103 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::EQEQ); }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 113 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 104 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::NEQ); }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 114 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 105 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::NOT); }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 115 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 106 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::LPAREN); }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 116 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 107 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::RPAREN); }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 117 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 108 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::LBRACE); }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 118 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 109 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::RBRACE); }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 119 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 110 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::EQ); }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 120 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 111 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::SEMI); } 
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 121 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 112 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::COLON); } 
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 122 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 113 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::COMMA); } 
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 123 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 114 "/root/workspace/Felis/src/parse/lexer.ll"
 { return makeToken(token, TokenKind::ARROW); } 
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-#line 125 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 116 "/root/workspace/Felis/src/parse/lexer.ll"
 {
   return makeToken(token, TokenKind::END);
 }
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 129 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 120 "/root/workspace/Felis/src/parse/lexer.ll"
 { 
   Pos p = src.getPos(offset - yyleng);
   cerr << "Error: illegal character at line "
@@ -925,10 +924,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 136 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 127 "/root/workspace/Felis/src/parse/lexer.ll"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 932 "/root/workspace/Felis/src/parse/lexer.cpp"
+#line 931 "/root/workspace/Felis/src/parse/lexer.cpp"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -1339,7 +1338,7 @@ int yyFlexLexer::yy_get_next_buffer()
 		while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 			{
 			yy_current_state = (int) yy_def[yy_current_state];
-			if ( yy_current_state >= 59 )
+			if ( yy_current_state >= 63 )
 				yy_c = yy_meta[(unsigned int) yy_c];
 			}
 		yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
@@ -1367,11 +1366,11 @@ int yyFlexLexer::yy_get_next_buffer()
 	while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 		{
 		yy_current_state = (int) yy_def[yy_current_state];
-		if ( yy_current_state >= 59 )
+		if ( yy_current_state >= 63 )
 			yy_c = yy_meta[(unsigned int) yy_c];
 		}
 	yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
-	yy_is_jam = (yy_current_state == 58);
+	yy_is_jam = (yy_current_state == 62);
 
 		return yy_is_jam ? 0 : yy_current_state;
 }
@@ -1881,7 +1880,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 136 "/root/workspace/Felis/src/parse/lexer.ll"
+#line 127 "/root/workspace/Felis/src/parse/lexer.ll"
 
 
 

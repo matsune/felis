@@ -23,7 +23,7 @@ void unescape(string& str);
 %option c++
 
 IDENT	[a-zA-Z_][0-9a-zA-Z_]*
-ESCAPED \\[0abfnrtv?\\'"]
+ESCAPED \\[0abfnrtv?\\'"]|\\x[0-9a-zA-Z]{2}
 
 %%
 %{
@@ -66,22 +66,13 @@ ESCAPED \\[0abfnrtv?\\'"]
 }
 
 '({ESCAPED}|[^\\'])+' {
-  if (yytext[1] == '\\') {
-    if (yyleng > 4) {
-      YY_FATAL_ERROR(
-          "invalid char" );
-    } else {
-      string str(yytext+1,yyleng-2);
-      unescape(str);
-      token.ival = str[0];
-    }
-  } else {
-    if (yyleng > 3) {
-      YY_FATAL_ERROR(
-          "unsupported multibyte char" );
-    }
-    token.ival = yytext[1];
+  string str(yytext+1,yyleng-2);
+  unescape(str);
+  if (str.size() > 1) {
+    YY_FATAL_ERROR(
+        "unsupported multibyte char" );
   }
+  token.ival = str[0];
   return makeToken(token, TokenKind::LIT_CHAR);
 }
 
