@@ -16,7 +16,6 @@ static string tostring(const T& t) {
 class Token {
  public:
   enum Kind {
-    UNKNOWN,
     END,  // '\0'
     IDENT,
     LIT_INT,
@@ -24,6 +23,8 @@ class Token {
     LIT_BOOL,
     LIT_CHAR,
     LIT_STR,
+    // keyword
+    KW_RET,
     // arith_op
     PLUS,     // +
     MINUS,    // -
@@ -62,7 +63,7 @@ class Token {
   Kind kind = Kind::END;
   bool nl = false;
   bool ws = false;
-  uint32_t offset = 0, len = 0;
+  /* uint32_t offset = 0, len = 0; */
 
   string sval = "";
   uint64_t ival = 0;

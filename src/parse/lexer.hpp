@@ -1,25 +1,41 @@
 #ifndef LEXER_HPP
 #define LEXER_HPP
-#include <vector>
-#ifndef FLEX_SCANNER
-#include <FlexLexer.h>
-#endif
-#include "common/source.hpp"
+
+#include <fstream>
+#include <iostream>
+#include "common/pos.hpp"
 #include "token.hpp"
 
-class Lexer : public yyFlexLexer {
- private:
-  bool nl;
-  bool ws;
-  uint32_t offset;
-  Source& src;
+using namespace std;
 
-  bool makeToken(Token& token, TokenKind kind);
+struct rune {
+  int32_t val = 0;
+  int8_t len_utf8 = 0;
+  char bytes[4] = {0};
+
+  bool operator==(const int32_t &c) const { return val == c; };
+  bool operator==(const rune &r) const { return val == r.val; };
+};
+
+class Lexer {
+  ifstream &in;
+  string filename;
+  Pos pos;
+
+  rune peek;
+  bool eat_string(string &sval);
+  rune scan();
+  template <typename... Args>
+  bool error(const char *format, Args const &... args);
 
  public:
-  bool yylex(Token& token);
-  Lexer(Source& src) : src(src), nl(false), ws(false), offset(0){};
-  Pos getPos(uint32_t offset) { return src.getPos(offset); };
+  Lexer(ifstream &in, string filename = "") : in(in), filename(filename) {
+    peek = scan();
+  };
+  void setFilename(string filename) { this->filename = filename; };
+  rune getPeek();
+  rune bump();
+  bool next(Token &t);
 };
 
 #endif

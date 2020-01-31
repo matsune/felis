@@ -66,7 +66,7 @@ void Printer::up(string s) {
 void Printer::print(unique_ptr<Node> &node) {
   if (depth == 0) writeLineNum();
 
-  switch (node->kind()) {
+  switch (node->nodeKind()) {
     case Node::Kind::IDENT:
       down("Ident {");
       {
@@ -75,41 +75,46 @@ void Printer::print(unique_ptr<Node> &node) {
       }
       up("}");
       break;
-    case Node::Kind::LIT_INT:
-      down("LitInt {");
-      {
-        auto lit = (LitInt *)node.get();
-        string s = tostring(lit->ival);
-        writeln("num: " + s);
+    case Node::Kind::LIT: {
+      auto lit = (Lit *)node.get();
+      switch (lit->litKind()) {
+        case Lit::Kind::INT:
+          down("LitInt {");
+          {
+            auto lit = (LitInt *)node.get();
+            string s = tostring(lit->ival);
+            writeln("num: " + s);
+          }
+          up("}");
+          break;
+        case Lit::Kind::BOOL:
+          down("LitBool {");
+          {
+            auto lit = (LitBool *)node.get();
+            string s = (lit->bval ? "true" : "false");
+            writeln("literal: " + s);
+          }
+          up("}");
+          break;
+        case Lit::Kind::CHAR:
+          down("LitChar {");
+          {
+            auto lit = (LitChar *)node.get();
+            string s{lit->cval};
+            writeln("literal: '" + s + "'");
+          }
+          up("}");
+          break;
+        case Lit::Kind::STR:
+          down("LitSTR {");
+          {
+            auto lit = (LitStr *)node.get();
+            writeln("literal: \"" + lit->sval + "\"");
+          }
+          up("}");
+          break;
       }
-      up("}");
-      break;
-    case Node::Kind::LIT_BOOL:
-      down("LitBool {");
-      {
-        auto lit = (LitBool *)node.get();
-        string s = (lit->bval ? "true" : "false");
-        writeln("literal: " + s);
-      }
-      up("}");
-      break;
-    case Node::Kind::LIT_CHAR:
-      down("LitChar {");
-      {
-        auto lit = (LitChar *)node.get();
-        string s{lit->cval};
-        writeln("literal: '" + s + "'");
-      }
-      up("}");
-      break;
-    case Node::Kind::LIT_STR:
-      down("LitSTR {");
-      {
-        auto lit = (LitStr *)node.get();
-        writeln("literal: \"" + lit->sval + "\"");
-      }
-      up("}");
-      break;
+    }
     case Node::Kind::BINARY:
       down("Binary {");
       {

@@ -17,6 +17,7 @@ class Source {
   Source(string& filename) : filename(filename), lineCols({0}){};
   void line();
   void columns(int c = 1);
+  const char* getFilename() { return filename.c_str(); };
 };
 
 #endif

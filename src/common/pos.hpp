@@ -9,11 +9,11 @@ class Pos {
  public:
   unsigned int line, column;
 
-  Pos(int line = 0, int column = 0) : line(line), column(column){};
+  Pos(int line = 1, int column = 1) : line(line), column(column){};
 
   void lines(int ln = 1) {
     line += ln;
-    column = 0;
+    column = 1;
   }
   void columns(int col = 1) { column += col; }
 };

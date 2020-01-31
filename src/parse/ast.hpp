@@ -24,49 +24,56 @@ enum UnOp { NEG, NOT };
 
 class Node {
  public:
-  enum Kind { IDENT, LIT_INT, LIT_BOOL, LIT_CHAR, LIT_STR, BINARY };
-  virtual Kind kind() = 0;
+  enum Kind { IDENT, LIT, BINARY };
+  virtual Kind nodeKind() = 0;
 };
 
 class Ident : public Node {
  public:
-  Node::Kind kind() { return Node::Kind::IDENT; };
+  Node::Kind nodeKind() { return Node::Kind::IDENT; };
 
   string sval;
 
   Ident(string sval = "") : sval(sval){};
 };
 
-class LitInt : public Node {
+class Lit : public Node {
  public:
-  Node::Kind kind() { return Node::Kind::LIT_INT; };
+  enum Kind { INT, BOOL, CHAR, STR };
+  virtual Kind litKind() = 0;
+  Node::Kind nodeKind() { return Node::Kind::LIT; };
+};
+
+class LitInt : public Lit {
+ public:
+  Kind litKind() { return Kind::INT; };
 
   uint64_t ival;
 
   LitInt(uint64_t ival = 0) : ival(ival){};
 };
 
-class LitBool : public Node {
+class LitBool : public Lit {
  public:
-  Node::Kind kind() { return Node::Kind::LIT_BOOL; };
+  Kind litKind() { return Kind::BOOL; };
 
   bool bval;
 
   LitBool(bool bval = false) : bval(bval){};
 };
 
-class LitStr : public Node {
+class LitStr : public Lit {
  public:
-  Node::Kind kind() { return Node::Kind::LIT_STR; };
+  Kind litKind() { return Kind::STR; };
 
   string sval;
 
   LitStr(string sval) : sval(sval){};
 };
 
-class LitChar : public Node {
+class LitChar : public Lit {
  public:
-  Node::Kind kind() { return Node::Kind::LIT_CHAR; };
+  Kind litKind() { return Kind::CHAR; };
 
   char cval;
 
@@ -75,7 +82,7 @@ class LitChar : public Node {
 
 class Binary : public Node {
  public:
-  Node::Kind kind() { return Node::Kind::BINARY; };
+  Node::Kind nodeKind() { return Node::Kind::BINARY; };
 
   unique_ptr<Node> lhs;
   unique_ptr<Node> rhs;

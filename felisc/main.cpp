@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string>
 #include "common/error.hpp"
-#include "common/source.hpp"
+#include "parse/lexer.hpp"
 #include "parse/parser.hpp"
 #include "parse/printer.hpp"
 
@@ -24,17 +24,25 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  ErrorHandler handler(filename);
-  Source src(filename);
-  auto lexer = make_unique<Lexer>(src);
-  Parser parser(move(lexer), handler, in, cout);
-  auto expr = parser.parse();
-  if (expr) {
-    Printer printer;
-    printer.print(expr);
-  } else {
-    handler.report();
+  Lexer lexer(in, filename);
+  Token t;
+  while (lexer.next(t)) {
+    cout << t.kind << endl;
+    cout << t.sval << endl;
   }
+/* Lexer lexer(in); */
+/* lexer.lex(); */
+
+/* ErrorHandler handler(filename); */
+/* auto lexer = make_unique<Lexer>(src); */
+/* Parser parser(move(lexer), handler, in, cout); */
+/* auto expr = parser.parse(); */
+/* if (expr) { */
+/*   Printer printer; */
+/*   printer.print(expr); */
+/* } else { */
+/*   handler.report(); */
+/* } */
 
 defer:
   in.close();
