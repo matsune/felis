@@ -27,17 +27,7 @@ int main(int argc, char *argv[]) {
   Lexer lexer(in, filename);
   Token t;
   while (lexer.next(t)) {
-    if (t.kind == TokenKind::LIT_INT) {
-      cout << "ival " << t.ival << endl;
-    } else if (t.kind == TokenKind::LIT_FLOAT) {
-      cout << "fval " << t.fval << endl;
-    } else if (t.kind == TokenKind::LIT_BOOL) {
-      cout << "bool " << t.bval << endl;
-    } else if (t.kind == TokenKind::LIT_STR) {
-      cout << "string " << t.sval << endl;
-    } else if (t.kind == TokenKind::IDENT) {
-      cout << "ident " << t.sval << endl;
-    }
+    t.debug();
   }
 
 /* Lexer lexer(in); */

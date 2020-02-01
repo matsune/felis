@@ -121,6 +121,8 @@ rune Lexer::bump() {
 rune Lexer::getPeek() { return peek; };
 
 bool Lexer::next(Token &t) {
+  t.reset();
+
   while (true) {
     t.pos = pos;
     auto c = peek;
