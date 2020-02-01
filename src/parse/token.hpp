@@ -68,6 +68,7 @@ class Token {
 
   string sval = "";
   uint64_t ival = 0;
+  double fval = 0;
   bool bval = false;
 
   bool is(Kind kind) { return this->kind == kind; };

@@ -28,8 +28,14 @@ int main(int argc, char *argv[]) {
   Lexer lexer(in, filename);
   Token t;
   while (lexer.next(t)) {
-    cout << t.kind << endl;
-    cout << t.sval << endl;
+    cout << "Kind " << t.kind << endl;
+    if (t.kind == TokenKind::LIT_INT) {
+      cout << "ival " << t.ival << endl;
+    } else if (t.kind == TokenKind::LIT_FLOAT) {
+      cout << "fval " << t.fval << endl;
+    } else if (t.kind == TokenKind::LIT_STR) {
+      cout << t.sval << endl;
+    }
   }
 
 /* Lexer lexer(in); */

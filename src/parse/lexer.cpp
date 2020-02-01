@@ -1,20 +1,25 @@
 #include "lexer.hpp"
+#include <string>
 
 /* #define check(f) \ */
 /*   if (!f) return false; */
-
+inline bool is_newline(int c) { return c == '\n' || c == '\r'; }
+inline bool is_space(int c) {
+  return c == ' ' || c == '\t' || c == 0x09 || c == 0x0c;
+}
+inline bool is_bitc(int c) { return c == '0' || c == '1'; }
+inline bool is_octalc(int c) { return c >= '0' && c <= '7'; }
+inline bool is_decimalc(int c) { return c >= '0' && c <= '9'; }
 inline bool is_hexc(int c) {
   return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
          (c >= 'A' && c <= 'F');
 }
-
 inline int hexc(int c) {
   if (c >= '0' && c <= '9') return c - '0';
   if (c >= 'a' && c <= 'f') return 10 + c - 'a';
   if (c >= 'A' && c <= 'F') return 10 + c - 'A';
   return -1;
 }
-
 inline uint8_t get_tail(uint8_t byte, uint8_t width) {
   return byte & (0xff >> (8 - width));
 }
@@ -84,29 +89,140 @@ rune Lexer::getPeek() { return peek; };
 bool Lexer::next(Token &t) {
   while (true) {
     t.pos = pos;
-    auto c = bump();
-    switch (c.val) {
-      case '\'':
-        t.kind = TokenKind::LIT_CHAR;
-        return eat_char(t.ival);
-      case '"':
-        t.kind = TokenKind::LIT_STR;
-        return eat_string(t.sval);
-      case 0:
-        return false;
-      case ' ':
-      case '\t':
-        t.ws = true;
-        break;
-      case '\n':
-      case '\r':
-        t.nl = true;
-        break;
-      default:
-        return error("unsupported char %c", c.val);
+    auto c = peek;
+    if (is_space(c.val)) {
+      bump();
+      t.ws = true;
+    } else if (is_newline(c.val)) {
+      bump();
+      t.nl = true;
+    } else if (c.val == 0) {
+      return false;
+    } else if (c == '\'') {
+      bump();
+      t.kind = TokenKind::LIT_CHAR;
+      return eat_char(t.ival);
+    } else if (c == '"') {
+      bump();
+      t.kind = TokenKind::LIT_STR;
+      return eat_string(t.sval);
+    } else if (is_decimalc(c.val)) {
+      return eat_num(t);
+    } else {
+      return error("unsupported char %c", c.val);
     }
   }
 };
+
+/* bool Lexer::eat_decimal_digits(uint64_t &val) { */
+/*   bool hasDigits; */
+/*   while (true) { */
+/*     if (peek == '_') { */
+/*       bump(); */
+/*     } else if (is_decimalc(peek.val)) { */
+/*       hasDigits = true; */
+/*       val = val * 10 + hexc(peek.val); */
+/*       if (val > INT64_MAX) { */
+/*         return error("overflow int64 size\n"); */
+/*       } */
+/*       bump(); */
+/*     } else { */
+/*       break; */
+/*     } */
+/*   } */
+/*   if (!hasDigits) { */
+/*     return error("no digits"); */
+/*   } */
+/*   return true; */
+/* }; */
+
+bool Lexer::read_digits(string &s, bool f(int)) {
+  bool hasDigits;
+  while (true) {
+    if (f(peek.val)) {
+      hasDigits = true;
+      s.push_back(bump().val);
+    } else if (peek == '_') {
+      bump();
+    } else {
+      break;
+    }
+  }
+  if (!hasDigits) {
+    return error("no digits\n");
+  }
+  return true;
+}
+
+bool Lexer::eat_num(Token &t) {
+  t.kind = TokenKind::LIT_INT;
+
+  auto first = bump();
+  string s;
+  s.push_back(first.val);
+  int base(10);
+  if (first == '0') {
+    if (peek == 'b') {
+      // binary
+      bump();
+      base = 2;
+      if (!read_digits(s, is_bitc)) {
+        return false;
+      }
+    } else if (peek == 'o') {
+      // octal
+      bump();
+      base = 8;
+      if (!read_digits(s, is_octalc)) {
+        return false;
+      }
+    } else if (peek == 'x') {
+      // hex
+      bump();
+      base = 16;
+      if (!read_digits(s, is_hexc)) {
+        return false;
+      }
+    } else if (is_decimalc(peek.val) || peek == '_') {
+      if (!read_digits(s, is_decimalc)) {
+        return false;
+      }
+    } else if (peek == '.' || peek == 'e' || peek == 'E') {
+      // goto exponent
+    } else {
+      // just 0
+      t.kind = TokenKind::LIT_INT;
+      return true;
+    }
+  } else {
+    if (!read_digits(s, is_decimalc)) {
+      return false;
+    }
+  }
+
+  if (peek == '.' || peek == 'e' || peek == 'E') {
+    // fractional part
+    if (base != 10) {
+      return error("'%c' exponent requires decimal mantissa\n", peek);
+    }
+    bool dot = peek == '.';
+    s.push_back(bump().val);
+    if (!dot && peek == '-') {
+      s.push_back(bump().val);
+    }
+    if (!read_digits(s, is_decimalc)) {
+      return false;
+    }
+    t.kind = TokenKind::LIT_FLOAT;
+    t.fval = stold(s);
+  } else {
+    t.ival = stoull(s, nullptr, base);
+    if (t.ival > INT64_MAX) {
+      return error("overflow int64 size\n");
+    }
+  }
+  return true;
+}
 
 bool Lexer::eat_char(uint64_t &ival) {
   auto first = peek;

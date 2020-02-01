@@ -24,6 +24,9 @@ class Lexer {
   Pos pos;
 
   rune peek;
+  bool read_digits(string &s, bool f(int));
+  bool eat_decimal_digits(uint64_t &);
+  bool eat_num(Token &t);
   bool eat_string(string &sval);
   bool eat_char(uint64_t &ival);
   bool escape(char &c);
