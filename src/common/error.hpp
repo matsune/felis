@@ -4,25 +4,25 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "source.hpp"
+/* #include "source.hpp" */
 
 using namespace std;
 
-class Error {
- public:
-  string msg;
-  Pos pos;
+/* class Error { */
+/*  public: */
+/*   string msg; */
+/*   Pos pos; */
 
-  Error(string msg, Pos pos) : msg(msg), pos(pos){};
-};
+/*   Error(string msg, Pos pos) : msg(msg), pos(pos){}; */
+/* }; */
 
-class ErrorHandler {
- public:
-  string &filename;
-  vector<unique_ptr<Error>> errors;
-  void report();
+/* class ErrorHandler { */
+/*  public: */
+/*   string &filename; */
+/*   vector<unique_ptr<Error>> errors; */
+/*   void report(); */
 
-  ErrorHandler(string &filename) : filename(filename){};
-};
+/*   ErrorHandler(string &filename) : filename(filename){}; */
+/* }; */
 
 #endif

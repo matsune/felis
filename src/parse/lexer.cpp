@@ -1,7 +1,7 @@
 #include "lexer.hpp"
 
-#define check(f) \
-  if (!f) return false;
+/* #define check(f) \ */
+/*   if (!f) return false; */
 
 inline bool is_hexc(int c) {
   return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
@@ -82,19 +82,22 @@ rune Lexer::bump() {
 rune Lexer::getPeek() { return peek; };
 
 bool Lexer::next(Token &t) {
-  bool nl, ws;
   while (true) {
     auto c = bump();
     switch (c.val) {
       case '"':
-        check(eat_string(t.sval));
+        t.pos = pos;
         t.kind = TokenKind::LIT_STR;
-        return true;
+        return eat_string(t.sval);
       case 0:
         return false;
+      case ' ':
+      case '\t':
+        t.ws = true;
+        break;
       case '\n':
       case '\r':
-        nl = true;
+        t.nl = true;
         break;
       default:
         return error("unsupported char %c", c.val);

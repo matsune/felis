@@ -6,8 +6,9 @@
 #include <string>
 #include "common/error.hpp"
 #include "parse/lexer.hpp"
-#include "parse/parser.hpp"
+/* #include "parse/parser.hpp" */
 #include "parse/printer.hpp"
+#include "parse/token.hpp"
 
 using namespace std;
 
@@ -28,8 +29,11 @@ int main(int argc, char *argv[]) {
   Token t;
   while (lexer.next(t)) {
     cout << t.kind << endl;
+    cout << t.pos.line << ":" << t.pos.column << endl;
     cout << t.sval << endl;
+    cout << t.ws << t.nl << endl;
   }
+
 /* Lexer lexer(in); */
 /* lexer.lex(); */
 

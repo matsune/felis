@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <string>
+#include "common/pos.hpp"
 
 using namespace std;
 
@@ -63,7 +64,7 @@ class Token {
   Kind kind = Kind::END;
   bool nl = false;
   bool ws = false;
-  /* uint32_t offset = 0, len = 0; */
+  Pos pos;
 
   string sval = "";
   uint64_t ival = 0;
