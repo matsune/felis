@@ -29,9 +29,6 @@ int main(int argc, char *argv[]) {
   Token t;
   while (lexer.next(t)) {
     cout << t.kind << endl;
-    cout << t.pos.line << ":" << t.pos.column << endl;
-    cout << t.sval << endl;
-    cout << t.ws << t.nl << endl;
   }
 
 /* Lexer lexer(in); */

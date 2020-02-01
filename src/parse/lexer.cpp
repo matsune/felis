@@ -83,10 +83,13 @@ rune Lexer::getPeek() { return peek; };
 
 bool Lexer::next(Token &t) {
   while (true) {
+    t.pos = pos;
     auto c = bump();
     switch (c.val) {
+      case '\'':
+        t.kind = TokenKind::LIT_CHAR;
+        return eat_char(t.ival);
       case '"':
-        t.pos = pos;
         t.kind = TokenKind::LIT_STR;
         return eat_string(t.sval);
       case 0:
@@ -105,6 +108,101 @@ bool Lexer::next(Token &t) {
   }
 };
 
+bool Lexer::eat_char(uint64_t &ival) {
+  auto first = peek;
+  switch (first.val) {
+    case '\\':
+      bump();
+      char c;
+      if (!escape(c)) {
+        return false;
+      }
+      ival = c;
+      break;
+    case '\'':
+      return error("empty char literal\n");
+    case '\t':
+    case '\n':
+    case '\r':
+      return error("escape only char\n");
+    default:
+      ival = bump().val;
+      break;
+  }
+  if (peek.val != '\'') {
+    return error("more than one character\n");
+  }
+  bump();
+  return true;
+};
+
+bool Lexer::escape(char &c) {
+  switch (peek.val) {
+    case '\'':
+      bump();
+      c = '\'';
+      break;
+    case '"':
+      bump();
+      c = '"';
+      break;
+    case '\\':
+      bump();
+      c = '\\';
+      break;
+    case '0':
+      bump();
+      c = '\0';
+      break;
+    case 'a':
+      bump();
+      c = '\a';
+      break;
+    case 'b':
+      bump();
+      c = '\b';
+      break;
+    case 'f':
+      bump();
+      c = '\f';
+      break;
+    case 'n':
+      bump();
+      c = '\n';
+      break;
+    case 'r':
+      bump();
+      c = '\r';
+      break;
+    case 't':
+      bump();
+      c = '\t';
+      break;
+    case 'v':
+      bump();
+      c = '\v';
+      break;
+    case 'x':
+      bump();
+      if (is_hexc(peek.val)) {
+        c = hexc(bump().val) * 16;
+      } else {
+        return error("non-hex character '%c'\n", peek.val);
+      }
+      if (is_hexc(peek.val)) {
+        c += hexc(bump().val);
+      } else {
+        return error("non-hex character '%c'\n", peek.val);
+      }
+      break;
+    case 'u':
+      return error("not implemented unicode literal\n");
+    default:
+      return error("unknown escape sequence\n");
+  }
+  return true;
+}
+
 bool Lexer::eat_string(string &sval) {
   bool terminated(false);
   while (true) {
@@ -118,68 +216,8 @@ bool Lexer::eat_string(string &sval) {
     } else if (r == '\\') {
       bump();
       char c;
-      switch (peek.val) {
-        case '\'':
-          bump();
-          c = '\'';
-          break;
-        case '"':
-          bump();
-          c = '"';
-          break;
-        case '\\':
-          bump();
-          c = '\\';
-          break;
-        case '0':
-          bump();
-          c = '\0';
-          break;
-        case 'a':
-          bump();
-          c = '\a';
-          break;
-        case 'b':
-          bump();
-          c = '\b';
-          break;
-        case 'f':
-          bump();
-          c = '\f';
-          break;
-        case 'n':
-          bump();
-          c = '\n';
-          break;
-        case 'r':
-          bump();
-          c = '\r';
-          break;
-        case 't':
-          bump();
-          c = '\t';
-          break;
-        case 'v':
-          bump();
-          c = '\v';
-          break;
-        case 'x':
-          bump();
-          if (is_hexc(peek.val)) {
-            c = hexc(bump().val) * 16;
-          } else {
-            return error("non-hex character '%c'\n", peek.val);
-          }
-          if (is_hexc(peek.val)) {
-            c += hexc(bump().val);
-          } else {
-            return error("non-hex character '%c'\n", peek.val);
-          }
-          break;
-        case 'u':
-          return error("not implemented unicode literal\n");
-        default:
-          return error("unknown escape sequence\n");
+      if (!escape(c)) {
+        return false;
       }
       sval.push_back(c);
     } else {

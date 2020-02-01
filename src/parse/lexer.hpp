@@ -24,6 +24,8 @@ class Lexer {
 
   rune peek;
   bool eat_string(string &sval);
+  bool eat_char(uint64_t &ival);
+  bool escape(char &c);
   rune scan();
   template <typename... Args>
   bool error(const char *format, Args const &... args);
