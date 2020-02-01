@@ -1,8 +1,6 @@
 #include "lexer.hpp"
 #include <string>
 
-/* #define check(f) \ */
-/*   if (!f) return false; */
 inline bool is_newline(int c) { return c == '\n' || c == '\r'; }
 inline bool is_space(int c) {
   return c == ' ' || c == '\t' || c == 0x09 || c == 0x0c;
@@ -10,6 +8,9 @@ inline bool is_space(int c) {
 inline bool is_bitc(int c) { return c == '0' || c == '1'; }
 inline bool is_octalc(int c) { return c >= '0' && c <= '7'; }
 inline bool is_decimalc(int c) { return c >= '0' && c <= '9'; }
+inline bool is_alphabet(int c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
 inline bool is_hexc(int c) {
   return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
          (c >= 'A' && c <= 'F');
@@ -22,6 +23,39 @@ inline int hexc(int c) {
 }
 inline uint8_t get_tail(uint8_t byte, uint8_t width) {
   return byte & (0xff >> (8 - width));
+}
+
+inline bool is_ident_head(uint32_t c) {
+  return is_alphabet(c) || c == '_' || c == 0x00A8 || c == 0x00AA ||
+         c == 0x00AD || c == 0x00AF || (0x00B2 <= c && c <= 0x00B5) ||
+         (0x00B7 <= c && c <= 0x00BA) || (0x00BC <= c && c <= 0x00BE) ||
+         (0x00C0 <= c && c <= 0x00D6) || (0x00D8 <= c && c <= 0x00F6) ||
+         (0x00F8 <= c && c <= 0x00FF) || (0x0100 <= c && c <= 0x02FF) ||
+         (0x0370 <= c && c <= 0x167F) || (0x1681 <= c && c <= 0x180D) ||
+         (0x180F <= c && c <= 0x1DBF) || (0x1E00 <= c && c <= 0x1FFF) ||
+         (0x200B <= c && c <= 0x200D) || (0x202A <= c && c <= 0x202E) ||
+         (0x203F <= c && c <= 0x2040) || c == 0x2054 ||
+         (0x2060 <= c && c <= 0x206F) || (0x2070 <= c && c <= 0x20CF) ||
+         (0x2100 <= c && c <= 0x218F) || (0x2460 <= c && c <= 0x24FF) ||
+         (0x2776 <= c && c <= 0x2793) || (0x2C00 <= c && c <= 0x2DFF) ||
+         (0x2E80 <= c && c <= 0x2FFF) || (0x3004 <= c && c <= 0x3007) ||
+         (0x3021 <= c && c <= 0x302F) || (0x3031 <= c && c <= 0x303F) ||
+         (0x3040 <= c && c <= 0xD7FF) || (0xF900 <= c && c <= 0xFD3D) ||
+         (0xFD40 <= c && c <= 0xFDCF) || (0xFDF0 <= c && c <= 0xFE1F) ||
+         (0xFE30 <= c && c <= 0xFE44) || (0xFE47 <= c && c <= 0xFFFD) ||
+         (0x10000 <= c && c <= 0x1FFFD) || (0x20000 <= c && c <= 0x2FFFD) ||
+         (0x30000 <= c && c <= 0x3FFFD) || (0x40000 <= c && c <= 0x4FFFD) ||
+         (0x50000 <= c && c <= 0x5FFFD) || (0x60000 <= c && c <= 0x6FFFD) ||
+         (0x70000 <= c && c <= 0x7FFFD) || (0x80000 <= c && c <= 0x8FFFD) ||
+         (0x90000 <= c && c <= 0x9FFFD) || (0xA0000 <= c && c <= 0xAFFFD) ||
+         (0xB0000 <= c && c <= 0xBFFFD) || (0xC0000 <= c && c <= 0xCFFFD) ||
+         (0xD0000 <= c && c <= 0xDFFFD) || (0xE0000 <= c && c <= 0xEFFFD);
+}
+
+inline bool is_ident_body(uint32_t c) {
+  return is_decimalc(c) || is_ident_head(c) || (0x0300 <= c && c <= 0x036F) ||
+         (0x1DC0 <= c && c <= 0x1DFF) || (0x20D0 <= c && c <= 0x20FF) ||
+         (0xFE20 <= c && c <= 0xFE2F);
 }
 
 rune Lexer::scan() {
@@ -108,33 +142,29 @@ bool Lexer::next(Token &t) {
       return eat_string(t.sval);
     } else if (is_decimalc(c.val)) {
       return eat_num(t);
+    } else if (is_ident_head(c.val)) {
+      return eat_ident(t);
     } else {
       return error("unsupported char %c", c.val);
     }
   }
 };
 
-/* bool Lexer::eat_decimal_digits(uint64_t &val) { */
-/*   bool hasDigits; */
-/*   while (true) { */
-/*     if (peek == '_') { */
-/*       bump(); */
-/*     } else if (is_decimalc(peek.val)) { */
-/*       hasDigits = true; */
-/*       val = val * 10 + hexc(peek.val); */
-/*       if (val > INT64_MAX) { */
-/*         return error("overflow int64 size\n"); */
-/*       } */
-/*       bump(); */
-/*     } else { */
-/*       break; */
-/*     } */
-/*   } */
-/*   if (!hasDigits) { */
-/*     return error("no digits"); */
-/*   } */
-/*   return true; */
-/* }; */
+bool Lexer::eat_ident(Token &t) {
+  string name;
+  name.append(bump().bytes);
+  while (is_ident_body(peek.val)) {
+    name.append(bump().bytes);
+  }
+  if (name == "true" || name == "false") {
+    t.kind = TokenKind::LIT_BOOL;
+    t.bval = name == "true";
+  } else {
+    t.kind = TokenKind::IDENT;
+    t.sval = name;
+  }
+  return true;
+}
 
 bool Lexer::read_digits(string &s, bool f(int)) {
   bool hasDigits;

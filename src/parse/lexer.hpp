@@ -9,7 +9,7 @@
 using namespace std;
 
 struct rune {
-  int32_t val = 0;
+  uint32_t val = 0;
   int8_t len_utf8 = 0;
   char bytes[4] = {0};
 
@@ -24,6 +24,7 @@ class Lexer {
   Pos pos;
 
   rune peek;
+  bool eat_ident(Token &);
   bool read_digits(string &s, bool f(int));
   bool eat_decimal_digits(uint64_t &);
   bool eat_num(Token &t);
