@@ -29,6 +29,7 @@ int main(int argc, char *argv[]) {
   Token t;
   while (lexer.next(t)) {
     cout << t.kind << endl;
+    cout << t.sval << endl;
   }
 
 /* Lexer lexer(in); */

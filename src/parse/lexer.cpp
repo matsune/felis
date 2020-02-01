@@ -195,8 +195,42 @@ bool Lexer::escape(char &c) {
         return error("non-hex character '%c'\n", peek.val);
       }
       break;
-    case 'u':
-      return error("not implemented unicode literal\n");
+    case 'u': {
+      bump();
+
+      if (peek != '{') {
+        return error("expected '{'");
+      }
+      bump();
+
+      // read hex chars up to 6 digits
+      // and at most 0x10FFFF
+      uint32_t val(0);
+      int count(0);
+      while (true) {
+        if (is_hexc(peek.val)) {
+          if (count > 5) {
+            return error(
+                "overlong unicode escape (must have at most 6 hex digits)\n");
+          }
+          val = val * 16 + hexc(bump().val);
+          count++;
+        } else if (peek.val == '}') {
+          bump();
+          break;
+        } else {
+          return error("invalid character in unicode escape: %c\n", peek.val);
+        }
+      }
+      if (count == 0) {
+        return error("empty character in unicode escape\n");
+      }
+      if (val > 0x10FFFF) {
+        return error("unicode escape must be at most 10FFFF\n");
+      }
+      c = val;
+    } break;
+
     default:
       return error("unknown escape sequence\n");
   }

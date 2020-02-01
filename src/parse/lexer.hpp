@@ -14,6 +14,7 @@ struct rune {
   char bytes[4] = {0};
 
   bool operator==(const int32_t &c) const { return val == c; };
+  bool operator!=(const int32_t &c) const { return val != c; };
   bool operator==(const rune &r) const { return val == r.val; };
 };
 
