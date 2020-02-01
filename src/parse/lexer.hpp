@@ -25,12 +25,14 @@ class Lexer {
 
   rune peek;
   bool eat_ident(Token &);
-  bool read_digits(string &s, bool f(int));
+  bool read_digits(string &s, bool f(uint32_t));
   bool eat_decimal_digits(uint64_t &);
   bool eat_num(Token &t);
   bool eat_string(string &sval);
   bool eat_char(uint64_t &ival);
   bool escape(char &c);
+  void eatLineComment();
+  bool eatBlockComment(bool &);
   rune scan();
   template <typename... Args>
   bool error(const char *format, Args const &... args);

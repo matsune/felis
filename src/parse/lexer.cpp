@@ -1,21 +1,21 @@
 #include "lexer.hpp"
 #include <string>
 
-inline bool is_newline(int c) { return c == '\n' || c == '\r'; }
-inline bool is_space(int c) {
+inline bool is_newline(uint32_t c) { return c == '\n' || c == '\r'; }
+inline bool is_space(uint32_t c) {
   return c == ' ' || c == '\t' || c == 0x09 || c == 0x0c;
 }
-inline bool is_bitc(int c) { return c == '0' || c == '1'; }
-inline bool is_octalc(int c) { return c >= '0' && c <= '7'; }
-inline bool is_decimalc(int c) { return c >= '0' && c <= '9'; }
-inline bool is_alphabet(int c) {
+inline bool is_bitc(uint32_t c) { return c == '0' || c == '1'; }
+inline bool is_octalc(uint32_t c) { return c >= '0' && c <= '7'; }
+inline bool is_decimalc(uint32_t c) { return c >= '0' && c <= '9'; }
+inline bool is_alphabet(uint32_t c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
-inline bool is_hexc(int c) {
+inline bool is_hexc(uint32_t c) {
   return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
          (c >= 'A' && c <= 'F');
 }
-inline int hexc(int c) {
+inline int hexc(uint32_t c) {
   if (c >= '0' && c <= '9') return c - '0';
   if (c >= 'a' && c <= 'f') return 10 + c - 'a';
   if (c >= 'A' && c <= 'F') return 10 + c - 'A';
@@ -142,6 +142,26 @@ bool Lexer::next(Token &t) {
       bump();
       t.kind = TokenKind::LIT_STR;
       return eat_string(t.sval);
+    } else if (c == '/') {
+      bump();
+      if (peek == '/') {
+        bump();
+        eatLineComment();
+        t.nl = true;
+      } else if (peek == '*') {
+        bump();
+        bool hasNl(false);
+        if (!eatBlockComment(hasNl)) {
+          return false;
+        }
+        if (hasNl) {
+          t.nl = true;
+        } else
+          t.ws = true;
+      } else {
+        t.kind = TokenKind::SLASH;
+        return true;
+      }
     } else if (is_decimalc(c.val)) {
       return eat_num(t);
     } else if (is_ident_head(c.val)) {
@@ -168,8 +188,8 @@ bool Lexer::eat_ident(Token &t) {
   return true;
 }
 
-bool Lexer::read_digits(string &s, bool f(int)) {
-  bool hasDigits;
+bool Lexer::read_digits(string &s, bool f(uint32_t)) {
+  bool hasDigits(false);
   while (true) {
     if (f(peek.val)) {
       hasDigits = true;
@@ -190,7 +210,7 @@ bool Lexer::eat_num(Token &t) {
   t.kind = TokenKind::LIT_INT;
 
   auto first = bump();
-  string s;
+  string s("");
   s.push_back(first.val);
   int base(10);
   if (first == '0') {
@@ -409,6 +429,43 @@ bool Lexer::eat_string(string &sval) {
   }
   if (!terminated) {
     return error("unterminated string\n");
+  }
+  return true;
+};
+
+void Lexer::eatLineComment() {
+  while (peek.val != 0 && !is_newline(peek.val)) {
+    bump();
+  }
+};
+
+bool Lexer::eatBlockComment(bool &hasNl) {
+  int depth(1);
+  while (true) {
+    if (peek == 0) {
+      break;
+    } else if (peek == '/') {
+      bump();
+      if (bump() == '*') {
+        depth++;
+      }
+    } else if (peek == '*') {
+      bump();
+      if (bump() == '/') {
+        depth--;
+      }
+      if (depth == 0) {
+        break;
+      }
+    } else {
+      if (is_newline(peek.val)) {
+        hasNl = true;
+      }
+      bump();
+    }
+  }
+  if (depth != 0) {
+    return error("unterminated block comment\n");
   }
   return true;
 };
