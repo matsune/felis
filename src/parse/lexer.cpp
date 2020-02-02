@@ -129,9 +129,11 @@ bool Lexer::next(Token &t) {
     if (is_space(c.val)) {
       bump();
       t.ws = true;
+      continue;
     } else if (is_newline(c.val)) {
       bump();
       t.nl = true;
+      continue;
     } else if (c.val == 0) {
       return false;
     } else if (c == '\'') {
@@ -148,20 +150,117 @@ bool Lexer::next(Token &t) {
         bump();
         eatLineComment();
         t.nl = true;
+        continue;
       } else if (peek == '*') {
         bump();
         bool hasNl(false);
         if (!eatBlockComment(hasNl)) {
           return false;
         }
-        if (hasNl) {
+        if (hasNl)
           t.nl = true;
-        } else
+        else
           t.ws = true;
+        continue;
       } else {
         t.kind = TokenKind::SLASH;
         return true;
       }
+    } else if (c == ';') {
+      bump();
+      t.kind = TokenKind::SEMI;
+    } else if (c == ',') {
+      bump();
+      t.kind = TokenKind::COMMA;
+    } else if (c == '(') {
+      bump();
+      t.kind = TokenKind::LPAREN;
+    } else if (c == ')') {
+      bump();
+      t.kind = TokenKind::RPAREN;
+    } else if (c == '{') {
+      bump();
+      t.kind = TokenKind::LBRACE;
+    } else if (c == '}') {
+      bump();
+      t.kind = TokenKind::RBRACE;
+    } else if (c == ':') {
+      bump();
+      t.kind = TokenKind::COLON;
+    } else if (c == '=') {
+      bump();
+      if (peek == '=') {
+        bump();
+        t.kind = TokenKind::EQEQ;
+      } else {
+        t.kind = TokenKind::EQ;
+      }
+    } else if (c == '!') {
+      bump();
+      if (peek == '=') {
+        bump();
+        t.kind = TokenKind::NEQ;
+      } else {
+        t.kind = TokenKind::NOT;
+      }
+    } else if (c == '<') {
+      bump();
+      if (peek == '<') {
+        bump();
+        t.kind = TokenKind::SHL;
+      } else if (peek == '=') {
+        bump();
+        t.kind = TokenKind::LE;
+      } else {
+        t.kind = TokenKind::LT;
+      }
+    } else if (c == '>') {
+      bump();
+      if (peek == '>') {
+        bump();
+        t.kind = TokenKind::SHR;
+      } else if (peek == '=') {
+        bump();
+        t.kind = TokenKind::GE;
+      } else {
+        t.kind = TokenKind::GT;
+      }
+    } else if (c == '-') {
+      bump();
+      if (peek == '>') {
+        bump();
+        t.kind = TokenKind::ARROW;
+      } else {
+        t.kind = TokenKind::MINUS;
+      }
+    } else if (c == '&') {
+      bump();
+      if (peek == '&') {
+        bump();
+        t.kind = TokenKind::ANDAND;
+      } else {
+        t.kind = TokenKind::AND;
+      }
+    } else if (c == '|') {
+      bump();
+      if (peek == '|') {
+        bump();
+        t.kind = TokenKind::OROR;
+      } else {
+        t.kind = TokenKind::OR;
+      }
+    } else if (c == '+') {
+      bump();
+      t.kind = TokenKind::PLUS;
+    } else if (c == '*') {
+      bump();
+      t.kind = TokenKind::STAR;
+    } else if (c == '^') {
+      bump();
+      t.kind = TokenKind::CARET;
+    } else if (c == '%') {
+      bump();
+      t.kind = TokenKind::PERCENT;
     } else if (is_decimalc(c.val)) {
       return eat_num(t);
     } else if (is_ident_head(c.val)) {
@@ -169,6 +268,7 @@ bool Lexer::next(Token &t) {
     } else {
       return error("unsupported char %c", c.val);
     }
+    return true;
   }
 };
 
