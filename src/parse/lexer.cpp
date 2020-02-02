@@ -1,9 +1,8 @@
-#include "lexer.hpp"
-#include <string>
+#include "parse.hpp"
 
-inline bool is_newline(uint32_t c) { return c == '\n' || c == '\r'; }
+inline bool is_newline(uint32_t c) { return c == 0x0A || c == 0x0D; }
 inline bool is_space(uint32_t c) {
-  return c == ' ' || c == '\t' || c == 0x09 || c == 0x0c;
+  return c == 0x09 || c == 0x0B || c == 0x0C || c == 0x20;
 }
 inline bool is_bitc(uint32_t c) { return c == '0' || c == '1'; }
 inline bool is_octalc(uint32_t c) { return c >= '0' && c <= '7'; }
@@ -67,9 +66,7 @@ rune Lexer::scan() {
   }
   if (byte1 <= 0x7F) {
     // 1 byte
-    r.val = byte1;
-    r.len_utf8 = 1;
-    r.bytes[0] = byte1;
+    r.scalar = byte1;
   } else if (byte1 >= 0xF0) {
     // 4 bytes
     uint8_t x = get_tail(byte1, 3);
@@ -77,32 +74,20 @@ rune Lexer::scan() {
     uint8_t y = get_tail(byte2, 6);
     uint8_t z = get_tail(byte3, 6);
     uint8_t w = get_tail(byte4, 6);
-    r.val = x << 18 | y << 12 | z << 6 | w;
-    r.len_utf8 = 4;
-    r.bytes[0] = byte1;
-    r.bytes[1] = byte2;
-    r.bytes[2] = byte3;
-    r.bytes[3] = byte4;
+    r.scalar = x << 18 | y << 12 | z << 6 | w;
   } else if (byte1 >= 0xE0) {
     // 3 bytes
     uint8_t x = get_tail(byte1, 4);
     uint8_t byte2 = in.get(), byte3 = in.get();
     uint8_t y = get_tail(byte2, 6);
     uint8_t z = get_tail(byte3, 6);
-    r.val = x << 12 | y << 6 | z;
-    r.len_utf8 = 3;
-    r.bytes[0] = byte1;
-    r.bytes[1] = byte2;
-    r.bytes[2] = byte3;
+    r.scalar = x << 12 | y << 6 | z;
   } else {
     // 2 bytes
     uint8_t x = get_tail(byte1, 5);
     uint8_t byte2 = in.get();
     uint8_t y = get_tail(byte2, 6);
-    r.val = x << 6 | y;
-    r.len_utf8 = 3;
-    r.bytes[0] = byte1;
-    r.bytes[1] = byte2;
+    r.scalar = x << 6 | y;
   }
   return r;
 };
@@ -125,21 +110,21 @@ bool Lexer::next(Token &t) {
 
   while (true) {
     t.pos = pos;
-    auto c = peek;
-    if (is_space(c.val)) {
+    auto c = peek.scalar;
+    if (is_space(c)) {
       bump();
       t.ws = true;
       continue;
-    } else if (is_newline(c.val)) {
+    } else if (is_newline(c)) {
       bump();
       t.nl = true;
       continue;
-    } else if (c.val == 0) {
+    } else if (c == 0) {
       return false;
     } else if (c == '\'') {
       bump();
       t.kind = TokenKind::LIT_CHAR;
-      return eat_char(t.ival);
+      return eat_char(t.cval);
     } else if (c == '"') {
       bump();
       t.kind = TokenKind::LIT_STR;
@@ -261,22 +246,24 @@ bool Lexer::next(Token &t) {
     } else if (c == '%') {
       bump();
       t.kind = TokenKind::PERCENT;
-    } else if (is_decimalc(c.val)) {
+    } else if (is_decimalc(c)) {
       return eat_num(t);
-    } else if (is_ident_head(c.val)) {
+    } else if (is_ident_head(c)) {
       return eat_ident(t);
     } else {
-      return error("unsupported char %c", c.val);
+      return error("unsupported char %c", c);
     }
     return true;
   }
 };
 
 bool Lexer::eat_ident(Token &t) {
-  string name;
-  name.append(bump().bytes);
-  while (is_ident_body(peek.val)) {
-    name.append(bump().bytes);
+  char dst[4] = {0};
+  int len = bump().encode_utf8(dst);
+  string name(dst, len);
+  while (is_ident_body(peek.scalar)) {
+    len = bump().encode_utf8(dst);
+    name.append(dst, len);
   }
   if (name == "true" || name == "false") {
     t.kind = TokenKind::LIT_BOOL;
@@ -291,9 +278,9 @@ bool Lexer::eat_ident(Token &t) {
 bool Lexer::read_digits(string &s, bool f(uint32_t)) {
   bool hasDigits(false);
   while (true) {
-    if (f(peek.val)) {
+    if (f(peek.scalar)) {
       hasDigits = true;
-      s.push_back(bump().val);
+      s.push_back(bump().scalar);
     } else if (peek == '_') {
       bump();
     } else {
@@ -311,7 +298,7 @@ bool Lexer::eat_num(Token &t) {
 
   auto first = bump();
   string s("");
-  s.push_back(first.val);
+  s.push_back(first.scalar);
   int base(10);
   if (first == '0') {
     if (peek == 'b') {
@@ -335,7 +322,7 @@ bool Lexer::eat_num(Token &t) {
       if (!read_digits(s, is_hexc)) {
         return false;
       }
-    } else if (is_decimalc(peek.val) || peek == '_') {
+    } else if (is_decimalc(peek.scalar) || peek == '_') {
       if (!read_digits(s, is_decimalc)) {
         return false;
       }
@@ -358,9 +345,9 @@ bool Lexer::eat_num(Token &t) {
       return error("'%c' exponent requires decimal mantissa\n", peek);
     }
     bool dot = peek == '.';
-    s.push_back(bump().val);
+    s.push_back(bump().scalar);
     if (!dot && peek == '-') {
-      s.push_back(bump().val);
+      s.push_back(bump().scalar);
     }
     if (!read_digits(s, is_decimalc)) {
       return false;
@@ -376,16 +363,16 @@ bool Lexer::eat_num(Token &t) {
   return true;
 }
 
-bool Lexer::eat_char(uint64_t &ival) {
+bool Lexer::eat_char(rune &cval) {
   auto first = peek;
-  switch (first.val) {
+  switch (first.scalar) {
     case '\\':
       bump();
       char c;
       if (!escape(c)) {
         return false;
       }
-      ival = c;
+      cval = rune(c);
       break;
     case '\'':
       return error("empty char literal\n");
@@ -394,10 +381,10 @@ bool Lexer::eat_char(uint64_t &ival) {
     case '\r':
       return error("escape only char\n");
     default:
-      ival = bump().val;
+      cval = bump();
       break;
   }
-  if (peek.val != '\'') {
+  if (peek.scalar != '\'') {
     return error("more than one character\n");
   }
   bump();
@@ -405,7 +392,7 @@ bool Lexer::eat_char(uint64_t &ival) {
 };
 
 bool Lexer::escape(char &c) {
-  switch (peek.val) {
+  switch (peek.scalar) {
     case '\'':
       bump();
       c = '\'';
@@ -452,15 +439,15 @@ bool Lexer::escape(char &c) {
       break;
     case 'x':
       bump();
-      if (is_hexc(peek.val)) {
-        c = hexc(bump().val) * 16;
+      if (is_hexc(peek.scalar)) {
+        c = hexc(bump().scalar) * 16;
       } else {
-        return error("non-hex character '%c'\n", peek.val);
+        return error("non-hex character '%c'\n", peek.scalar);
       }
-      if (is_hexc(peek.val)) {
-        c += hexc(bump().val);
+      if (is_hexc(peek.scalar)) {
+        c += hexc(bump().scalar);
       } else {
-        return error("non-hex character '%c'\n", peek.val);
+        return error("non-hex character '%c'\n", peek.scalar);
       }
       break;
     case 'u': {
@@ -476,18 +463,19 @@ bool Lexer::escape(char &c) {
       uint32_t val(0);
       int count(0);
       while (true) {
-        if (is_hexc(peek.val)) {
+        if (is_hexc(peek.scalar)) {
           if (count > 5) {
             return error(
                 "overlong unicode escape (must have at most 6 hex digits)\n");
           }
-          val = val * 16 + hexc(bump().val);
+          val = val * 16 + hexc(bump().scalar);
           count++;
-        } else if (peek.val == '}') {
+        } else if (peek.scalar == '}') {
           bump();
           break;
         } else {
-          return error("invalid character in unicode escape: %c\n", peek.val);
+          return error("invalid character in unicode escape: %c\n",
+                       peek.scalar);
         }
       }
       if (count == 0) {
@@ -507,6 +495,8 @@ bool Lexer::escape(char &c) {
 
 bool Lexer::eat_string(string &sval) {
   bool terminated(false);
+  int len;
+  char dst[4];
   while (true) {
     auto r = peek;
     if (r == '"') {
@@ -523,8 +513,8 @@ bool Lexer::eat_string(string &sval) {
       }
       sval.push_back(c);
     } else {
-      bump();
-      sval.append(r.bytes);
+      len = bump().encode_utf8(dst);
+      sval.append(dst, len);
     }
   }
   if (!terminated) {
@@ -534,7 +524,7 @@ bool Lexer::eat_string(string &sval) {
 };
 
 void Lexer::eatLineComment() {
-  while (peek.val != 0 && !is_newline(peek.val)) {
+  while (peek.scalar != 0 && !is_newline(peek.scalar)) {
     bump();
   }
 };
@@ -558,7 +548,7 @@ bool Lexer::eatBlockComment(bool &hasNl) {
         break;
       }
     } else {
-      if (is_newline(peek.val)) {
+      if (is_newline(peek.scalar)) {
         hasNl = true;
       }
       bump();

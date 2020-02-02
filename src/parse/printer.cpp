@@ -1,6 +1,4 @@
-#include "printer.hpp"
-#include <iostream>
-#include "ast.hpp"
+#include "parse.hpp"
 
 using namespace std;
 

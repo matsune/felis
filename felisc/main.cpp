@@ -5,9 +5,7 @@
 #include <iostream>
 #include <string>
 #include "common/error.hpp"
-#include "parse/lexer.hpp"
-#include "parse/printer.hpp"
-#include "parse/token.hpp"
+#include "parse/parse.hpp"
 
 using namespace std;
 

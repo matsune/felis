@@ -1,5 +1,4 @@
-#include "token.hpp"
-#include <iostream>
+#include "parse.hpp"
 
 string to_string(TokenKind kind) {
   switch (kind) {
@@ -78,25 +77,27 @@ string to_string(TokenKind kind) {
   }
 }
 
-#define w(n) cout << n << endl
-#define wtab(n) cout << "\t" << n << endl
 #define bool_str(b) (b ? "true" : "false")
 
 void Token::debug() {
-  w("Token {");
-  wtab("Kind: " << to_string(kind));
-  wtab("ws: " << bool_str(ws));
-  wtab("nl: " << bool_str(nl));
+  printf("Token {\n");
+  printf("\tKind: %s\n", to_string(kind).c_str());
+  printf("\tws: %s\n", bool_str(ws));
+  printf("\tnl: %s\n", bool_str(nl));
   if (kind == TokenKind::LIT_INT) {
-    wtab("ival: " << ival);
+    printf("\tival: %lu\n", ival);
   } else if (kind == TokenKind::LIT_FLOAT) {
-    wtab("fval: " << fval);
+    printf("\tfval: %lf\n", fval);
   } else if (kind == TokenKind::LIT_BOOL) {
-    wtab("bval: " << bool_str(bval));
+    printf("\tbval: %s\n", bool_str(bval));
   } else if (kind == TokenKind::LIT_STR) {
-    wtab("string: " << sval);
+    printf("\tsval: %s\n", sval.c_str());
+  } else if (kind == TokenKind::LIT_CHAR) {
+    char buf[4] = {0};
+    cval.encode_utf8(buf);
+    printf("\tcval: %s\n", buf);
   } else if (kind == TokenKind::IDENT) {
-    wtab("ident: " << sval);
+    printf("\tsval: %s\n", sval.c_str());
   }
-  w("}");
+  printf("}\n");
 };
