@@ -22,27 +22,27 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  Lexer lexer(in, filename);
-  Token t;
-  while (lexer.next(t)) {
-    t.debug();
+  Parser parser;
+  parser.setFilename(filename);
+
+  bool isEnd(false);
+  Lexer *lexer = new Lexer(in, filename);
+  while (!isEnd) {
+    auto t = make_unique<Token>();
+    if (!lexer->next(t)) {
+      break;
+    }
+    isEnd = t->is(TokenKind::END);
+    parser.push_token(move(t));
   }
-
-/* Lexer lexer(in); */
-/* lexer.lex(); */
-
-/* ErrorHandler handler(filename); */
-/* auto lexer = make_unique<Lexer>(src); */
-/* Parser parser(move(lexer), handler, in, cout); */
-/* auto expr = parser.parse(); */
-/* if (expr) { */
-/*   Printer printer; */
-/*   printer.print(expr); */
-/* } else { */
-/*   handler.report(); */
-/* } */
-
-defer:
+  delete lexer;
   in.close();
+  if (!isEnd) return 1;
+
+  auto expr = parser.parse();
+  if (expr) {
+    Printer printer;
+    printer.print(expr);
+  }
 }
 

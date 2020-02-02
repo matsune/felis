@@ -105,36 +105,36 @@ rune Lexer::bump() {
 
 rune Lexer::getPeek() { return peek; };
 
-bool Lexer::next(Token &t) {
-  t.reset();
+bool Lexer::next(unique_ptr<Token> &t) {
+  t->reset();
 
   while (true) {
-    t.pos = pos;
+    t->pos = pos;
     auto c = peek.scalar;
     if (is_space(c)) {
       bump();
-      t.ws = true;
+      t->ws = true;
       continue;
     } else if (is_newline(c)) {
       bump();
-      t.nl = true;
+      t->nl = true;
       continue;
     } else if (c == 0) {
-      return false;
+      return true;
     } else if (c == '\'') {
       bump();
-      t.kind = TokenKind::LIT_CHAR;
-      return eat_char(t.cval);
+      t->kind = TokenKind::LIT_CHAR;
+      return eat_char(t->cval);
     } else if (c == '"') {
       bump();
-      t.kind = TokenKind::LIT_STR;
-      return eat_string(t.sval);
+      t->kind = TokenKind::LIT_STR;
+      return eat_string(t->sval);
     } else if (c == '/') {
       bump();
       if (peek == '/') {
         bump();
         eatLineComment();
-        t.nl = true;
+        t->nl = true;
         continue;
       } else if (peek == '*') {
         bump();
@@ -143,109 +143,109 @@ bool Lexer::next(Token &t) {
           return false;
         }
         if (hasNl)
-          t.nl = true;
+          t->nl = true;
         else
-          t.ws = true;
+          t->ws = true;
         continue;
       } else {
-        t.kind = TokenKind::SLASH;
+        t->kind = TokenKind::SLASH;
         return true;
       }
     } else if (c == ';') {
       bump();
-      t.kind = TokenKind::SEMI;
+      t->kind = TokenKind::SEMI;
     } else if (c == ',') {
       bump();
-      t.kind = TokenKind::COMMA;
+      t->kind = TokenKind::COMMA;
     } else if (c == '(') {
       bump();
-      t.kind = TokenKind::LPAREN;
+      t->kind = TokenKind::LPAREN;
     } else if (c == ')') {
       bump();
-      t.kind = TokenKind::RPAREN;
+      t->kind = TokenKind::RPAREN;
     } else if (c == '{') {
       bump();
-      t.kind = TokenKind::LBRACE;
+      t->kind = TokenKind::LBRACE;
     } else if (c == '}') {
       bump();
-      t.kind = TokenKind::RBRACE;
+      t->kind = TokenKind::RBRACE;
     } else if (c == ':') {
       bump();
-      t.kind = TokenKind::COLON;
+      t->kind = TokenKind::COLON;
     } else if (c == '=') {
       bump();
       if (peek == '=') {
         bump();
-        t.kind = TokenKind::EQEQ;
+        t->kind = TokenKind::EQEQ;
       } else {
-        t.kind = TokenKind::EQ;
+        t->kind = TokenKind::EQ;
       }
     } else if (c == '!') {
       bump();
       if (peek == '=') {
         bump();
-        t.kind = TokenKind::NEQ;
+        t->kind = TokenKind::NEQ;
       } else {
-        t.kind = TokenKind::NOT;
+        t->kind = TokenKind::NOT;
       }
     } else if (c == '<') {
       bump();
       if (peek == '<') {
         bump();
-        t.kind = TokenKind::SHL;
+        t->kind = TokenKind::SHL;
       } else if (peek == '=') {
         bump();
-        t.kind = TokenKind::LE;
+        t->kind = TokenKind::LE;
       } else {
-        t.kind = TokenKind::LT;
+        t->kind = TokenKind::LT;
       }
     } else if (c == '>') {
       bump();
       if (peek == '>') {
         bump();
-        t.kind = TokenKind::SHR;
+        t->kind = TokenKind::SHR;
       } else if (peek == '=') {
         bump();
-        t.kind = TokenKind::GE;
+        t->kind = TokenKind::GE;
       } else {
-        t.kind = TokenKind::GT;
+        t->kind = TokenKind::GT;
       }
     } else if (c == '-') {
       bump();
       if (peek == '>') {
         bump();
-        t.kind = TokenKind::ARROW;
+        t->kind = TokenKind::ARROW;
       } else {
-        t.kind = TokenKind::MINUS;
+        t->kind = TokenKind::MINUS;
       }
     } else if (c == '&') {
       bump();
       if (peek == '&') {
         bump();
-        t.kind = TokenKind::ANDAND;
+        t->kind = TokenKind::ANDAND;
       } else {
-        t.kind = TokenKind::AND;
+        t->kind = TokenKind::AND;
       }
     } else if (c == '|') {
       bump();
       if (peek == '|') {
         bump();
-        t.kind = TokenKind::OROR;
+        t->kind = TokenKind::OROR;
       } else {
-        t.kind = TokenKind::OR;
+        t->kind = TokenKind::OR;
       }
     } else if (c == '+') {
       bump();
-      t.kind = TokenKind::PLUS;
+      t->kind = TokenKind::PLUS;
     } else if (c == '*') {
       bump();
-      t.kind = TokenKind::STAR;
+      t->kind = TokenKind::STAR;
     } else if (c == '^') {
       bump();
-      t.kind = TokenKind::CARET;
+      t->kind = TokenKind::CARET;
     } else if (c == '%') {
       bump();
-      t.kind = TokenKind::PERCENT;
+      t->kind = TokenKind::PERCENT;
     } else if (is_decimalc(c)) {
       return eat_num(t);
     } else if (is_ident_head(c)) {
@@ -257,7 +257,7 @@ bool Lexer::next(Token &t) {
   }
 };
 
-bool Lexer::eat_ident(Token &t) {
+bool Lexer::eat_ident(unique_ptr<Token> &t) {
   char dst[4] = {0};
   int len = bump().encode_utf8(dst);
   string name(dst, len);
@@ -266,11 +266,11 @@ bool Lexer::eat_ident(Token &t) {
     name.append(dst, len);
   }
   if (name == "true" || name == "false") {
-    t.kind = TokenKind::LIT_BOOL;
-    t.bval = name == "true";
+    t->kind = TokenKind::LIT_BOOL;
+    t->bval = name == "true";
   } else {
-    t.kind = TokenKind::IDENT;
-    t.sval = name;
+    t->kind = TokenKind::IDENT;
+    t->sval = name;
   }
   return true;
 }
@@ -293,8 +293,8 @@ bool Lexer::read_digits(string &s, bool f(uint32_t)) {
   return true;
 }
 
-bool Lexer::eat_num(Token &t) {
-  t.kind = TokenKind::LIT_INT;
+bool Lexer::eat_num(unique_ptr<Token> &t) {
+  t->kind = TokenKind::LIT_INT;
 
   auto first = bump();
   string s("");
@@ -323,19 +323,31 @@ bool Lexer::eat_num(Token &t) {
         return false;
       }
     } else if (is_decimalc(peek.scalar) || peek == '_') {
-      if (!read_digits(s, is_decimalc)) {
-        return false;
+      while (true) {
+        if (is_decimalc(peek.scalar)) {
+          s.push_back(bump().scalar);
+        } else if (peek == '_') {
+          bump();
+        } else {
+          break;
+        }
       }
     } else if (peek == '.' || peek == 'e' || peek == 'E') {
       // goto exponent
     } else {
       // just 0
-      t.kind = TokenKind::LIT_INT;
+      t->kind = TokenKind::LIT_INT;
       return true;
     }
   } else {
-    if (!read_digits(s, is_decimalc)) {
-      return false;
+    while (true) {
+      if (is_decimalc(peek.scalar)) {
+        s.push_back(bump().scalar);
+      } else if (peek == '_') {
+        bump();
+      } else {
+        break;
+      }
     }
   }
 
@@ -352,11 +364,11 @@ bool Lexer::eat_num(Token &t) {
     if (!read_digits(s, is_decimalc)) {
       return false;
     }
-    t.kind = TokenKind::LIT_FLOAT;
-    t.fval = stold(s);
+    t->kind = TokenKind::LIT_FLOAT;
+    t->fval = stold(s);
   } else {
-    t.ival = stoull(s, nullptr, base);
-    if (t.ival > INT64_MAX) {
+    t->ival = stoull(s, nullptr, base);
+    if (t->ival > INT64_MAX) {
       return error("overflow int64 size\n");
     }
   }

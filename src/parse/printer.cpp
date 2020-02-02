@@ -112,7 +112,7 @@ void Printer::print(unique_ptr<Node> &node) {
           up("}");
           break;
       }
-    }
+    } break;
     case Node::Kind::BINARY:
       down("Binary {");
       {
