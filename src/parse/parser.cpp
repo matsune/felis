@@ -137,8 +137,16 @@ unique_ptr<Node> Parser::parsePrimary() {
     return make_unique<LitChar>(LitChar(token->ival));
   } else if (token->is(TokenKind::LIT_STR)) {
     return make_unique<LitStr>(LitStr(token->sval));
+  } else if (token->is(TokenKind::LPAREN)) {
+    auto expr = parseExpr();
+    if (!expr) return nullptr;
+    if (!peek()->is(TokenKind::RPAREN)) {
+      return error("expected )\n");
+    }
+    next();
+    return expr;
   } else {
-    return error("unimplemented primary\n");
+    return error("unreachable primary\n");
   }
 };
 
