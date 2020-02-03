@@ -174,28 +174,40 @@ enum BinOp {
   MOD = 23
 };
 
-enum UnOp { NEG, NOT };
-
 class Node {
  public:
-  enum Kind { IDENT, LIT, BINARY };
+  enum Kind { STMT };
   virtual Kind nodeKind() = 0;
 };
 
-class Ident : public Node {
+class Stmt : public Node {
  public:
-  Node::Kind nodeKind() { return Node::Kind::IDENT; };
+  enum Kind { EXPR, RET };
+  virtual Kind stmtKind() = 0;
+  Node::Kind nodeKind() { return Node::Kind::STMT; };
+};
+
+class Expr : public Stmt {
+ public:
+  enum Kind { IDENT, BINARY, LIT };
+  virtual Kind exprKind() = 0;
+  Stmt::Kind stmtKind() { return Stmt::Kind::EXPR; };
+};
+
+class Ident : public Expr {
+ public:
+  Expr::Kind exprKind() { return Expr::Kind::IDENT; };
 
   string sval;
 
   Ident(string sval = "") : sval(sval){};
 };
 
-class Lit : public Node {
+class Lit : public Expr {
  public:
   enum Kind { INT, BOOL, CHAR, STR };
   virtual Kind litKind() = 0;
-  Node::Kind nodeKind() { return Node::Kind::LIT; };
+  Expr::Kind exprKind() { return Expr::Kind::LIT; };
 };
 
 class LitInt : public Lit {
@@ -234,33 +246,44 @@ class LitChar : public Lit {
   LitChar(char cval = 0) : cval(cval){};
 };
 
-class Binary : public Node {
+enum UnOp { NEG, NOT };
+
+class BinaryExpr : public Expr {
  public:
-  Node::Kind nodeKind() { return Node::Kind::BINARY; };
+  Expr::Kind exprKind() { return Expr::Kind::BINARY; };
 
   unique_ptr<Node> lhs;
   unique_ptr<Node> rhs;
   BinOp op;
 
-  Binary(unique_ptr<Node> lhs, BinOp op, unique_ptr<Node> rhs)
+  BinaryExpr(unique_ptr<Node> lhs, BinOp op, unique_ptr<Node> rhs)
       : lhs(move(lhs)), rhs(move(rhs)), op(op){};
+};
+
+class RetStmt : public Stmt {
+ public:
+  Kind stmtKind() { return Stmt::Kind::RET; };
+  unique_ptr<Expr> expr;
+
+  RetStmt(unique_ptr<Expr> expr = unique_ptr<Expr>()) : expr(move(expr)){};
 };
 
 class Parser {
  private:
   string filename = "";
   deque<unique_ptr<Token>> tokens;
-  unique_ptr<Node> parsePrimary();
   void error(string msg);
   unique_ptr<Token> &peek();
   unique_ptr<Token> next();
   template <typename... Args>
-  unique_ptr<Node> error(const char *format, Args const &... args);
+  void error(const char *format, Args const &... args);
+  unique_ptr<Expr> parseExpr(uint8_t prec = 0);
+  unique_ptr<Expr> parsePrimary();
+  unique_ptr<Stmt> parseStmt();
 
  public:
   void push_token(unique_ptr<Token> &&token) { tokens.push_back(move(token)); };
   unique_ptr<Node> parse();
-  unique_ptr<Node> parseExpr(uint8_t prec = 0);
   void setFilename(string filename) { this->filename = filename; }
 };
 
@@ -274,6 +297,10 @@ class Printer {
   void writeln(string msg);
   void down(string);
   void up(string);
+  void printIdent(Ident *ident);
+  void printStmt(Stmt *stmt);
+  void printExpr(Expr *expr);
+  void printLit(Lit *lit);
 
  public:
   void print(unique_ptr<Node> &node);

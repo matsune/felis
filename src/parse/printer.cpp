@@ -65,58 +65,47 @@ void Printer::print(unique_ptr<Node> &node) {
   if (depth == 0) writeLineNum();
 
   switch (node->nodeKind()) {
-    case Node::Kind::IDENT:
-      down("Ident {");
+    case Node::Kind::STMT:
+      printStmt((Stmt *)node.get());
+      break;
+  }
+};
+
+void Printer::printIdent(Ident *ident) {
+  down("Ident {");
+  { writeln("Name: " + ident->sval); }
+  up("}");
+}
+
+void Printer::printStmt(Stmt *stmt) {
+  switch (stmt->stmtKind()) {
+    case Stmt::Kind::EXPR:
+      printExpr((Expr *)stmt);
+      break;
+    case Stmt::Kind::RET:
+      down("Ret {");
       {
-        auto ident = (Ident *)node.get();
-        writeln("Name: " + ident->sval);
+        auto ret = (RetStmt *)stmt;
+        write("Expr: ");
+        printExpr(ret->expr.get());
       }
       up("}");
       break;
-    case Node::Kind::LIT: {
-      auto lit = (Lit *)node.get();
-      switch (lit->litKind()) {
-        case Lit::Kind::INT:
-          down("LitInt {");
-          {
-            auto lit = (LitInt *)node.get();
-            string s = tostring(lit->ival);
-            writeln("num: " + s);
-          }
-          up("}");
-          break;
-        case Lit::Kind::BOOL:
-          down("LitBool {");
-          {
-            auto lit = (LitBool *)node.get();
-            string s = (lit->bval ? "true" : "false");
-            writeln("literal: " + s);
-          }
-          up("}");
-          break;
-        case Lit::Kind::CHAR:
-          down("LitChar {");
-          {
-            auto lit = (LitChar *)node.get();
-            string s{lit->cval};
-            writeln("literal: '" + s + "'");
-          }
-          up("}");
-          break;
-        case Lit::Kind::STR:
-          down("LitSTR {");
-          {
-            auto lit = (LitStr *)node.get();
-            writeln("literal: \"" + lit->sval + "\"");
-          }
-          up("}");
-          break;
-      }
-    } break;
-    case Node::Kind::BINARY:
-      down("Binary {");
+  }
+}
+
+void Printer::printExpr(Expr *expr) {
+  switch (expr->exprKind()) {
+    case Expr::Kind::IDENT:
+      printIdent((Ident *)expr);
+      break;
+    case Expr::Kind::LIT:
+      printLit((Lit *)expr);
+      break;
+    case Expr::Kind::BINARY:
+      down("BinaryExpr {");
       {
-        auto binary = (Binary *)node.get();
+        auto binary = (BinaryExpr *)expr;
         write("Left: ");
         print(binary->lhs);
         writeln("Op: " + binop_string(binary->op));
@@ -125,9 +114,45 @@ void Printer::print(unique_ptr<Node> &node) {
       }
       up("}");
       break;
-    default:
-      cout << "unimplemented" << endl;
-      return;
-  }
-};
+  };
+}
 
+void Printer::printLit(Lit *lit) {
+  switch (lit->litKind()) {
+    case Lit::Kind::INT:
+      down("LitInt {");
+      {
+        auto l = (LitInt *)lit;
+        string s = tostring(l->ival);
+        writeln("num: " + s);
+      }
+      up("}");
+      break;
+    case Lit::Kind::BOOL:
+      down("LitBool {");
+      {
+        auto l = (LitBool *)lit;
+        string s = (l->bval ? "true" : "false");
+        writeln("literal: " + s);
+      }
+      up("}");
+      break;
+    case Lit::Kind::CHAR:
+      down("LitChar {");
+      {
+        auto l = (LitChar *)lit;
+        string s{l->cval};
+        writeln("literal: '" + s + "'");
+      }
+      up("}");
+      break;
+    case Lit::Kind::STR:
+      down("LitSTR {");
+      {
+        auto l = (LitStr *)lit;
+        writeln("literal: \"" + l->sval + "\"");
+      }
+      up("}");
+      break;
+  }
+}

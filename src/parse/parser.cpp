@@ -61,20 +61,19 @@ unique_ptr<Token> Parser::next() {
 }
 
 unique_ptr<Node> Parser::parse() {
-  auto expr = parseExpr();
-  if (!expr) {
+  auto stmt = parseStmt();
+  if (!stmt) {
     // TODO: recover error
     cerr << "error!" << endl;
   }
-  return expr;
+  return stmt;
 }
 
 template <typename... Args>
-unique_ptr<Node> Parser::error(const char* format, Args const&... args) {
+void Parser::error(const char* format, Args const&... args) {
   fprintf(stderr, "%s:%d:%d: ", filename.c_str(), peek()->pos.line,
           peek()->pos.column);
   fprintf(stderr, format, args...);
-  return nullptr;
 };
 
 bool is_lit(TokenKind kind) {
@@ -87,18 +86,35 @@ bool is_primary(TokenKind kind) {
   return kind == TokenKind::LPAREN || kind == TokenKind::IDENT || is_lit(kind);
 };
 
-unique_ptr<Node> Parser::parseExpr(uint8_t prec) {
-  UnOp* unOp(nullptr);
+unique_ptr<Stmt> Parser::parseStmt() {
+  if (peek()->kind == TokenKind::KW_RET) {
+    next();
+    if (peek()->kind == TokenKind::RBRACE || peek()->kind == TokenKind::SEMI) {
+      return make_unique<RetStmt>();
+    }
+    auto expr = parseExpr();
+    if (!expr) return nullptr;
+    auto retStmt = make_unique<RetStmt>(move(expr));
+    return retStmt;
+  } else {
+    auto expr = parseExpr();
+    return expr;
+  }
+}
+
+unique_ptr<Expr> Parser::parseExpr(uint8_t prec) {
+  unique_ptr<UnOp> unOp;
   if (peek()->kind == TokenKind::MINUS) {
     next();
-    unOp = new UnOp{UnOp::NEG};
+    unOp = make_unique<UnOp>(UnOp::NEG);
   } else if (peek()->kind == TokenKind::NOT) {
     next();
-    unOp = new UnOp{UnOp::NOT};
+    unOp = make_unique<UnOp>(UnOp::NOT);
   }
 
   if (!is_primary(peek()->kind)) {
-    return error("expected primary expr\n");
+    error("expected primary expr\n");
+    return nullptr;
   }
 
   auto lhs = parsePrimary();
@@ -127,27 +143,28 @@ unique_ptr<Node> Parser::parseExpr(uint8_t prec) {
     next();
     auto rhs = parseExpr(binOp);
     if (!rhs) return nullptr;
-    lhs = make_unique<Binary>(Binary(move(lhs), binOp, move(rhs)));
+    lhs = make_unique<BinaryExpr>(move(lhs), binOp, move(rhs));
   }
 };
 
-unique_ptr<Node> Parser::parsePrimary() {
+unique_ptr<Expr> Parser::parsePrimary() {
   auto token = next();
   if (token->is(TokenKind::IDENT)) {
-    return make_unique<Ident>(Ident(token->sval));
+    return make_unique<Ident>(token->sval);
   } else if (token->is(TokenKind::LIT_INT)) {
-    return make_unique<LitInt>(LitInt(token->ival));
+    return make_unique<LitInt>(token->ival);
   } else if (token->is(TokenKind::LIT_BOOL)) {
-    return make_unique<LitBool>(LitBool(token->bval));
+    return make_unique<LitBool>(token->bval);
   } else if (token->is(TokenKind::LIT_CHAR)) {
-    return make_unique<LitChar>(LitChar(token->ival));
+    return make_unique<LitChar>(token->ival);
   } else if (token->is(TokenKind::LIT_STR)) {
-    return make_unique<LitStr>(LitStr(token->sval));
+    return make_unique<LitStr>(token->sval);
   } else if (token->is(TokenKind::LPAREN)) {
     auto expr = parseExpr();
     if (!expr) return nullptr;
     if (!peek()->is(TokenKind::RPAREN)) {
-      return error("expected )\n");
+      error("expected )\n");
+      return nullptr;
     }
     next();
     return expr;
