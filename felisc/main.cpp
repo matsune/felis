@@ -4,7 +4,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include "common/error.hpp"
 #include "parse/parse.hpp"
 
 using namespace std;

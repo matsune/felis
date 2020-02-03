@@ -4,5 +4,6 @@ project(felis-test)
 include_directories(lib/googletest/googletest/include)
 add_subdirectory(lib/googletest/googletest)
 
-add_executable(felis-test test.cpp)
+file(GLOB SRCS **/*.cpp)
+add_executable(felis-test ${SRCS})
 target_link_libraries(felis-test felis gtest_main)

@@ -7,7 +7,6 @@
 #include <memory>
 #include <sstream>
 #include <string>
-#include "common/pos.hpp"
 
 using namespace std;
 
@@ -30,6 +29,19 @@ static string tostring(const T &t) {
   ss << t;
   return ss.str();
 }
+
+class Pos {
+ public:
+  unsigned int line, column;
+
+  Pos(int line = 1, int column = 1) : line(line), column(column){};
+
+  void lines(int ln = 1) {
+    line += ln;
+    column = 1;
+  }
+  void columns(int col = 1) { column += col; }
+};
 
 class Token {
  public:
@@ -113,7 +125,7 @@ using TokenKind = Token::Kind;
 string to_string(TokenKind kind);
 
 class Lexer {
-  ifstream &in;
+  basic_istream<char> &in;
   string filename;
   Pos pos;
 
@@ -134,7 +146,8 @@ class Lexer {
   bool error(const char *format, Args const &... args);
 
  public:
-  Lexer(ifstream &in, string filename = "") : in(in), filename(filename) {
+  Lexer(basic_istream<char> &in, string filename = "")
+      : in(in), filename(filename) {
     peek = scan();
   };
   void setFilename(string filename) { this->filename = filename; };
