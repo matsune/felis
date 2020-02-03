@@ -1,8 +1,14 @@
 #include "parse.hpp"
 
-#define UNIMPLEMENTED(msg)                   \
-  (cerr << "unimplemented " << msg << endl); \
-  exit(1);
+#define UNIMPLEMENTED throw FatalError("unimplemented");
+#define UNREACHABLE throw FatalError("unreachable");
+
+class FatalError {
+  string msg;
+
+ public:
+  FatalError(string msg) : msg(msg){};
+};
 
 bool isBinOp(Token::Kind kind) {
   switch (kind) {
@@ -42,7 +48,7 @@ BinOp binOpFrom(TokenKind kind) {
     case TokenKind::LE:
       return BinOp::LE;
     default:
-      throw "unreachable";
+      UNREACHABLE
   }
 }
 
@@ -100,11 +106,11 @@ unique_ptr<Node> Parser::parseExpr(uint8_t prec) {
 
   if (peek()->kind == TokenKind::LPAREN) {
     // TODO: call
-    UNIMPLEMENTED("call")
+    UNIMPLEMENTED
   }
   if (unOp) {
     // TODO: Unary
-    UNIMPLEMENTED("unary")
+    UNIMPLEMENTED
   };
 
   if (peek()->nl) {
@@ -146,7 +152,7 @@ unique_ptr<Node> Parser::parsePrimary() {
     next();
     return expr;
   } else {
-    return error("unreachable primary\n");
+    UNREACHABLE
   }
 };
 

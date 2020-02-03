@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.5.1)
 enable_language(CXX)
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 project(felis)
 
@@ -20,3 +21,4 @@ include_directories(src)
 
 add_subdirectory(src)
 add_subdirectory(felisc)
+add_subdirectory(test)
