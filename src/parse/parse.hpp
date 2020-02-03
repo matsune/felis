@@ -54,7 +54,13 @@ class Token {
     LIT_CHAR,
     LIT_STR,
     // keyword
+    KW_FN,
+    KW_LET,
+    KW_VAR,
     KW_RET,
+    KW_EXT,
+    KW_IF,
+    KW_ELSE,
     // arith_op
     PLUS,     // +
     MINUS,    // -

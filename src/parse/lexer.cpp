@@ -268,6 +268,20 @@ bool Lexer::eat_ident(unique_ptr<Token> &t) {
   if (name == "true" || name == "false") {
     t->kind = TokenKind::LIT_BOOL;
     t->bval = name == "true";
+  } else if (name == "fn") {
+    t->kind = TokenKind::KW_FN;
+  } else if (name == "let") {
+    t->kind = TokenKind::KW_LET;
+  } else if (name == "var") {
+    t->kind = TokenKind::KW_VAR;
+  } else if (name == "ret") {
+    t->kind = TokenKind::KW_RET;
+  } else if (name == "ext") {
+    t->kind = TokenKind::KW_EXT;
+  } else if (name == "if") {
+    t->kind = TokenKind::KW_IF;
+  } else if (name == "else") {
+    t->kind = TokenKind::KW_ELSE;
   } else {
     t->kind = TokenKind::IDENT;
     t->sval = name;

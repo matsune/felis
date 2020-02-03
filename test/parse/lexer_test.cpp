@@ -1,9 +1,9 @@
 #include "gtest/gtest.h"
 #include "parse/parse.hpp"
 
-#define NEXT(kind)            \
+#define NEXT(KIND)            \
   ASSERT_TRUE(lexer.next(t)); \
-  ASSERT_EQ(t->kind, kind);
+  ASSERT_EQ(t->kind, KIND);
 
 TEST(LexerTest, EmptyInput) {
   stringstream in;
@@ -15,13 +15,13 @@ TEST(LexerTest, EmptyInput) {
 
 TEST(LexerTest, lex) {
   stringstream in;
-  in << "abcあ 12_21 23.1 true false 'a' \"string\" + - / * % & | ^ << >> && "
-        "|| < <= > >=";
-  in << "== != !(){}=;:,->";
+  in << "abcあ 12_21 23.1 true false 'a' \"string\"";
+  in << "fn let var ret ext if else ";
+  in << "+ - / * % & | ^ << >> && || < <= > >= == != !(){}=;:,->";
   Lexer lexer(in);
   auto t = make_unique<Token>();
 
-  NEXT(TokenKind::IDENT);
+  NEXT(TokenKind::IDENT)
   ASSERT_EQ(t->sval, "abcあ");
   ASSERT_FALSE(t->ws);
   ASSERT_FALSE(t->nl);
@@ -45,6 +45,14 @@ TEST(LexerTest, lex) {
 
   NEXT(TokenKind::LIT_STR)
   ASSERT_EQ(t->sval, "string");
+
+  NEXT(TokenKind::KW_FN)
+  NEXT(TokenKind::KW_LET)
+  NEXT(TokenKind::KW_VAR)
+  NEXT(TokenKind::KW_RET)
+  NEXT(TokenKind::KW_EXT)
+  NEXT(TokenKind::KW_IF)
+  NEXT(TokenKind::KW_ELSE)
 
   NEXT(TokenKind::PLUS)
   NEXT(TokenKind::MINUS)
@@ -74,5 +82,6 @@ TEST(LexerTest, lex) {
   NEXT(TokenKind::COLON)
   NEXT(TokenKind::COMMA)
   NEXT(TokenKind::ARROW)
+  NEXT(TokenKind::END)
 }
 
