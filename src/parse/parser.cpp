@@ -61,12 +61,12 @@ unique_ptr<Token> Parser::next() {
 }
 
 unique_ptr<Node> Parser::parse() {
-  auto stmt = parseStmt();
-  if (!stmt) {
+  auto block = parseBlock();
+  if (!block) {
     // TODO: recover error
     cerr << "error!" << endl;
   }
-  return stmt;
+  return block;
 }
 
 template <typename... Args>
@@ -90,6 +90,7 @@ unique_ptr<Stmt> Parser::parseStmt() {
   if (peek()->kind == TokenKind::KW_RET) {
     next();
     if (peek()->kind == TokenKind::RBRACE || peek()->kind == TokenKind::SEMI) {
+      next();
       return make_unique<RetStmt>();
     }
     auto expr = parseExpr();
@@ -173,3 +174,24 @@ unique_ptr<Expr> Parser::parsePrimary() {
   }
 };
 
+unique_ptr<Block> Parser::parseBlock() {
+  if (peek()->kind != TokenKind::LBRACE) return nullptr;
+  next();
+
+  auto block = make_unique<Block>();
+  while (true) {
+    if (peek()->kind == TokenKind::RBRACE) {
+      break;
+    }
+    auto stmt = parseStmt();
+    if (!stmt) return nullptr;
+    block->stmts.push_back(move(stmt));
+    if (peek()->kind == TokenKind::RBRACE) {
+      break;
+    }
+    if (peek()->kind == TokenKind::SEMI) {
+      next();
+    }
+  }
+  return block;
+}

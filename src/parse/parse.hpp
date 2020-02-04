@@ -7,6 +7,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <vector>
 
 using namespace std;
 
@@ -176,7 +177,7 @@ enum BinOp {
 
 class Node {
  public:
-  enum Kind { STMT };
+  enum Kind { STMT, BLOCK };
   virtual Kind nodeKind() = 0;
 };
 
@@ -268,6 +269,12 @@ class RetStmt : public Stmt {
   RetStmt(unique_ptr<Expr> expr = unique_ptr<Expr>()) : expr(move(expr)){};
 };
 
+class Block : public Node {
+ public:
+  Kind nodeKind() { return Node::Kind::BLOCK; };
+  vector<unique_ptr<Stmt>> stmts;
+};
+
 class Parser {
  private:
   string filename = "";
@@ -280,6 +287,7 @@ class Parser {
   unique_ptr<Expr> parseExpr(uint8_t prec = 0);
   unique_ptr<Expr> parsePrimary();
   unique_ptr<Stmt> parseStmt();
+  unique_ptr<Block> parseBlock();
 
  public:
   void push_token(unique_ptr<Token> &&token) { tokens.push_back(move(token)); };
@@ -293,8 +301,10 @@ class Printer {
   bool afterNl = false;
   void writeLineNum();
   void indent();
-  void write(string msg);
-  void writeln(string msg);
+  template <typename... Args>
+  void write(const string format, Args const &... args);
+  template <typename... Args>
+  void writeln(const string format, Args const &... args);
   void down(string);
   void up(string);
   void printIdent(Ident *ident);

@@ -1,5 +1,11 @@
 #include "parse.hpp"
 
+#define checkNull(e) \
+  if (!e) {          \
+    writeln("null"); \
+    return;          \
+  }
+
 using namespace std;
 
 string binop_string(BinOp op) {
@@ -33,22 +39,25 @@ void Printer::indent() {
   }
 };
 
-void Printer::writeln(string msg) {
+template <typename... Args>
+void Printer::write(const string format, Args const &... args) {
   if (afterNl) {
     indent();
   }
-  cout << msg << endl;
+  printf(format.c_str(), args...);
+  afterNl = false;
+};
+
+template <typename... Args>
+void Printer::writeln(const string format, Args const &... args) {
+  if (afterNl) {
+    indent();
+  }
+  printf(format.c_str(), args...);
+  cout << endl;
   line++;
   writeLineNum();
   afterNl = true;
-};
-
-void Printer::write(string msg) {
-  if (afterNl) {
-    indent();
-  }
-  cout << msg;
-  afterNl = false;
 };
 
 void Printer::down(string s) {
@@ -68,16 +77,30 @@ void Printer::print(unique_ptr<Node> &node) {
     case Node::Kind::STMT:
       printStmt((Stmt *)node.get());
       break;
+    case Node::Kind::BLOCK:
+      auto block = (Block *)node.get();
+      down("Block {");
+      {
+        for (int i = 0; i < block->stmts.size(); i++) {
+          write("[%d] ", i);
+          auto &stmt = block->stmts.at(i);
+          printStmt(stmt.get());
+        }
+      }
+      up("}");
+      break;
   }
 };
 
 void Printer::printIdent(Ident *ident) {
+  checkNull(ident);
   down("Ident {");
   { writeln("Name: " + ident->sval); }
   up("}");
 }
 
 void Printer::printStmt(Stmt *stmt) {
+  checkNull(stmt);
   switch (stmt->stmtKind()) {
     case Stmt::Kind::EXPR:
       printExpr((Expr *)stmt);
@@ -95,6 +118,7 @@ void Printer::printStmt(Stmt *stmt) {
 }
 
 void Printer::printExpr(Expr *expr) {
+  checkNull(expr);
   switch (expr->exprKind()) {
     case Expr::Kind::IDENT:
       printIdent((Ident *)expr);
@@ -118,6 +142,7 @@ void Printer::printExpr(Expr *expr) {
 }
 
 void Printer::printLit(Lit *lit) {
+  checkNull(lit);
   switch (lit->litKind()) {
     case Lit::Kind::INT:
       down("LitInt {");
