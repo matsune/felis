@@ -54,6 +54,11 @@ BinOp binOpFrom(TokenKind kind) {
 
 unique_ptr<Token>& Parser::peek() { return tokens.front(); }
 
+unique_ptr<Token>& Parser::peek2() {
+  if (tokens.size() < 2) return tokens.front();
+  return tokens[1];
+}
+
 unique_ptr<Token> Parser::bump() {
   auto p = move(tokens.front());
   tokens.pop_front();
@@ -97,8 +102,8 @@ unique_ptr<Stmt> Parser::parseStmt() {
     if (!expr) return nullptr;
     auto retStmt = make_unique<RetStmt>(move(expr));
     return retStmt;
-  }
-  if (peek()->kind == TokenKind::KW_LET || peek()->kind == TokenKind::KW_VAR) {
+  } else if (peek()->kind == TokenKind::KW_LET ||
+             peek()->kind == TokenKind::KW_VAR) {
     bool isLet = bump()->kind == TokenKind::KW_LET;
     if (peek()->kind != TokenKind::IDENT) {
       error("expected ident\n");
@@ -115,11 +120,18 @@ unique_ptr<Stmt> Parser::parseStmt() {
     if (!expr) return nullptr;
 
     return make_unique<VarDeclStmt>(isLet, move(name), move(expr));
-
-  } else {
-    auto expr = parseExpr();
-    return expr;
+  } else if (peek()->kind == TokenKind::IDENT) {
+    if (peek2()->kind == TokenKind::EQ) {
+      // assign stmt
+      auto name = make_unique<Ident>(bump()->sval);
+      bump();
+      auto expr = parseExpr();
+      if (!expr) return nullptr;
+      return make_unique<AssignStmt>(move(name), move(expr));
+    }
   }
+  auto expr = parseExpr();
+  return expr;
 }
 
 unique_ptr<Expr> Parser::parseExpr(uint8_t prec) {

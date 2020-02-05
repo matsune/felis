@@ -126,6 +126,17 @@ void Printer::printStmt(Stmt *stmt) {
       }
       up("}");
       break;
+    case Stmt::Kind::ASSIGN:
+      down("Assign {");
+      {
+        auto assign = (AssignStmt *)stmt;
+        write("Name: ");
+        printIdent(assign->name.get());
+        write("Expr: ");
+        printExpr(assign->expr.get());
+      }
+      up("}");
+      break;
     default:
       cout << "unimplemented" << endl;
       exit(1);

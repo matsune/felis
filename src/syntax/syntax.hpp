@@ -185,7 +185,7 @@ class Node {
 
 class Stmt : public Node {
  public:
-  enum Kind { EXPR, RET, VAR_DECL };
+  enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
   virtual Kind stmtKind() = 0;
   Node::Kind nodeKind() { return Node::Kind::STMT; };
 };
@@ -282,6 +282,16 @@ class VarDeclStmt : public Stmt {
       : isLet(isLet), name(move(name)), expr(move(expr)){};
 };
 
+class AssignStmt : public Stmt {
+ public:
+  Kind stmtKind() { return Stmt::Kind::ASSIGN; };
+  unique_ptr<Ident> name;
+  unique_ptr<Expr> expr;
+
+  AssignStmt(unique_ptr<Ident> name, unique_ptr<Expr> expr)
+      : name(move(name)), expr(move(expr)){};
+};
+
 class Block : public Node {
  public:
   Kind nodeKind() { return Node::Kind::BLOCK; };
@@ -294,6 +304,7 @@ class Parser {
   deque<unique_ptr<Token>> tokens;
   void error(string msg);
   unique_ptr<Token> &peek();
+  unique_ptr<Token> &peek2();
   unique_ptr<Token> bump();
   template <typename... Args>
   void error(const char *format, Args const &... args);
