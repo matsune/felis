@@ -149,6 +149,8 @@ class Lexer {
   rune scan();
   rune getPeek();
   rune bump();
+  bool bumpIf(uint32_t);
+  bool bumpIf(function<bool(uint32_t)>);
   template <typename... Args>
   bool error(const char *format, Args const &... args);
 

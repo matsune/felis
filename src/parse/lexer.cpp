@@ -105,39 +105,47 @@ rune Lexer::bump() {
 
 rune Lexer::getPeek() { return peek; };
 
+bool Lexer::bumpIf(uint32_t ch) {
+  if (peek.scalar == ch) {
+    bump();
+    return true;
+  }
+  return false;
+}
+
+bool Lexer::bumpIf(function<bool(uint32_t)> f) {
+  if (f(peek.scalar)) {
+    bump();
+    return true;
+  }
+  return false;
+}
+
 bool Lexer::next(unique_ptr<Token> &t) {
   t->reset();
 
   while (true) {
     t->pos = pos;
-    auto c = peek.scalar;
-    if (is_space(c)) {
-      bump();
+    if (bumpIf(is_space)) {
       t->ws = true;
       continue;
-    } else if (is_newline(c)) {
-      bump();
+    } else if (bumpIf(is_newline)) {
       t->nl = true;
       continue;
-    } else if (c == 0) {
+    } else if (bumpIf(0)) {
       return true;
-    } else if (c == '\'') {
-      bump();
+    } else if (bumpIf('\'')) {
       t->kind = TokenKind::LIT_CHAR;
       return eat_char(t->cval);
-    } else if (c == '"') {
-      bump();
+    } else if (bumpIf('"')) {
       t->kind = TokenKind::LIT_STR;
       return eat_string(t->sval);
-    } else if (c == '/') {
-      bump();
-      if (peek == '/') {
-        bump();
+    } else if (bumpIf('/')) {
+      if (bumpIf('/')) {
         eatLineComment();
         t->nl = true;
         continue;
-      } else if (peek == '*') {
-        bump();
+      } else if (bumpIf('*')) {
         bool hasNl(false);
         if (!eatBlockComment(hasNl)) {
           return false;
@@ -151,119 +159,92 @@ bool Lexer::next(unique_ptr<Token> &t) {
         t->kind = TokenKind::SLASH;
         return true;
       }
-    } else if (c == ';') {
-      bump();
+    } else if (bumpIf(';')) {
       t->kind = TokenKind::SEMI;
-    } else if (c == ',') {
-      bump();
+    } else if (bumpIf(',')) {
       t->kind = TokenKind::COMMA;
-    } else if (c == '(') {
-      bump();
+    } else if (bumpIf('(')) {
       t->kind = TokenKind::LPAREN;
-    } else if (c == ')') {
-      bump();
+    } else if (bumpIf(')')) {
       t->kind = TokenKind::RPAREN;
-    } else if (c == '{') {
-      bump();
+    } else if (bumpIf('{')) {
       t->kind = TokenKind::LBRACE;
-    } else if (c == '}') {
-      bump();
+    } else if (bumpIf('}')) {
       t->kind = TokenKind::RBRACE;
-    } else if (c == ':') {
-      bump();
+    } else if (bumpIf(':')) {
       t->kind = TokenKind::COLON;
-    } else if (c == '=') {
-      bump();
-      if (peek == '=') {
-        bump();
+    } else if (bumpIf('=')) {
+      if (bumpIf('=')) {
         t->kind = TokenKind::EQEQ;
       } else {
         t->kind = TokenKind::EQ;
       }
-    } else if (c == '!') {
-      bump();
-      if (peek == '=') {
-        bump();
+    } else if (bumpIf('!')) {
+      if (bumpIf('=')) {
         t->kind = TokenKind::NEQ;
       } else {
         t->kind = TokenKind::NOT;
       }
-    } else if (c == '<') {
-      bump();
-      if (peek == '<') {
-        bump();
+    } else if (bumpIf('<')) {
+      if (bumpIf('<')) {
         t->kind = TokenKind::SHL;
-      } else if (peek == '=') {
-        bump();
+      } else if (bumpIf('=')) {
         t->kind = TokenKind::LE;
       } else {
         t->kind = TokenKind::LT;
       }
-    } else if (c == '>') {
-      bump();
-      if (peek == '>') {
-        bump();
+    } else if (bumpIf('>')) {
+      if (bumpIf('>')) {
         t->kind = TokenKind::SHR;
-      } else if (peek == '=') {
-        bump();
+      } else if (bumpIf('=')) {
         t->kind = TokenKind::GE;
       } else {
         t->kind = TokenKind::GT;
       }
-    } else if (c == '-') {
-      bump();
-      if (peek == '>') {
-        bump();
+    } else if (bumpIf('-')) {
+      if (bumpIf('>')) {
         t->kind = TokenKind::ARROW;
       } else {
         t->kind = TokenKind::MINUS;
       }
-    } else if (c == '&') {
-      bump();
-      if (peek == '&') {
-        bump();
+    } else if (bumpIf('&')) {
+      if (bumpIf('&')) {
         t->kind = TokenKind::ANDAND;
       } else {
         t->kind = TokenKind::AND;
       }
-    } else if (c == '|') {
-      bump();
-      if (peek == '|') {
-        bump();
+    } else if (bumpIf('|')) {
+      if (bumpIf('|')) {
         t->kind = TokenKind::OROR;
       } else {
         t->kind = TokenKind::OR;
       }
-    } else if (c == '+') {
-      bump();
+    } else if (bumpIf('+')) {
       t->kind = TokenKind::PLUS;
-    } else if (c == '*') {
-      bump();
+    } else if (bumpIf('*')) {
       t->kind = TokenKind::STAR;
-    } else if (c == '^') {
-      bump();
+    } else if (bumpIf('^')) {
       t->kind = TokenKind::CARET;
-    } else if (c == '%') {
-      bump();
+    } else if (bumpIf('%')) {
       t->kind = TokenKind::PERCENT;
-    } else if (is_decimalc(c)) {
+    } else if (is_decimalc(peek.scalar)) {
       return eat_num(t);
-    } else if (is_ident_head(c)) {
+    } else if (is_ident_head(peek.scalar)) {
       return eat_ident(t);
     } else {
-      return error("unsupported char %c", c);
+      return error("unsupported char %c", peek.scalar);
     }
     return true;
   }
 };
 
 bool Lexer::eat_ident(unique_ptr<Token> &t) {
-  char dst[4] = {0};
-  int len = bump().encode_utf8(dst);
-  string name(dst, len);
+  char bytes[4] = {0};
+  int len = bump().encode_utf8(bytes);
+  string name(bytes, len);
   while (is_ident_body(peek.scalar)) {
-    len = bump().encode_utf8(dst);
-    name.append(dst, len);
+    len = bump().encode_utf8(bytes);
+    name.append(bytes, len);
   }
   if (name == "true" || name == "false") {
     t->kind = TokenKind::LIT_BOOL;
@@ -315,23 +296,20 @@ bool Lexer::eat_num(unique_ptr<Token> &t) {
   s.push_back(first.scalar);
   int base(10);
   if (first == '0') {
-    if (peek == 'b') {
+    if (bumpIf('b')) {
       // binary
-      bump();
       base = 2;
       if (!read_digits(s, is_bitc)) {
         return false;
       }
-    } else if (peek == 'o') {
+    } else if (bumpIf('o')) {
       // octal
-      bump();
       base = 8;
       if (!read_digits(s, is_octalc)) {
         return false;
       }
-    } else if (peek == 'x') {
+    } else if (bumpIf('x')) {
       // hex
-      bump();
       base = 16;
       if (!read_digits(s, is_hexc)) {
         return false;
@@ -347,7 +325,7 @@ bool Lexer::eat_num(unique_ptr<Token> &t) {
         }
       }
     } else if (peek == '.' || peek == 'e' || peek == 'E') {
-      // goto exponent
+      // do nothing; goto exponent
     } else {
       // just 0
       t->kind = TokenKind::LIT_INT;
@@ -418,103 +396,71 @@ bool Lexer::eat_char(rune &cval) {
 };
 
 bool Lexer::escape(char &c) {
-  switch (peek.scalar) {
-    case '\'':
-      bump();
-      c = '\'';
-      break;
-    case '"':
-      bump();
-      c = '"';
-      break;
-    case '\\':
-      bump();
-      c = '\\';
-      break;
-    case '0':
-      bump();
-      c = '\0';
-      break;
-    case 'a':
-      bump();
-      c = '\a';
-      break;
-    case 'b':
-      bump();
-      c = '\b';
-      break;
-    case 'f':
-      bump();
-      c = '\f';
-      break;
-    case 'n':
-      bump();
-      c = '\n';
-      break;
-    case 'r':
-      bump();
-      c = '\r';
-      break;
-    case 't':
-      bump();
-      c = '\t';
-      break;
-    case 'v':
-      bump();
-      c = '\v';
-      break;
-    case 'x':
-      bump();
-      if (is_hexc(peek.scalar)) {
-        c = hexc(bump().scalar) * 16;
-      } else {
-        return error("non-hex character '%c'\n", peek.scalar);
-      }
-      if (is_hexc(peek.scalar)) {
-        c += hexc(bump().scalar);
-      } else {
-        return error("non-hex character '%c'\n", peek.scalar);
-      }
-      break;
-    case 'u': {
-      bump();
+  if (bumpIf('\'')) {
+    c = '\'';
+  } else if (bumpIf('"')) {
+    c = '"';
+  } else if (bumpIf('\\')) {
+    c = '\\';
+  } else if (bumpIf('0')) {
+    c = '\0';
+  } else if (bumpIf('a')) {
+    c = '\a';
+  } else if (bumpIf('b')) {
+    c = '\b';
+  } else if (bumpIf('f')) {
+    c = '\f';
+  } else if (bumpIf('n')) {
+    c = '\n';
+  } else if (bumpIf('r')) {
+    c = '\r';
+  } else if (bumpIf('t')) {
+    c = '\t';
+  } else if (bumpIf('v')) {
+    c = '\v';
+  } else if (bumpIf('x')) {
+    if (is_hexc(peek.scalar)) {
+      c = hexc(bump().scalar) * 16;
+    } else {
+      return error("non-hex character '%c'\n", peek.scalar);
+    }
+    if (is_hexc(peek.scalar)) {
+      c += hexc(bump().scalar);
+    } else {
+      return error("non-hex character '%c'\n", peek.scalar);
+    }
+  } else if (bumpIf('u')) {
+    if (!bumpIf('{')) {
+      return error("expected '{'");
+    }
 
-      if (peek != '{') {
-        return error("expected '{'");
-      }
-      bump();
-
-      // read hex chars up to 6 digits
-      // and at most 0x10FFFF
-      uint32_t val(0);
-      int count(0);
-      while (true) {
-        if (is_hexc(peek.scalar)) {
-          if (count > 5) {
-            return error(
-                "overlong unicode escape (must have at most 6 hex digits)\n");
-          }
-          val = val * 16 + hexc(bump().scalar);
-          count++;
-        } else if (peek.scalar == '}') {
-          bump();
-          break;
-        } else {
-          return error("invalid character in unicode escape: %c\n",
-                       peek.scalar);
+    // bumpIf hex chars up to 6 digits
+    // and at most 0x10FFFF
+    uint32_t val(0);
+    int count(0);
+    while (true) {
+      if (is_hexc(peek.scalar)) {
+        if (count > 5) {
+          return error(
+              "overlong unicode escape (must have at most 6 hex digits)\n");
         }
+        val = val * 16 + hexc(bump().scalar);
+        count++;
+      } else if (bumpIf('}')) {
+        break;
+      } else {
+        return error("invalid character in unicode escape: %c\n", peek.scalar);
       }
-      if (count == 0) {
-        return error("empty character in unicode escape\n");
-      }
-      if (val > 0x10FFFF) {
-        return error("unicode escape must be at most 10FFFF\n");
-      }
-      c = val;
-    } break;
-
-    default:
-      return error("unknown escape sequence\n");
+    }
+    if (count == 0) {
+      return error("empty character in unicode escape\n");
+    }
+    if (val > 0x10FFFF) {
+      return error("unicode escape must be at most 10FFFF\n");
+    }
+    c = val;
+  } else {
+    return error("unknown escape sequence\n");
   }
   return true;
 }
@@ -560,13 +506,11 @@ bool Lexer::eatBlockComment(bool &hasNl) {
   while (true) {
     if (peek == 0) {
       break;
-    } else if (peek == '/') {
-      bump();
+    } else if (bumpIf('/')) {
       if (bump() == '*') {
         depth++;
       }
-    } else if (peek == '*') {
-      bump();
+    } else if (bumpIf('*')) {
       if (bump() == '/') {
         depth--;
       }

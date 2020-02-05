@@ -17,7 +17,7 @@ TEST(LexerTest, lex) {
   stringstream in;
   in << "abcあ 12_21 23.1 true false 'a' \"string\"";
   in << "fn let var ret ext if else ";
-  in << "+ - / * % & | ^ << >> && || < <= > >= == != !(){}=;:,->";
+  in << "+ - / * % & | ^ << >> && || < <= > >= == != !(){}=;:,-> /* comment */";
   Lexer lexer(in);
   auto t = make_unique<Token>();
 
