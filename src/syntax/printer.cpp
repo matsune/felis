@@ -77,20 +77,20 @@ void Printer::print(unique_ptr<Node> &node) {
     case Node::Kind::STMT:
       printStmt((Stmt *)node.get());
       break;
-    case Node::Kind::BLOCK:
-      auto block = (Block *)node.get();
-      down("Block {");
-      {
-        for (int i = 0; i < block->stmts.size(); i++) {
-          write("[%d] ", i);
-          auto &stmt = block->stmts.at(i);
-          printStmt(stmt.get());
-        }
-      }
-      up("}");
-      break;
   }
 };
+
+void Printer::printBlock(Block *block) {
+  down("Block {");
+  {
+    for (int i = 0; i < block->stmts.size(); i++) {
+      write("[%d] ", i);
+      auto &stmt = block->stmts.at(i);
+      printStmt(stmt.get());
+    }
+  }
+  up("}");
+}
 
 void Printer::printIdent(Ident *ident) {
   checkNull(ident);
@@ -136,6 +136,21 @@ void Printer::printStmt(Stmt *stmt) {
         printExpr(assign->expr.get());
       }
       up("}");
+      break;
+    case Stmt::Kind::IF:
+      down("If {");
+      {
+        auto ifStmt = (IfStmt *)stmt;
+        write("Cond: ");
+        printExpr(ifStmt->cond.get());
+        printBlock(ifStmt->block.get());
+        write("Else: ");
+        printStmt(ifStmt->els.get());
+      }
+      up("}");
+      break;
+    case Stmt::Kind::BLOCK:
+      printBlock((Block *)stmt);
       break;
     default:
       cout << "unimplemented" << endl;

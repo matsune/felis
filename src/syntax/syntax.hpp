@@ -179,15 +179,21 @@ enum BinOp {
 
 class Node {
  public:
-  enum Kind { STMT, BLOCK };
+  enum Kind { STMT };
   virtual Kind nodeKind() = 0;
 };
 
 class Stmt : public Node {
  public:
-  enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
+  enum Kind { EXPR, RET, VAR_DECL, ASSIGN, IF, BLOCK };
   virtual Kind stmtKind() = 0;
   Node::Kind nodeKind() { return Node::Kind::STMT; };
+};
+
+class Block : public Stmt {
+ public:
+  Kind stmtKind() { return Stmt::Kind::BLOCK; };
+  vector<unique_ptr<Stmt>> stmts;
 };
 
 class Expr : public Stmt {
@@ -292,10 +298,16 @@ class AssignStmt : public Stmt {
       : name(move(name)), expr(move(expr)){};
 };
 
-class Block : public Node {
+class IfStmt : public Stmt {
  public:
-  Kind nodeKind() { return Node::Kind::BLOCK; };
-  vector<unique_ptr<Stmt>> stmts;
+  Kind stmtKind() { return Stmt::Kind::IF; };
+  unique_ptr<Expr> cond;
+  unique_ptr<Block> block;
+  unique_ptr<Stmt> els;  // block or if
+
+  IfStmt(unique_ptr<Expr> cond, unique_ptr<Block> block,
+         unique_ptr<Stmt> els = unique_ptr<Stmt>())
+      : cond(move(cond)), block(move(block)), els(move(els)){};
 };
 
 class Parser {
@@ -312,6 +324,7 @@ class Parser {
   unique_ptr<Expr> parsePrimary();
   unique_ptr<Stmt> parseStmt();
   unique_ptr<Block> parseBlock();
+  unique_ptr<IfStmt> parseIfStmt();
 
  public:
   void push_token(unique_ptr<Token> &&token) { tokens.push_back(move(token)); };
@@ -331,6 +344,7 @@ class Printer {
   void writeln(const string format, Args const &... args);
   void down(string);
   void up(string);
+  void printBlock(Block *block);
   void printIdent(Ident *ident);
   void printStmt(Stmt *stmt);
   void printExpr(Expr *expr);

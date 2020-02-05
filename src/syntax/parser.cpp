@@ -120,6 +120,8 @@ unique_ptr<Stmt> Parser::parseStmt() {
     if (!expr) return nullptr;
 
     return make_unique<VarDeclStmt>(isLet, move(name), move(expr));
+  } else if (peek()->kind == TokenKind::KW_IF) {
+    return parseIfStmt();
   } else if (peek()->kind == TokenKind::IDENT) {
     if (peek2()->kind == TokenKind::EQ) {
       // assign stmt
@@ -132,6 +134,34 @@ unique_ptr<Stmt> Parser::parseStmt() {
   }
   auto expr = parseExpr();
   return expr;
+}
+
+unique_ptr<IfStmt> Parser::parseIfStmt() {
+  if (peek()->kind != TokenKind::KW_IF) {
+    error("expected if\n");
+    return nullptr;
+  }
+  bump();
+
+  auto cond = parseExpr();
+  if (!cond) return nullptr;
+  auto block = parseBlock();
+  if (!block) return nullptr;
+
+  if (peek()->kind != TokenKind::KW_ELSE) {
+    return make_unique<IfStmt>(move(cond), move(block));
+  }
+  bump();
+
+  if (peek()->kind == TokenKind::KW_IF) {
+    auto els = parseIfStmt();
+    if (!els) return nullptr;
+    return make_unique<IfStmt>(move(cond), move(block), move(els));
+  } else {
+    auto els = parseBlock();
+    if (!els) return nullptr;
+    return make_unique<IfStmt>(move(cond), move(block), move(els));
+  }
 }
 
 unique_ptr<Expr> Parser::parseExpr(uint8_t prec) {
@@ -224,5 +254,6 @@ unique_ptr<Block> Parser::parseBlock() {
       bump();
     }
   }
+  bump();
   return block;
 }
