@@ -38,10 +38,10 @@ int main(int argc, char *argv[]) {
   in.close();
   if (!isEnd) return 1;
 
-  auto expr = parser.parse();
-  if (expr) {
+  auto file = parser.parse();
+  if (file) {
     Printer printer;
-    printer.print(expr);
+    printer.print(file);
   }
 }
 

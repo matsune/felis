@@ -1,4 +1,4 @@
-#include "syntax.hpp"
+#include "token.hpp"
 
 string to_string(TokenKind kind) {
   switch (kind) {

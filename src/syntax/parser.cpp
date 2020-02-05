@@ -1,4 +1,4 @@
-#include "syntax.hpp"
+#include "parser.hpp"
 
 #define UNIMPLEMENTED throw FatalError("unimplemented");
 #define UNREACHABLE throw FatalError("unreachable");
@@ -65,13 +65,15 @@ unique_ptr<Token> Parser::bump() {
   return p;
 }
 
-unique_ptr<Node> Parser::parse() {
-  auto block = parseBlock();
-  if (!block) {
-    // TODO: recover error
-    cerr << "error!" << endl;
-  }
-  return block;
+unique_ptr<File> Parser::parse() {
+  auto file = make_unique<File>();
+
+  /* auto block = parseBlock(); */
+  /* if (!block) { */
+  /*   // TODO: recover error */
+  /*   cerr << "error!" << endl; */
+  /* } */
+  return file;
 }
 
 template <typename... Args>

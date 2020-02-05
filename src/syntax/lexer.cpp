@@ -1,4 +1,4 @@
-#include "syntax.hpp"
+#include "lexer.hpp"
 
 inline bool is_newline(uint32_t c) { return c == 0x0A || c == 0x0D; }
 inline bool is_space(uint32_t c) {

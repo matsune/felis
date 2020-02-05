@@ -1,4 +1,4 @@
-#include "syntax.hpp"
+#include "rune.hpp"
 
 const uint8_t TAG_CONT = 0b10000000;
 const uint8_t TAG_TWO_B = 0b11000000;

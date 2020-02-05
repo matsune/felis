@@ -1,4 +1,5 @@
-#include "syntax.hpp"
+#include "printer.hpp"
+#include <sstream>
 
 #define checkNull(e) \
   if (!e) {          \
@@ -7,6 +8,13 @@
   }
 
 using namespace std;
+
+template <typename T>
+static string tostring(const T &t) {
+  ostringstream ss;
+  ss << t;
+  return ss.str();
+}
 
 string binop_string(BinOp op) {
   switch (op) {
@@ -70,14 +78,14 @@ void Printer::up(string s) {
   writeln(s);
 };
 
-void Printer::print(unique_ptr<Node> &node) {
+void Printer::print(unique_ptr<File> &file) {
   if (depth == 0) writeLineNum();
 
-  switch (node->nodeKind()) {
-    case Node::Kind::STMT:
-      printStmt((Stmt *)node.get());
-      break;
-  }
+  /* switch (node->nodeKind()) { */
+  /*   case Node::Kind::STMT: */
+  /*     printStmt((Stmt *)node.get()); */
+  /*     break; */
+  /* } */
 };
 
 void Printer::printBlock(Block *block) {
@@ -172,10 +180,10 @@ void Printer::printExpr(Expr *expr) {
       {
         auto binary = (BinaryExpr *)expr;
         write("Left: ");
-        print(binary->lhs);
+        printExpr(binary->lhs.get());
         writeln("Op: " + binop_string(binary->op));
         write("Right: ");
-        print(binary->rhs);
+        printExpr(binary->rhs.get());
       }
       up("}");
       break;
