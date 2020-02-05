@@ -98,6 +98,7 @@ class Token {
   };
 
   Kind kind = Kind::END;
+
   bool nl;
   bool ws;
   Pos pos;
@@ -120,7 +121,6 @@ class Token {
     bval = false;
   };
 
-  bool is(Kind kind) { return this->kind == kind; };
   bool isIdent() { return kind == Kind::IDENT; }
   bool isLit() { return Kind::LIT_INT <= kind && kind <= Kind::LIT_STR; };
 
@@ -185,7 +185,7 @@ class Node {
 
 class Stmt : public Node {
  public:
-  enum Kind { EXPR, RET };
+  enum Kind { EXPR, RET, VAR_DECL };
   virtual Kind stmtKind() = 0;
   Node::Kind nodeKind() { return Node::Kind::STMT; };
 };
@@ -271,6 +271,17 @@ class RetStmt : public Stmt {
   RetStmt(unique_ptr<Expr> expr = unique_ptr<Expr>()) : expr(move(expr)){};
 };
 
+class VarDeclStmt : public Stmt {
+ public:
+  Kind stmtKind() { return Stmt::Kind::VAR_DECL; };
+  bool isLet = false;
+  unique_ptr<Ident> name;
+  unique_ptr<Expr> expr;
+
+  VarDeclStmt(bool isLet, unique_ptr<Ident> name, unique_ptr<Expr> expr)
+      : isLet(isLet), name(move(name)), expr(move(expr)){};
+};
+
 class Block : public Node {
  public:
   Kind nodeKind() { return Node::Kind::BLOCK; };
@@ -283,7 +294,7 @@ class Parser {
   deque<unique_ptr<Token>> tokens;
   void error(string msg);
   unique_ptr<Token> &peek();
-  unique_ptr<Token> next();
+  unique_ptr<Token> bump();
   template <typename... Args>
   void error(const char *format, Args const &... args);
   unique_ptr<Expr> parseExpr(uint8_t prec = 0);

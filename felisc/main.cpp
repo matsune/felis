@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     if (!lexer->next(t)) {
       break;
     }
-    isEnd = t->is(TokenKind::END);
+    isEnd = t->kind == TokenKind::END;
     parser.push_token(move(t));
   }
   delete lexer;

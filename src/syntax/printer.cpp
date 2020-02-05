@@ -114,6 +114,21 @@ void Printer::printStmt(Stmt *stmt) {
       }
       up("}");
       break;
+    case Stmt::Kind::VAR_DECL:
+      down("VarDecl {");
+      {
+        auto varDecl = (VarDeclStmt *)stmt;
+        writeln("Decl: %s", varDecl->isLet ? "let" : "var");
+        write("Name: ");
+        printIdent(varDecl->name.get());
+        write("Expr: ");
+        printExpr(varDecl->expr.get());
+      }
+      up("}");
+      break;
+    default:
+      cout << "unimplemented" << endl;
+      exit(1);
   }
 }
 

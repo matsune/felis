@@ -54,7 +54,7 @@ BinOp binOpFrom(TokenKind kind) {
 
 unique_ptr<Token>& Parser::peek() { return tokens.front(); }
 
-unique_ptr<Token> Parser::next() {
+unique_ptr<Token> Parser::bump() {
   auto p = move(tokens.front());
   tokens.pop_front();
   return p;
@@ -88,15 +88,34 @@ bool is_primary(TokenKind kind) {
 
 unique_ptr<Stmt> Parser::parseStmt() {
   if (peek()->kind == TokenKind::KW_RET) {
-    next();
+    bump();
     if (peek()->kind == TokenKind::RBRACE || peek()->kind == TokenKind::SEMI) {
-      next();
+      bump();
       return make_unique<RetStmt>();
     }
     auto expr = parseExpr();
     if (!expr) return nullptr;
     auto retStmt = make_unique<RetStmt>(move(expr));
     return retStmt;
+  }
+  if (peek()->kind == TokenKind::KW_LET || peek()->kind == TokenKind::KW_VAR) {
+    bool isLet = bump()->kind == TokenKind::KW_LET;
+    if (peek()->kind != TokenKind::IDENT) {
+      error("expected ident\n");
+      return nullptr;
+    }
+    auto name = make_unique<Ident>(bump()->sval);
+    if (peek()->kind != TokenKind::EQ) {
+      error("expected =\n");
+      return nullptr;
+    }
+    bump();
+
+    auto expr = parseExpr();
+    if (!expr) return nullptr;
+
+    return make_unique<VarDeclStmt>(isLet, move(name), move(expr));
+
   } else {
     auto expr = parseExpr();
     return expr;
@@ -106,10 +125,10 @@ unique_ptr<Stmt> Parser::parseStmt() {
 unique_ptr<Expr> Parser::parseExpr(uint8_t prec) {
   unique_ptr<UnOp> unOp;
   if (peek()->kind == TokenKind::MINUS) {
-    next();
+    bump();
     unOp = make_unique<UnOp>(UnOp::NEG);
   } else if (peek()->kind == TokenKind::NOT) {
-    next();
+    bump();
     unOp = make_unique<UnOp>(UnOp::NOT);
   }
 
@@ -141,7 +160,7 @@ unique_ptr<Expr> Parser::parseExpr(uint8_t prec) {
     BinOp binOp(binOpFrom(peek()->kind));
     if (binOp <= prec) return lhs;
 
-    next();
+    bump();
     auto rhs = parseExpr(binOp);
     if (!rhs) return nullptr;
     lhs = make_unique<BinaryExpr>(move(lhs), binOp, move(rhs));
@@ -149,25 +168,25 @@ unique_ptr<Expr> Parser::parseExpr(uint8_t prec) {
 };
 
 unique_ptr<Expr> Parser::parsePrimary() {
-  auto token = next();
-  if (token->is(TokenKind::IDENT)) {
+  auto token = bump();
+  if (token->kind == TokenKind::IDENT) {
     return make_unique<Ident>(token->sval);
-  } else if (token->is(TokenKind::LIT_INT)) {
+  } else if (token->kind == TokenKind::LIT_INT) {
     return make_unique<LitInt>(token->ival);
-  } else if (token->is(TokenKind::LIT_BOOL)) {
+  } else if (token->kind == TokenKind::LIT_BOOL) {
     return make_unique<LitBool>(token->bval);
-  } else if (token->is(TokenKind::LIT_CHAR)) {
+  } else if (token->kind == TokenKind::LIT_CHAR) {
     return make_unique<LitChar>(token->ival);
-  } else if (token->is(TokenKind::LIT_STR)) {
+  } else if (token->kind == TokenKind::LIT_STR) {
     return make_unique<LitStr>(token->sval);
-  } else if (token->is(TokenKind::LPAREN)) {
+  } else if (token->kind == TokenKind::LPAREN) {
     auto expr = parseExpr();
     if (!expr) return nullptr;
-    if (!peek()->is(TokenKind::RPAREN)) {
+    if (peek()->kind != TokenKind::RPAREN) {
       error("expected )\n");
       return nullptr;
     }
-    next();
+    bump();
     return expr;
   } else {
     UNREACHABLE
@@ -176,7 +195,7 @@ unique_ptr<Expr> Parser::parsePrimary() {
 
 unique_ptr<Block> Parser::parseBlock() {
   if (peek()->kind != TokenKind::LBRACE) return nullptr;
-  next();
+  bump();
 
   auto block = make_unique<Block>();
   while (true) {
@@ -190,7 +209,7 @@ unique_ptr<Block> Parser::parseBlock() {
       break;
     }
     if (peek()->kind == TokenKind::SEMI) {
-      next();
+      bump();
     }
   }
   return block;
