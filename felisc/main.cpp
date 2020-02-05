@@ -21,8 +21,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  Parser parser;
-  parser.setFilename(filename);
+  Parser parser(filename);
 
   bool isEnd(false);
   Lexer *lexer = new Lexer(in, filename);
@@ -38,10 +37,14 @@ int main(int argc, char *argv[]) {
   in.close();
   if (!isEnd) return 1;
 
-  auto file = parser.parse();
-  if (file) {
-    Printer printer;
-    printer.print(file);
+  try {
+    auto file = parser.parse();
+    if (file) {
+      Printer printer;
+      printer.print(file);
+    }
+  } catch (const FatalError &e) {
+    cerr << e.msg << endl;
   }
 }
 

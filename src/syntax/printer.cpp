@@ -79,20 +79,66 @@ void Printer::up(string s) {
 };
 
 void Printer::print(unique_ptr<File> &file) {
-  if (depth == 0) writeLineNum();
+  writeLineNum();
+  for (int i = 0; i < file->externs.size(); i++) {
+    printIndex(i);
+    printExtern(file->externs.at(i).get());
+  }
+  for (int i = 0; i < file->fnDecls.size(); i++) {
+    printIndex(i);
+    printFnDecl(file->fnDecls.at(i).get());
+  }
+};
 
-  /* switch (node->nodeKind()) { */
-  /*   case Node::Kind::STMT: */
-  /*     printStmt((Stmt *)node.get()); */
-  /*     break; */
-  /* } */
+void Printer::printIndex(int idx) { write("[%d] ", idx); }
+
+void Printer::printExtern(Extern *ext) {
+  checkNull(ext);
+  down("Extern {");
+  { printProto(ext->proto.get()); }
+  up("}");
+};
+
+void Printer::printFnDecl(FnDecl *fn) {
+  checkNull(fn);
+  down("FnDecl {");
+  {
+    printProto(fn->proto.get());
+    printBlock(fn->block.get());
+  }
+  up("}");
+}
+
+void Printer::printProto(FnProto *proto) {
+  checkNull(proto);
+  printIdent(proto->name.get());
+  down("FnArgs [");
+  {
+    for (int i = 0; i < proto->args.size(); i++) {
+      printIndex(i);
+      printFnArg(proto->args[i].get());
+    }
+  }
+  up("]");
+}
+
+void Printer::printFnArg(FnArg *arg) {
+  checkNull(arg);
+  down("FnArg {");
+  {
+    write("Name: ");
+    printIdent(arg->name.get());
+    write("Ty: ");
+    printIdent(arg->ty.get());
+  }
+  up("}");
 };
 
 void Printer::printBlock(Block *block) {
   down("Block {");
   {
     for (int i = 0; i < block->stmts.size(); i++) {
-      write("[%d] ", i);
+      printIndex(i);
       auto &stmt = block->stmts.at(i);
       printStmt(stmt.get());
     }

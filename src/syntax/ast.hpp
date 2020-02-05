@@ -160,6 +160,8 @@ class FnArg : public Node {
   unique_ptr<Ident> ty;
   unique_ptr<Ident> name;
 
+  bool withName() { return name != nullptr; };
+
   FnArg(unique_ptr<Ident> ty, unique_ptr<Ident> name = unique_ptr<Ident>())
       : ty(move(ty)), name(move(name)){};
 };
@@ -171,8 +173,9 @@ class FnProto : public Node {
   vector<unique_ptr<FnArg>> args;
   unique_ptr<Ident> ret;
 
-  FnProto(unique_ptr<Ident> name, unique_ptr<Ident> ret = unique_ptr<Ident>())
-      : name(move(name)), ret(move(ret)){};
+  FnProto(unique_ptr<Ident> name, vector<unique_ptr<FnArg>> &&args,
+          unique_ptr<Ident> ret = unique_ptr<Ident>())
+      : name(move(name)), args(move(args)), ret(move(ret)){};
 };
 
 class FnDecl : public Node {
@@ -195,8 +198,8 @@ class Extern : public Node {
 
 class File {
  public:
-  vector<Extern> externs;
-  vector<FnDecl> fnDecls;
+  vector<unique_ptr<Extern>> externs;
+  vector<unique_ptr<FnDecl>> fnDecls;
 };
 
 #endif
