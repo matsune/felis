@@ -1,5 +1,5 @@
-#ifndef PARSE_HPP
-#define PARSE_HPP
+#ifndef SYNTAX_HPP
+#define SYNTAX_HPP
 
 #include <deque>
 #include <fstream>

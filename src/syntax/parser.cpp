@@ -1,4 +1,4 @@
-#include "parse.hpp"
+#include "syntax.hpp"
 
 #define UNIMPLEMENTED throw FatalError("unimplemented");
 #define UNREACHABLE throw FatalError("unreachable");

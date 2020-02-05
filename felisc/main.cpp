@@ -4,7 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include "parse/parse.hpp"
+#include "syntax/syntax.hpp"
 
 using namespace std;
 

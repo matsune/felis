@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "parse/parse.hpp"
+#include "syntax/syntax.hpp"
 
 #define NEXT(KIND)            \
   ASSERT_TRUE(lexer.next(t)); \

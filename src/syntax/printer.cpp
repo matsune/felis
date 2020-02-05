@@ -1,4 +1,4 @@
-#include "parse.hpp"
+#include "syntax.hpp"
 
 #define checkNull(e) \
   if (!e) {          \
