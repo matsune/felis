@@ -42,7 +42,7 @@ class Block : public Stmt {
 
 class Expr : public Stmt {
  public:
-  enum Kind { IDENT, BINARY, LIT };
+  enum Kind { IDENT, BINARY, LIT, CALL, UNARY };
   virtual Kind exprKind() = 0;
   Stmt::Kind stmtKind() { return Stmt::Kind::EXPR; };
 };
@@ -111,6 +111,26 @@ class BinaryExpr : public Expr {
 
   BinaryExpr(unique_ptr<Expr> lhs, BinOp op, unique_ptr<Expr> rhs)
       : lhs(move(lhs)), rhs(move(rhs)), op(op){};
+};
+
+class CallExpr : public Expr {
+ public:
+  Expr::Kind exprKind() { return Expr::Kind::CALL; }
+
+  unique_ptr<Ident> ident;
+  vector<unique_ptr<Expr>> args;
+  CallExpr(unique_ptr<Ident> ident, vector<unique_ptr<Expr>> args)
+      : ident(move(ident)), args(move(args)) {}
+};
+
+class UnaryExpr : public Expr {
+ public:
+  Expr::Kind exprKind() { return Expr::Kind::UNARY; }
+
+  unique_ptr<UnOp> unOp;
+  unique_ptr<Expr> expr;
+  UnaryExpr(unique_ptr<UnOp> unOp, unique_ptr<Expr> expr)
+      : unOp(move(unOp)), expr(move(expr)) {}
 };
 
 class RetStmt : public Stmt {

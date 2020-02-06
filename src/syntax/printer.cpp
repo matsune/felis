@@ -233,6 +233,34 @@ void Printer::printExpr(Expr *expr) {
       }
       up("}");
       break;
+    case Expr::Kind::CALL:
+      down("Call {");
+      {
+        auto call = (CallExpr *)expr;
+        write("Ident: ");
+        printIdent(call->ident.get());
+        down("Args [");
+        {
+          for (int i = 0; i < call->args.size(); i++) {
+            printIndex(i);
+            Expr *arg = call->args.at(i).get();
+            printExpr(arg);
+          }
+        }
+        up("]");
+      }
+      up("}");
+      break;
+    case Expr::Kind::UNARY:
+      down("Unary {");
+      {
+        auto unary = (UnaryExpr *)expr;
+        string op = *unary->unOp == UnOp::NEG ? "-" : "!";
+        writeln("op: %s", op.c_str());
+        printExpr(unary->expr.get());
+      }
+      up("}");
+      break;
   };
 }
 
