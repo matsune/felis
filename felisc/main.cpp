@@ -4,33 +4,31 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include "syntax/syntax.hpp"
-
-using namespace std;
+#include "syntax/syntax.h"
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    cerr << "passing no file" << endl;
+    std::cerr << "passing no file" << std::endl;
     return 1;
   }
-  string filename = argv[1];
-  ifstream in;
+  std::string filename = argv[1];
+  std::ifstream in;
   in.open(filename);
   if (!in.is_open()) {
-    cerr << "failed to open " << filename << endl;
+    std::cerr << "failed to open " << filename << std::endl;
     return 1;
   }
 
-  Parser parser(filename);
+  felis::Parser parser(filename);
 
   bool isEnd(false);
-  Lexer *lexer = new Lexer(in, filename);
+  felis::Lexer *lexer = new felis::Lexer(in, filename);
   while (!isEnd) {
-    auto t = make_unique<Token>();
+    auto t = std::make_unique<felis::Token>();
     if (!lexer->next(t)) {
       break;
     }
-    isEnd = t->kind == TokenKind::END;
+    isEnd = t->kind == felis::TokenKind::END;
     parser.push_token(move(t));
   }
   delete lexer;
@@ -40,11 +38,11 @@ int main(int argc, char *argv[]) {
   try {
     auto file = parser.parse();
     if (file) {
-      Printer printer;
+      felis::Printer printer;
       printer.print(file);
     }
-  } catch (const FatalError &e) {
-    cerr << e.msg << endl;
+  } catch (const felis::FatalError &e) {
+    std::cerr << e.msg << std::endl;
   }
 }
 

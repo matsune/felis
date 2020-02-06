@@ -1,4 +1,6 @@
-#include "rune.hpp"
+#include "syntax/rune.h"
+
+namespace felis {
 
 const uint8_t TAG_CONT = 0b10000000;
 const uint8_t TAG_TWO_B = 0b11000000;
@@ -18,7 +20,7 @@ int rune::len_utf8() {
   } else {
     return 4;
   }
-};
+}
 
 int rune::encode_utf8(char bytes[4]) {
   if (scalar < MAX_ONE_B) {
@@ -40,4 +42,6 @@ int rune::encode_utf8(char bytes[4]) {
     bytes[3] = (scalar & 0x3F) | TAG_CONT;
     return 4;
   }
-};
+}
+
+}  // namespace felis

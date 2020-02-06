@@ -1,4 +1,4 @@
-#include "printer.hpp"
+#include "syntax/printer.h"
 #include <sstream>
 
 #define checkNull(e) \
@@ -7,16 +7,16 @@
     return;          \
   }
 
-using namespace std;
+namespace felis {
 
 template <typename T>
-static string tostring(const T &t) {
-  ostringstream ss;
+static std::string tostring(const T &t) {
+  std::ostringstream ss;
   ss << t;
   return ss.str();
 }
 
-string binop_string(BinOp op) {
+std::string binop_string(BinOp op) {
   switch (op) {
     case BinOp::LT:
       return ">";
@@ -39,46 +39,46 @@ string binop_string(BinOp op) {
   }
 }
 
-void Printer::writeLineNum() { printf("%4d ", line); };
+void Printer::writeLineNum() { printf("%4d ", line); }
 
 void Printer::indent() {
   for (int i = 0; i < depth; i++) {
-    cout << ". ";
+    std::cout << ". ";
   }
-};
+}
 
 template <typename... Args>
-void Printer::write(const string format, Args const &... args) {
+void Printer::write(const std::string format, Args const &... args) {
   if (afterNl) {
     indent();
   }
   printf(format.c_str(), args...);
   afterNl = false;
-};
+}
 
 template <typename... Args>
-void Printer::writeln(const string format, Args const &... args) {
+void Printer::writeln(const std::string format, Args const &... args) {
   if (afterNl) {
     indent();
   }
   printf(format.c_str(), args...);
-  cout << endl;
+  std::cout << std::endl;
   line++;
   writeLineNum();
   afterNl = true;
-};
+}
 
-void Printer::down(string s) {
+void Printer::down(std::string s) {
   writeln(s);
   depth++;
-};
+}
 
-void Printer::up(string s) {
+void Printer::up(std::string s) {
   depth--;
   writeln(s);
-};
+}
 
-void Printer::print(unique_ptr<File> &file) {
+void Printer::print(std::unique_ptr<File> &file) {
   writeLineNum();
   for (int i = 0; i < file->externs.size(); i++) {
     printIndex(i);
@@ -88,7 +88,7 @@ void Printer::print(unique_ptr<File> &file) {
     printIndex(i);
     printFnDecl(file->fnDecls.at(i).get());
   }
-};
+}
 
 void Printer::printIndex(int idx) { write("[%d] ", idx); }
 
@@ -97,7 +97,7 @@ void Printer::printExtern(Extern *ext) {
   down("Extern {");
   { printProto(ext->proto.get()); }
   up("}");
-};
+}
 
 void Printer::printFnDecl(FnDecl *fn) {
   checkNull(fn);
@@ -132,7 +132,7 @@ void Printer::printFnArg(FnArg *arg) {
     printIdent(arg->ty.get());
   }
   up("}");
-};
+}
 
 void Printer::printBlock(Block *block) {
   down("Block {");
@@ -207,7 +207,7 @@ void Printer::printStmt(Stmt *stmt) {
       printBlock((Block *)stmt);
       break;
     default:
-      cout << "unimplemented" << endl;
+      std::cout << "unimplemented" << std::endl;
       exit(1);
   }
 }
@@ -255,13 +255,13 @@ void Printer::printExpr(Expr *expr) {
       down("Unary {");
       {
         auto unary = (UnaryExpr *)expr;
-        string op = *unary->unOp == UnOp::NEG ? "-" : "!";
+        std::string op = *unary->unOp == UnOp::NEG ? "-" : "!";
         writeln("op: %s", op.c_str());
         printExpr(unary->expr.get());
       }
       up("}");
       break;
-  };
+  }
 }
 
 void Printer::printLit(Lit *lit) {
@@ -271,7 +271,7 @@ void Printer::printLit(Lit *lit) {
       down("LitInt {");
       {
         auto l = (LitInt *)lit;
-        string s = tostring(l->ival);
+        std::string s = tostring(l->ival);
         writeln("num: " + s);
       }
       up("}");
@@ -280,7 +280,7 @@ void Printer::printLit(Lit *lit) {
       down("LitBool {");
       {
         auto l = (LitBool *)lit;
-        string s = (l->bval ? "true" : "false");
+        std::string s = (l->bval ? "true" : "false");
         writeln("literal: " + s);
       }
       up("}");
@@ -289,7 +289,7 @@ void Printer::printLit(Lit *lit) {
       down("LitChar {");
       {
         auto l = (LitChar *)lit;
-        string s{l->cval};
+        std::string s{l->cval};
         writeln("literal: '" + s + "'");
       }
       up("}");
@@ -304,3 +304,5 @@ void Printer::printLit(Lit *lit) {
       break;
   }
 }
+
+}  // namespace felis

@@ -1,2 +1,2 @@
-file(GLOB SRCS **/*.cpp **/*.hpp)
+file(GLOB SRCS **/*.cc **/*.h)
 add_library(felis STATIC ${SRCS})

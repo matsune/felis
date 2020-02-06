@@ -1,22 +1,24 @@
-#ifndef TOKEN_HPP
-#define TOKEN_HPP
+#ifndef FELIS_SYNTAX_TOKEN_H_
+#define FELIS_SYNTAX_TOKEN_H_
 
 #include <string>
-#include "rune.hpp"
+#include "syntax/rune.h"
 
-using namespace std;
+namespace felis {
 
 class Pos {
  public:
   unsigned int line, column;
 
-  Pos(int line = 1, int column = 1) : line(line), column(column){};
+  Pos(int line = 1, int column = 1) : line(line), column(column) {}
 
   void lines(int ln = 1) {
     line += ln;
     column = 1;
   }
   void columns(int col = 1) { column += col; }
+
+ private:
 };
 
 class Token {
@@ -78,7 +80,7 @@ class Token {
   bool ws;
   Pos pos;
 
-  string sval;
+  std::string sval;
   uint64_t ival;
   rune cval;
   double fval;
@@ -94,16 +96,20 @@ class Token {
     cval = rune(0);
     fval = 0;
     bval = false;
-  };
+  }
 
   bool isIdent() { return kind == Kind::IDENT; }
-  bool isLit() { return Kind::LIT_INT <= kind && kind <= Kind::LIT_STR; };
+  bool isLit() { return Kind::LIT_INT <= kind && kind <= Kind::LIT_STR; }
 
   void debug();
+
+ private:
 };
 
 using TokenKind = Token::Kind;
 
-string to_string(TokenKind kind);
+std::string to_string(TokenKind kind);
 
-#endif
+}  // namespace felis
+
+#endif  // FELIS_SYNTAX_TOKEN_H_

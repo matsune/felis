@@ -1,6 +1,8 @@
-#include "token.hpp"
+#include "syntax/token.h"
 
-string to_string(TokenKind kind) {
+namespace felis {
+
+std::string to_string(TokenKind kind) {
   switch (kind) {
     case TokenKind::END:
       return "END";
@@ -100,4 +102,6 @@ void Token::debug() {
     printf("\tsval: %s\n", sval.c_str());
   }
   printf("}\n");
-};
+}
+
+}  // namespace felis

@@ -1,25 +1,27 @@
 #include "gtest/gtest.h"
-#include "syntax/syntax.hpp"
+#include "syntax/syntax.h"
 
 #define NEXT(KIND)            \
   ASSERT_TRUE(lexer.next(t)); \
   ASSERT_EQ(t->kind, KIND);
 
+namespace felis {
+
 TEST(LexerTest, EmptyInput) {
-  stringstream in;
+  std::stringstream in;
   in << "";
   Lexer lexer(in);
-  auto t = make_unique<Token>();
+  auto t = std::make_unique<Token>();
   NEXT(TokenKind::END)
 }
 
 TEST(LexerTest, lex) {
-  stringstream in;
+  std::stringstream in;
   in << "abcあ 12_21 23.1 true false 'a' \"string\"";
   in << "fn let var ret ext if else ";
   in << "+ - / * % & | ^ << >> && || < <= > >= == != !(){}=;:,-> /* comment */";
   Lexer lexer(in);
-  auto t = make_unique<Token>();
+  auto t = std::make_unique<Token>();
 
   NEXT(TokenKind::IDENT)
   ASSERT_EQ(t->sval, "abcあ");
@@ -85,3 +87,4 @@ TEST(LexerTest, lex) {
   NEXT(TokenKind::END)
 }
 
+}  // namespace felis

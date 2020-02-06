@@ -1,4 +1,6 @@
-#include "lexer.hpp"
+#include "syntax/lexer.h"
+
+namespace felis {
 
 inline bool is_newline(uint32_t c) { return c == 0x0A || c == 0x0D; }
 inline bool is_space(uint32_t c) {
@@ -90,7 +92,7 @@ rune Lexer::scan() {
     r.scalar = x << 6 | y;
   }
   return r;
-};
+}
 
 rune Lexer::bump() {
   if (peek == '\n') {
@@ -101,9 +103,7 @@ rune Lexer::bump() {
   rune tmp = peek;
   peek = scan();
   return tmp;
-};
-
-rune Lexer::getPeek() { return peek; };
+}
 
 bool Lexer::bumpIf(uint32_t ch) {
   if (peek.scalar == ch) {
@@ -113,7 +113,7 @@ bool Lexer::bumpIf(uint32_t ch) {
   return false;
 }
 
-bool Lexer::bumpIf(function<bool(uint32_t)> f) {
+bool Lexer::bumpIf(std::function<bool(uint32_t)> f) {
   if (f(peek.scalar)) {
     bump();
     return true;
@@ -121,7 +121,7 @@ bool Lexer::bumpIf(function<bool(uint32_t)> f) {
   return false;
 }
 
-bool Lexer::next(unique_ptr<Token> &t) {
+bool Lexer::next(std::unique_ptr<Token> &t) {
   t->reset();
 
   while (true) {
@@ -236,12 +236,12 @@ bool Lexer::next(unique_ptr<Token> &t) {
     }
     return true;
   }
-};
+}
 
-bool Lexer::eat_ident(unique_ptr<Token> &t) {
+bool Lexer::eat_ident(std::unique_ptr<Token> &t) {
   char bytes[4] = {0};
   int len = bump().encode_utf8(bytes);
-  string name(bytes, len);
+  std::string name(bytes, len);
   while (is_ident_body(peek.scalar)) {
     len = bump().encode_utf8(bytes);
     name.append(bytes, len);
@@ -270,7 +270,7 @@ bool Lexer::eat_ident(unique_ptr<Token> &t) {
   return true;
 }
 
-bool Lexer::read_digits(string &s, bool f(uint32_t)) {
+bool Lexer::read_digits(std::string &s, bool f(uint32_t)) {
   bool hasDigits(false);
   while (true) {
     if (f(peek.scalar)) {
@@ -288,11 +288,11 @@ bool Lexer::read_digits(string &s, bool f(uint32_t)) {
   return true;
 }
 
-bool Lexer::eat_num(unique_ptr<Token> &t) {
+bool Lexer::eat_num(std::unique_ptr<Token> &t) {
   t->kind = TokenKind::LIT_INT;
 
   auto first = bump();
-  string s("");
+  std::string s("");
   s.push_back(first.scalar);
   int base(10);
   if (first == '0') {
@@ -393,7 +393,7 @@ bool Lexer::eat_char(rune &cval) {
   }
   bump();
   return true;
-};
+}
 
 bool Lexer::escape(char &c) {
   if (bumpIf('\'')) {
@@ -465,7 +465,7 @@ bool Lexer::escape(char &c) {
   return true;
 }
 
-bool Lexer::eat_string(string &sval) {
+bool Lexer::eat_string(std::string &sval) {
   bool terminated(false);
   int len;
   char dst[4];
@@ -493,13 +493,13 @@ bool Lexer::eat_string(string &sval) {
     return error("unterminated string\n");
   }
   return true;
-};
+}
 
 void Lexer::eatLineComment() {
   while (peek.scalar != 0 && !is_newline(peek.scalar)) {
     bump();
   }
-};
+}
 
 bool Lexer::eatBlockComment(bool &hasNl) {
   int depth(1);
@@ -528,11 +528,13 @@ bool Lexer::eatBlockComment(bool &hasNl) {
     return error("unterminated block comment\n");
   }
   return true;
-};
+}
 
 template <typename... Args>
 bool Lexer::error(const char *format, Args const &... args) {
   fprintf(stderr, "%s:%d:%d: ", filename.c_str(), pos.line, pos.column);
   fprintf(stderr, format, args...);
   return false;
-};
+}
+
+}  // namespace felis
