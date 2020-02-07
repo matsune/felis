@@ -1,13 +1,9 @@
 #include "syntax/printer.h"
 #include <sstream>
 
-#define checkNull(e) \
-  if (!e) {          \
-    writeln("null"); \
-    return;          \
-  }
-
 namespace felis {
+
+namespace {
 
 template <typename T>
 static std::string tostring(const T &t) {
@@ -39,172 +35,203 @@ std::string binop_string(BinOp op) {
   }
 }
 
-void Printer::writeLineNum() { printf("%4d ", line); }
+}  // namespace
 
-void Printer::indent() {
-  for (int i = 0; i < depth; i++) {
+void Printer::Print(const std::unique_ptr<File> &file) {
+  WriteLineNum();
+  for (int i = 0; i < file->externs.size(); i++) {
+    PrintIndex(i);
+    PrintExtern(file->externs.at(i).get());
+  }
+  for (int i = 0; i < file->fnDecls.size(); i++) {
+    PrintIndex(i);
+    PrintFnDecl(file->fnDecls.at(i).get());
+  }
+}
+
+void Printer::WriteLineNum() { printf("%4d ", line_); }
+
+void Printer::Indent() {
+  for (int i = 0; i < depth_; i++) {
     std::cout << ". ";
   }
 }
 
 template <typename... Args>
-void Printer::write(const std::string format, Args const &... args) {
-  if (afterNl) {
-    indent();
+void Printer::Write(const std::string format, Args const &... args) {
+  if (after_nl_) {
+    Indent();
   }
   printf(format.c_str(), args...);
-  afterNl = false;
+  after_nl_ = false;
 }
 
 template <typename... Args>
-void Printer::writeln(const std::string format, Args const &... args) {
-  if (afterNl) {
-    indent();
+void Printer::Writeln(const std::string format, Args const &... args) {
+  if (after_nl_) {
+    Indent();
   }
   printf(format.c_str(), args...);
   std::cout << std::endl;
-  line++;
-  writeLineNum();
-  afterNl = true;
+  line_++;
+  WriteLineNum();
+  after_nl_ = true;
 }
 
-void Printer::down(std::string s) {
-  writeln(s);
-  depth++;
+void Printer::Down(std::string s) {
+  Writeln(s);
+  depth_++;
 }
 
-void Printer::up(std::string s) {
-  depth--;
-  writeln(s);
+void Printer::Up(std::string s) {
+  depth_--;
+  Writeln(s);
 }
 
-void Printer::print(std::unique_ptr<File> &file) {
-  writeLineNum();
-  for (int i = 0; i < file->externs.size(); i++) {
-    printIndex(i);
-    printExtern(file->externs.at(i).get());
+void Printer::PrintIndex(int idx) { Write("[%d] ", idx); }
+
+void Printer::PrintExtern(Extern *ext) {
+  if (!ext) {
+    Writeln("null");
+    return;
   }
-  for (int i = 0; i < file->fnDecls.size(); i++) {
-    printIndex(i);
-    printFnDecl(file->fnDecls.at(i).get());
+
+  Down("Extern {");
+  { PrintProto(ext->proto.get()); }
+  Up("}");
+}
+
+void Printer::PrintFnDecl(FnDecl *fn) {
+  if (!fn) {
+    Writeln("null");
+    return;
   }
-}
 
-void Printer::printIndex(int idx) { write("[%d] ", idx); }
-
-void Printer::printExtern(Extern *ext) {
-  checkNull(ext);
-  down("Extern {");
-  { printProto(ext->proto.get()); }
-  up("}");
-}
-
-void Printer::printFnDecl(FnDecl *fn) {
-  checkNull(fn);
-  down("FnDecl {");
+  Down("FnDecl {");
   {
-    printProto(fn->proto.get());
-    printBlock(fn->block.get());
+    PrintProto(fn->proto.get());
+    PrintBlock(fn->block.get());
   }
-  up("}");
+  Up("}");
 }
 
-void Printer::printProto(FnProto *proto) {
-  checkNull(proto);
-  printIdent(proto->name.get());
-  down("FnArgs [");
+void Printer::PrintProto(FnProto *proto) {
+  if (!proto) {
+    Writeln("null");
+    return;
+  }
+
+  PrintIdent(proto->name.get());
+  Down("FnArgs [");
   {
     for (int i = 0; i < proto->args.size(); i++) {
-      printIndex(i);
-      printFnArg(proto->args[i].get());
+      PrintIndex(i);
+      PrintFnArg(proto->args[i].get());
     }
   }
-  up("]");
+  Up("]");
 }
 
-void Printer::printFnArg(FnArg *arg) {
-  checkNull(arg);
-  down("FnArg {");
-  {
-    write("Name: ");
-    printIdent(arg->name.get());
-    write("Ty: ");
-    printIdent(arg->ty.get());
+void Printer::PrintFnArg(FnArg *arg) {
+  if (!arg) {
+    Writeln("null");
+    return;
   }
-  up("}");
+
+  Down("FnArg {");
+  {
+    Write("Name: ");
+    PrintIdent(arg->name.get());
+    Write("Ty: ");
+    PrintIdent(arg->ty.get());
+  }
+  Up("}");
 }
 
-void Printer::printBlock(Block *block) {
-  down("Block {");
+void Printer::PrintBlock(Block *block) {
+  if (!block) {
+    Writeln("null");
+    return;
+  }
+
+  Down("Block {");
   {
     for (int i = 0; i < block->stmts.size(); i++) {
-      printIndex(i);
+      PrintIndex(i);
       auto &stmt = block->stmts.at(i);
-      printStmt(stmt.get());
+      PrintStmt(stmt.get());
     }
   }
-  up("}");
+  Up("}");
 }
 
-void Printer::printIdent(Ident *ident) {
-  checkNull(ident);
-  down("Ident {");
-  { writeln("Name: " + ident->sval); }
-  up("}");
+void Printer::PrintIdent(Ident *ident) {
+  if (!ident) {
+    Writeln("null");
+    return;
+  }
+
+  Down("Ident {");
+  { Writeln("Name: " + ident->sval); }
+  Up("}");
 }
 
-void Printer::printStmt(Stmt *stmt) {
-  checkNull(stmt);
-  switch (stmt->stmtKind()) {
+void Printer::PrintStmt(Stmt *stmt) {
+  if (!stmt) {
+    Writeln("null");
+    return;
+  }
+
+  switch (stmt->StmtKind()) {
     case Stmt::Kind::EXPR:
-      printExpr((Expr *)stmt);
+      PrintExpr(reinterpret_cast<Expr *>(stmt));
       break;
     case Stmt::Kind::RET:
-      down("Ret {");
+      Down("Ret {");
       {
-        auto ret = (RetStmt *)stmt;
-        write("Expr: ");
-        printExpr(ret->expr.get());
+        auto ret = reinterpret_cast<RetStmt *>(stmt);
+        Write("Expr: ");
+        PrintExpr(ret->expr.get());
       }
-      up("}");
+      Up("}");
       break;
     case Stmt::Kind::VAR_DECL:
-      down("VarDecl {");
+      Down("VarDecl {");
       {
-        auto varDecl = (VarDeclStmt *)stmt;
-        writeln("Decl: %s", varDecl->isLet ? "let" : "var");
-        write("Name: ");
-        printIdent(varDecl->name.get());
-        write("Expr: ");
-        printExpr(varDecl->expr.get());
+        auto varDecl = reinterpret_cast<VarDeclStmt *>(stmt);
+        Writeln("Decl: %s", varDecl->isLet ? "let" : "var");
+        Write("Name: ");
+        PrintIdent(varDecl->name.get());
+        Write("Expr: ");
+        PrintExpr(varDecl->expr.get());
       }
-      up("}");
+      Up("}");
       break;
     case Stmt::Kind::ASSIGN:
-      down("Assign {");
+      Down("Assign {");
       {
-        auto assign = (AssignStmt *)stmt;
-        write("Name: ");
-        printIdent(assign->name.get());
-        write("Expr: ");
-        printExpr(assign->expr.get());
+        auto assign = reinterpret_cast<AssignStmt *>(stmt);
+        Write("Name: ");
+        PrintIdent(assign->name.get());
+        Write("Expr: ");
+        PrintExpr(assign->expr.get());
       }
-      up("}");
+      Up("}");
       break;
     case Stmt::Kind::IF:
-      down("If {");
+      Down("If {");
       {
-        auto ifStmt = (IfStmt *)stmt;
-        write("Cond: ");
-        printExpr(ifStmt->cond.get());
-        printBlock(ifStmt->block.get());
-        write("Else: ");
-        printStmt(ifStmt->els.get());
+        auto ifStmt = reinterpret_cast<IfStmt *>(stmt);
+        Write("Cond: ");
+        PrintExpr(ifStmt->cond.get());
+        PrintBlock(ifStmt->block.get());
+        Write("Else: ");
+        PrintStmt(ifStmt->els.get());
       }
-      up("}");
+      Up("}");
       break;
     case Stmt::Kind::BLOCK:
-      printBlock((Block *)stmt);
+      PrintBlock(reinterpret_cast<Block *>(stmt));
       break;
     default:
       std::cout << "unimplemented" << std::endl;
@@ -212,95 +239,103 @@ void Printer::printStmt(Stmt *stmt) {
   }
 }
 
-void Printer::printExpr(Expr *expr) {
-  checkNull(expr);
-  switch (expr->exprKind()) {
+void Printer::PrintExpr(Expr *expr) {
+  if (!expr) {
+    Writeln("null");
+    return;
+  }
+
+  switch (expr->ExprKind()) {
     case Expr::Kind::IDENT:
-      printIdent((Ident *)expr);
+      PrintIdent(reinterpret_cast<Ident *>(expr));
       break;
     case Expr::Kind::LIT:
-      printLit((Lit *)expr);
+      PrintLit(reinterpret_cast<Lit *>(expr));
       break;
     case Expr::Kind::BINARY:
-      down("BinaryExpr {");
+      Down("BinaryExpr {");
       {
-        auto binary = (BinaryExpr *)expr;
-        write("Left: ");
-        printExpr(binary->lhs.get());
-        writeln("Op: " + binop_string(binary->op));
-        write("Right: ");
-        printExpr(binary->rhs.get());
+        auto binary = reinterpret_cast<BinaryExpr *>(expr);
+        Write("Left: ");
+        PrintExpr(binary->lhs.get());
+        Writeln("Op: " + binop_string(binary->op));
+        Write("Right: ");
+        PrintExpr(binary->rhs.get());
       }
-      up("}");
+      Up("}");
       break;
     case Expr::Kind::CALL:
-      down("Call {");
+      Down("Call {");
       {
-        auto call = (CallExpr *)expr;
-        write("Ident: ");
-        printIdent(call->ident.get());
-        down("Args [");
+        auto call = reinterpret_cast<CallExpr *>(expr);
+        Write("Ident: ");
+        PrintIdent(call->ident.get());
+        Down("Args [");
         {
           for (int i = 0; i < call->args.size(); i++) {
-            printIndex(i);
+            PrintIndex(i);
             Expr *arg = call->args.at(i).get();
-            printExpr(arg);
+            PrintExpr(arg);
           }
         }
-        up("]");
+        Up("]");
       }
-      up("}");
+      Up("}");
       break;
     case Expr::Kind::UNARY:
-      down("Unary {");
+      Down("Unary {");
       {
-        auto unary = (UnaryExpr *)expr;
+        auto unary = reinterpret_cast<UnaryExpr *>(expr);
         std::string op = *unary->unOp == UnOp::NEG ? "-" : "!";
-        writeln("op: %s", op.c_str());
-        printExpr(unary->expr.get());
+        Writeln("op: %s", op.c_str());
+        PrintExpr(unary->expr.get());
       }
-      up("}");
+      Up("}");
       break;
   }
 }
 
-void Printer::printLit(Lit *lit) {
-  checkNull(lit);
-  switch (lit->litKind()) {
+void Printer::PrintLit(Lit *lit) {
+  if (!lit) {
+    Writeln("null");
+    return;
+  }
+
+  switch (lit->LitKind()) {
     case Lit::Kind::INT:
-      down("LitInt {");
+      Down("LitInt {");
       {
-        auto l = (LitInt *)lit;
+        auto l = reinterpret_cast<LitInt *>(lit);
         std::string s = tostring(l->ival);
-        writeln("num: " + s);
+        Writeln("num: " + s);
       }
-      up("}");
+      Up("}");
       break;
     case Lit::Kind::BOOL:
-      down("LitBool {");
+      Down("LitBool {");
       {
-        auto l = (LitBool *)lit;
+        auto l = reinterpret_cast<LitBool *>(lit);
         std::string s = (l->bval ? "true" : "false");
-        writeln("literal: " + s);
+        Writeln("literal: " + s);
       }
-      up("}");
+      Up("}");
       break;
     case Lit::Kind::CHAR:
-      down("LitChar {");
+      Down("LitChar {");
       {
-        auto l = (LitChar *)lit;
+        auto l = reinterpret_cast<LitChar *>(lit);
         std::string s{l->cval};
-        writeln("literal: '" + s + "'");
+        Writeln("literal: '" + s + "'");
       }
-      up("}");
+      Up("}");
       break;
     case Lit::Kind::STR:
-      down("LitSTR {");
+      Down("LitSTR {");
       {
-        auto l = (LitStr *)lit;
-        writeln("literal: \"" + l->sval + "\"");
+        auto l = reinterpret_cast<LitStr *>(lit);
+        Writeln("literal: \"" + l->sval + "\"");
       }
-      up("}");
+      Up("}");
       break;
   }
 }

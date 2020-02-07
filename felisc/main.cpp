@@ -24,25 +24,22 @@ int main(int argc, char *argv[]) {
   bool isEnd(false);
   felis::Lexer *lexer = new felis::Lexer(in, filename);
   while (!isEnd) {
-    auto t = std::make_unique<felis::Token>();
-    if (!lexer->next(t)) {
+    auto t = lexer->Next();
+    if (lexer->HasError()) {
+      std::cerr << lexer->Error() << std::endl;
       break;
     }
     isEnd = t->kind == felis::TokenKind::END;
-    parser.push_token(move(t));
+    parser.PushToken(move(t));
   }
   delete lexer;
   in.close();
   if (!isEnd) return 1;
 
-  try {
-    auto file = parser.parse();
-    if (file) {
-      felis::Printer printer;
-      printer.print(file);
-    }
-  } catch (const felis::FatalError &e) {
-    std::cerr << e.msg << std::endl;
+  auto file = parser.Parse();
+  if (file) {
+    felis::Printer printer;
+    printer.Print(file);
   }
 }
 

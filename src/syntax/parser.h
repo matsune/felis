@@ -4,66 +4,42 @@
 #include <deque>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 #include "syntax/ast.h"
 #include "syntax/token.h"
 
-#define UNIMPLEMENTED(msg) throw FatalError("unimplemented " #msg);
-#define UNREACHABLE(msg) throw FatalError("unreachable " #msg);
-
 namespace felis {
-
-class FatalError {
- public:
-  std::string msg;
-
-  FatalError(std::string msg) : msg(msg) {}
-
- private:
-};
 
 class Parser {
  public:
-  Parser(std::string filename) : filename(filename) {}
+  explicit Parser(std::string filename) : filename_(filename) {}
 
-  void push_token(std::unique_ptr<Token> &&token) {
-    tokens.push_back(move(token));
+  void PushToken(std::unique_ptr<Token> &&token) {
+    tokens_.push_back(std::move(token));
   }
 
-  std::unique_ptr<File> parse();
+  std::unique_ptr<File> Parse();
 
  private:
-  std::string filename = "";
+  std::string filename_ = "";
+  std::deque<std::unique_ptr<Token>> tokens_;
 
-  std::deque<std::unique_ptr<Token>> tokens;
-
-  std::unique_ptr<Token> &peek();
-
-  std::unique_ptr<Token> &peek2();
-
-  std::unique_ptr<Token> bump();
-
-  std::unique_ptr<Extern> parseExtern();
-
-  std::unique_ptr<FnDecl> parseFnDecl();
-
-  std::unique_ptr<FnProto> parseFnProto();
-
-  bool parseFnArgs(std::vector<std::unique_ptr<FnArg>> &args);
-
-  std::unique_ptr<FnArg> parseFnArg();
-
-  std::unique_ptr<Expr> parseExpr(uint8_t prec = 0);
-
-  std::unique_ptr<Expr> parsePrimary();
-
-  std::unique_ptr<Stmt> parseStmt();
-
-  std::unique_ptr<IfStmt> parseIfStmt();
-
-  std::unique_ptr<Block> parseBlock();
-
+  std::unique_ptr<Token> &Peek();
+  std::unique_ptr<Token> &Peek2();
+  std::unique_ptr<Token> Bump();
+  std::unique_ptr<Extern> ParseExtern();
+  std::unique_ptr<FnDecl> ParseFnDecl();
+  std::unique_ptr<FnProto> ParseFnProto();
+  bool ParseFnArgs(std::vector<std::unique_ptr<FnArg>> &args);
+  std::unique_ptr<FnArg> ParseFnArg();
+  std::unique_ptr<Expr> ParseExpr(uint8_t prec = 0);
+  std::unique_ptr<Expr> ParsePrimary();
+  std::unique_ptr<Stmt> ParseStmt();
+  std::unique_ptr<IfStmt> ParseIfStmt();
+  std::unique_ptr<Block> ParseBlock();
   template <typename... Args>
-  void error(const char *format, Args const &... args);
+  void Error(const char *format, Args const &... args);
 };
 
 }  // namespace felis

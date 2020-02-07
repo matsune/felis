@@ -2,6 +2,12 @@
 
 namespace felis {
 
+namespace {
+
+inline const char *const bool_str(bool b) { return b ? "true" : "false"; }
+
+}  // namespace
+
 std::string to_string(TokenKind kind) {
   switch (kind) {
     case TokenKind::END:
@@ -78,8 +84,6 @@ std::string to_string(TokenKind kind) {
       return "unknown";
   }
 }
-
-#define bool_str(b) (b ? "true" : "false")
 
 void Token::debug() {
   printf("Token {\n");

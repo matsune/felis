@@ -21,165 +21,161 @@ enum BinOp {
   MOD = 23
 };
 
-class Node {
- public:
+struct Node {
   enum Kind { EXTERN, FN_DECL, FN_PROTO, FN_ARG, STMT };
-  virtual Kind nodeKind() = 0;
+  virtual Kind NodeKind() = 0;
 };
 
-class Stmt : public Node {
- public:
+struct Stmt : public Node {
+  Node::Kind NodeKind() { return Node::Kind::STMT; }
+
   enum Kind { EXPR, RET, VAR_DECL, ASSIGN, IF, BLOCK };
-  virtual Kind stmtKind() = 0;
-  Node::Kind nodeKind() { return Node::Kind::STMT; }
+
+  virtual Kind StmtKind() = 0;
 };
 
-class Block : public Stmt {
- public:
-  Kind stmtKind() { return Stmt::Kind::BLOCK; }
+struct Block : public Stmt {
+  Kind StmtKind() { return Stmt::Kind::BLOCK; }
+
   std::vector<std::unique_ptr<Stmt>> stmts;
 };
 
-class Expr : public Stmt {
- public:
+struct Expr : public Stmt {
+  Stmt::Kind StmtKind() { return Stmt::Kind::EXPR; }
+
   enum Kind { IDENT, BINARY, LIT, CALL, UNARY };
-  virtual Kind exprKind() = 0;
-  Stmt::Kind stmtKind() { return Stmt::Kind::EXPR; }
+
+  virtual Kind ExprKind() = 0;
 };
 
-class Ident : public Expr {
- public:
-  Expr::Kind exprKind() { return Expr::Kind::IDENT; }
+struct Ident : public Expr {
+  Expr::Kind ExprKind() { return Expr::Kind::IDENT; }
 
   std::string sval;
 
-  Ident(std::string sval = "") : sval(sval) {}
+  explicit Ident(std::string sval = "") : sval(sval) {}
 };
 
-class Lit : public Expr {
- public:
+struct Lit : public Expr {
+  Expr::Kind ExprKind() { return Expr::Kind::LIT; }
+
   enum Kind { INT, BOOL, CHAR, STR };
-  virtual Kind litKind() = 0;
-  Expr::Kind exprKind() { return Expr::Kind::LIT; }
+
+  virtual Kind LitKind() = 0;
 };
 
-class LitInt : public Lit {
- public:
-  Kind litKind() { return Kind::INT; }
+struct LitInt : public Lit {
+  Kind LitKind() { return Kind::INT; }
 
   uint64_t ival;
 
-  LitInt(uint64_t ival = 0) : ival(ival) {}
+  explicit LitInt(uint64_t ival = 0) : ival(ival) {}
 };
 
-class LitBool : public Lit {
- public:
-  Kind litKind() { return Kind::BOOL; }
+struct LitBool : public Lit {
+  Kind LitKind() { return Kind::BOOL; }
 
   bool bval;
 
-  LitBool(bool bval = false) : bval(bval) {}
+  explicit LitBool(bool bval = false) : bval(bval) {}
 };
 
-class LitStr : public Lit {
- public:
-  Kind litKind() { return Kind::STR; }
+struct LitStr : public Lit {
+  Kind LitKind() { return Kind::STR; }
 
   std::string sval;
 
-  LitStr(std::string sval) : sval(sval) {}
+  explicit LitStr(std::string sval) : sval(sval) {}
 };
 
-class LitChar : public Lit {
- public:
-  Kind litKind() { return Kind::CHAR; }
+struct LitChar : public Lit {
+  Kind LitKind() { return Kind::CHAR; }
 
   char cval;
 
-  LitChar(char cval = 0) : cval(cval) {}
+  explicit LitChar(char cval = 0) : cval(cval) {}
 };
 
 enum UnOp { NEG, NOT };
 
-class BinaryExpr : public Expr {
- public:
-  Expr::Kind exprKind() { return Expr::Kind::BINARY; }
+struct BinaryExpr : public Expr {
+  Expr::Kind ExprKind() { return Expr::Kind::BINARY; }
 
   std::unique_ptr<Expr> lhs;
   std::unique_ptr<Expr> rhs;
   BinOp op;
 
   BinaryExpr(std::unique_ptr<Expr> lhs, BinOp op, std::unique_ptr<Expr> rhs)
-      : lhs(move(lhs)), rhs(move(rhs)), op(op) {}
+      : lhs(std::move(lhs)), rhs(std::move(rhs)), op(op) {}
 };
 
-class CallExpr : public Expr {
- public:
-  Expr::Kind exprKind() { return Expr::Kind::CALL; }
+struct CallExpr : public Expr {
+  Expr::Kind ExprKind() { return Expr::Kind::CALL; }
 
   std::unique_ptr<Ident> ident;
   std::vector<std::unique_ptr<Expr>> args;
+
   CallExpr(std::unique_ptr<Ident> ident,
            std::vector<std::unique_ptr<Expr>> args)
-      : ident(move(ident)), args(move(args)) {}
+      : ident(std::move(ident)), args(std::move(args)) {}
 };
 
-class UnaryExpr : public Expr {
- public:
-  Expr::Kind exprKind() { return Expr::Kind::UNARY; }
+struct UnaryExpr : public Expr {
+  Expr::Kind ExprKind() { return Expr::Kind::UNARY; }
 
   std::unique_ptr<UnOp> unOp;
   std::unique_ptr<Expr> expr;
+
   UnaryExpr(std::unique_ptr<UnOp> unOp, std::unique_ptr<Expr> expr)
-      : unOp(move(unOp)), expr(move(expr)) {}
+      : unOp(std::move(unOp)), expr(std::move(expr)) {}
 };
 
-class RetStmt : public Stmt {
- public:
-  Kind stmtKind() { return Stmt::Kind::RET; }
+struct RetStmt : public Stmt {
+  Kind StmtKind() { return Stmt::Kind::RET; }
+
   std::unique_ptr<Expr> expr;
 
-  RetStmt(std::unique_ptr<Expr> expr = std::unique_ptr<Expr>())
-      : expr(move(expr)) {}
+  explicit RetStmt(std::unique_ptr<Expr> expr = std::unique_ptr<Expr>())
+      : expr(std::move(expr)) {}
 };
 
-class VarDeclStmt : public Stmt {
- public:
-  Kind stmtKind() { return Stmt::Kind::VAR_DECL; }
-  bool isLet = false;
+struct VarDeclStmt : public Stmt {
+  Kind StmtKind() { return Stmt::Kind::VAR_DECL; }
+
+  bool isLet;
   std::unique_ptr<Ident> name;
   std::unique_ptr<Expr> expr;
 
   VarDeclStmt(bool isLet, std::unique_ptr<Ident> name,
               std::unique_ptr<Expr> expr)
-      : isLet(isLet), name(move(name)), expr(move(expr)) {}
+      : isLet(isLet), name(std::move(name)), expr(std::move(expr)) {}
 };
 
-class AssignStmt : public Stmt {
- public:
-  Kind stmtKind() { return Stmt::Kind::ASSIGN; }
+struct AssignStmt : public Stmt {
+  Kind StmtKind() { return Stmt::Kind::ASSIGN; }
+
   std::unique_ptr<Ident> name;
   std::unique_ptr<Expr> expr;
 
   AssignStmt(std::unique_ptr<Ident> name, std::unique_ptr<Expr> expr)
-      : name(move(name)), expr(move(expr)) {}
+      : name(std::move(name)), expr(std::move(expr)) {}
 };
 
-class IfStmt : public Stmt {
- public:
-  Kind stmtKind() { return Stmt::Kind::IF; }
+struct IfStmt : public Stmt {
+  Kind StmtKind() { return Stmt::Kind::IF; }
+
   std::unique_ptr<Expr> cond;
   std::unique_ptr<Block> block;
   std::unique_ptr<Stmt> els;  // block or if
 
   IfStmt(std::unique_ptr<Expr> cond, std::unique_ptr<Block> block,
          std::unique_ptr<Stmt> els = std::unique_ptr<Stmt>())
-      : cond(move(cond)), block(move(block)), els(move(els)) {}
+      : cond(std::move(cond)), block(std::move(block)), els(std::move(els)) {}
 };
 
-class FnArg : public Node {
- public:
-  Kind nodeKind() { return Kind::FN_ARG; }
+struct FnArg : public Node {
+  Kind NodeKind() { return Kind::FN_ARG; }
+
   std::unique_ptr<Ident> ty;
   std::unique_ptr<Ident> name;
 
@@ -187,12 +183,12 @@ class FnArg : public Node {
 
   FnArg(std::unique_ptr<Ident> ty,
         std::unique_ptr<Ident> name = std::unique_ptr<Ident>())
-      : ty(move(ty)), name(move(name)) {}
+      : ty(std::move(ty)), name(std::move(name)) {}
 };
 
-class FnProto : public Node {
- public:
-  Kind nodeKind() { return Kind::FN_PROTO; }
+struct FnProto : public Node {
+  Kind NodeKind() { return Kind::FN_PROTO; }
+
   std::unique_ptr<Ident> name;
   std::vector<std::unique_ptr<FnArg>> args;
   std::unique_ptr<Ident> ret;
@@ -200,29 +196,27 @@ class FnProto : public Node {
   FnProto(std::unique_ptr<Ident> name,
           std::vector<std::unique_ptr<FnArg>> &&args,
           std::unique_ptr<Ident> ret = std::unique_ptr<Ident>())
-      : name(move(name)), args(move(args)), ret(move(ret)) {}
+      : name(std::move(name)), args(std::move(args)), ret(std::move(ret)) {}
 };
 
-class FnDecl : public Node {
- public:
-  Kind nodeKind() { return Kind::FN_DECL; }
+struct FnDecl : public Node {
+  Kind NodeKind() { return Kind::FN_DECL; }
+
   std::unique_ptr<FnProto> proto;
   std::unique_ptr<Block> block;
 
   FnDecl(std::unique_ptr<FnProto> proto, std::unique_ptr<Block> block)
-      : proto(move(proto)), block(move(block)) {}
+      : proto(std::move(proto)), block(std::move(block)) {}
 };
 
-class Extern : public Node {
- public:
-  Kind nodeKind() { return Kind::EXTERN; }
+struct Extern : public Node {
+  Kind NodeKind() { return Kind::EXTERN; }
   std::unique_ptr<FnProto> proto;
 
-  Extern(std::unique_ptr<FnProto> proto) : proto(move(proto)) {}
+  explicit Extern(std::unique_ptr<FnProto> proto) : proto(std::move(proto)) {}
 };
 
-class File {
- public:
+struct File {
   std::vector<std::unique_ptr<Extern>> externs;
   std::vector<std::unique_ptr<FnDecl>> fnDecls;
 };

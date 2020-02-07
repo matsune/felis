@@ -1,8 +1,9 @@
 #include "gtest/gtest.h"
 #include "syntax/syntax.h"
 
-#define NEXT(KIND)            \
-  ASSERT_TRUE(lexer.next(t)); \
+#define NEXT(KIND)                \
+  t = lexer.Next();               \
+  ASSERT_FALSE(lexer.HasError()); \
   ASSERT_EQ(t->kind, KIND);
 
 namespace felis {
@@ -21,7 +22,7 @@ TEST(LexerTest, lex) {
   in << "fn let var ret ext if else ";
   in << "+ - / * % & | ^ << >> && || < <= > >= == != !(){}=;:,-> /* comment */";
   Lexer lexer(in);
-  auto t = std::make_unique<Token>();
+  std::unique_ptr<Token> t;
 
   NEXT(TokenKind::IDENT)
   ASSERT_EQ(t->sval, "abcあ");

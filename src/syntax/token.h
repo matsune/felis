@@ -6,23 +6,19 @@
 
 namespace felis {
 
-class Pos {
- public:
+struct Pos {
   unsigned int line, column;
 
   Pos(int line = 1, int column = 1) : line(line), column(column) {}
 
-  void lines(int ln = 1) {
+  void Lines(int ln = 1) {
     line += ln;
     column = 1;
   }
-  void columns(int col = 1) { column += col; }
-
- private:
+  void Columns(int col = 1) { column += col; }
 };
 
-class Token {
- public:
+struct Token {
   enum Kind {
     END,  // '\0'
     IDENT,
@@ -74,11 +70,10 @@ class Token {
     ARROW,   // ->
   };
 
-  Kind kind = Kind::END;
-
-  bool nl;
-  bool ws;
+  Kind kind;
   Pos pos;
+  bool ws;
+  bool nl;
 
   std::string sval;
   uint64_t ival;
@@ -86,24 +81,18 @@ class Token {
   double fval;
   bool bval;
 
-  void reset() {
-    kind = Kind::END;
-    nl = false;
-    ws = false;
-
-    sval = "";
-    ival = 0;
-    cval = rune(0);
-    fval = 0;
-    bval = false;
-  }
-
-  bool isIdent() { return kind == Kind::IDENT; }
-  bool isLit() { return Kind::LIT_INT <= kind && kind <= Kind::LIT_STR; }
+  Token()
+      : kind(Kind::END),
+        pos(Pos()),
+        ws(false),
+        nl(false),
+        sval(""),
+        ival(0),
+        cval(rune(0)),
+        fval(0),
+        bval(false) {}
 
   void debug();
-
- private:
 };
 
 using TokenKind = Token::Kind;

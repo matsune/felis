@@ -10,30 +10,31 @@ namespace felis {
 
 class Printer {
  public:
-  void print(std::unique_ptr<File> &);
+  void Print(const std::unique_ptr<File> &);
 
  private:
-  uint16_t depth = 0;
-  uint32_t line = 1;
-  bool afterNl = false;
-  void writeLineNum();
-  void indent();
+  uint16_t depth_ = 0;
+  uint32_t line_ = 1;
+  bool after_nl_ = false;
+
+  void Indent();
+  void WriteLineNum();
   template <typename... Args>
-  void write(const std::string format, Args const &... args);
+  void Write(const std::string format, Args const &... args);
   template <typename... Args>
-  void writeln(const std::string format, Args const &... args);
-  void down(std::string);
-  void up(std::string);
-  void printIdent(Ident *ident);
-  void printStmt(Stmt *stmt);
-  void printExpr(Expr *expr);
-  void printLit(Lit *lit);
-  void printBlock(Block *block);
-  void printIndex(int idx);
-  void printExtern(Extern *);
-  void printProto(FnProto *);
-  void printFnArg(FnArg *);
-  void printFnDecl(FnDecl *fn);
+  void Writeln(const std::string format, Args const &... args);
+  void Down(std::string);
+  void Up(std::string);
+  void PrintIdent(Ident *ident);
+  void PrintStmt(Stmt *stmt);
+  void PrintExpr(Expr *expr);
+  void PrintLit(Lit *lit);
+  void PrintBlock(Block *block);
+  void PrintIndex(int idx);
+  void PrintExtern(Extern *);
+  void PrintProto(FnProto *);
+  void PrintFnArg(FnArg *);
+  void PrintFnDecl(FnDecl *fn);
 };
 
 }  // namespace felis

@@ -2,6 +2,8 @@
 
 namespace felis {
 
+namespace {
+
 const uint8_t TAG_CONT = 0b10000000;
 const uint8_t TAG_TWO_B = 0b11000000;
 const uint8_t TAG_THREE_B = 0b11100000;
@@ -9,6 +11,8 @@ const uint8_t TAG_FOUR_B = 0b11110000;
 const uint32_t MAX_ONE_B = 0x80;
 const uint32_t MAX_TWO_B = 0x800;
 const uint32_t MAX_THREE_B = 0x10000;
+
+}  // namespace
 
 int rune::len_utf8() {
   if (scalar < MAX_ONE_B) {

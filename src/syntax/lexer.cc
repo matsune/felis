@@ -1,6 +1,9 @@
 #include "syntax/lexer.h"
+#include "string/string.h"
 
 namespace felis {
+
+namespace {
 
 inline bool is_newline(uint32_t c) { return c == 0x0A || c == 0x0D; }
 inline bool is_space(uint32_t c) {
@@ -59,11 +62,13 @@ inline bool is_ident_body(uint32_t c) {
          (0xFE20 <= c && c <= 0xFE2F);
 }
 
-rune Lexer::scan() {
+}  // namespace
+
+rune Lexer::Scan() {
   rune r;
 
-  int16_t byte1 = in.get();
-  if (in.eof() || in.fail()) {
+  int16_t byte1 = in_.get();
+  if (in_.eof() || in_.fail()) {
     return r;
   }
   if (byte1 <= 0x7F) {
@@ -72,7 +77,7 @@ rune Lexer::scan() {
   } else if (byte1 >= 0xF0) {
     // 4 bytes
     uint8_t x = get_tail(byte1, 3);
-    uint8_t byte2 = in.get(), byte3 = in.get(), byte4 = in.get();
+    uint8_t byte2 = in_.get(), byte3 = in_.get(), byte4 = in_.get();
     uint8_t y = get_tail(byte2, 6);
     uint8_t z = get_tail(byte3, 6);
     uint8_t w = get_tail(byte4, 6);
@@ -80,170 +85,309 @@ rune Lexer::scan() {
   } else if (byte1 >= 0xE0) {
     // 3 bytes
     uint8_t x = get_tail(byte1, 4);
-    uint8_t byte2 = in.get(), byte3 = in.get();
+    uint8_t byte2 = in_.get(), byte3 = in_.get();
     uint8_t y = get_tail(byte2, 6);
     uint8_t z = get_tail(byte3, 6);
     r.scalar = x << 12 | y << 6 | z;
   } else {
     // 2 bytes
     uint8_t x = get_tail(byte1, 5);
-    uint8_t byte2 = in.get();
+    uint8_t byte2 = in_.get();
     uint8_t y = get_tail(byte2, 6);
     r.scalar = x << 6 | y;
   }
   return r;
 }
 
-rune Lexer::bump() {
-  if (peek == '\n') {
-    pos.lines();
+rune Lexer::Bump() {
+  if (peek_ == '\n') {
+    pos_.Lines();
   } else {
-    pos.columns();
+    pos_.Columns();
   }
-  rune tmp = peek;
-  peek = scan();
+  rune tmp = peek_;
+  peek_ = Scan();
   return tmp;
 }
 
-bool Lexer::bumpIf(uint32_t ch) {
-  if (peek.scalar == ch) {
-    bump();
+bool Lexer::BumpIf(uint32_t ch) {
+  if (peek_.scalar == ch) {
+    Bump();
     return true;
   }
   return false;
 }
 
-bool Lexer::bumpIf(std::function<bool(uint32_t)> f) {
-  if (f(peek.scalar)) {
-    bump();
+bool Lexer::BumpIf(std::function<bool(uint32_t)> f) {
+  if (f(peek_.scalar)) {
+    Bump();
     return true;
   }
   return false;
 }
 
-bool Lexer::next(std::unique_ptr<Token> &t) {
-  t->reset();
+bool Lexer::Escape(char *c) {
+  if (BumpIf('\'')) {
+    *c = '\'';
+  } else if (BumpIf('"')) {
+    *c = '"';
+  } else if (BumpIf('\\')) {
+    *c = '\\';
+  } else if (BumpIf('0')) {
+    *c = '\0';
+  } else if (BumpIf('a')) {
+    *c = '\a';
+  } else if (BumpIf('b')) {
+    *c = '\b';
+  } else if (BumpIf('f')) {
+    *c = '\f';
+  } else if (BumpIf('n')) {
+    *c = '\n';
+  } else if (BumpIf('r')) {
+    *c = '\r';
+  } else if (BumpIf('t')) {
+    *c = '\t';
+  } else if (BumpIf('v')) {
+    *c = '\v';
+  } else if (BumpIf('x')) {
+    if (is_hexc(peek_.scalar)) {
+      *c = hexc(Bump().scalar) * 16;
+    } else {
+      Error("non-hex character '%c'\n", peek_.scalar);
+      return false;
+    }
+    if (is_hexc(peek_.scalar)) {
+      *c += hexc(Bump().scalar);
+    } else {
+      Error("non-hex character '%c'\n", peek_.scalar);
+      return false;
+    }
+  } else if (BumpIf('u')) {
+    if (!BumpIf('{')) {
+      Error("expected '{'");
+      return false;
+    }
 
-  while (true) {
-    t->pos = pos;
-    if (bumpIf(is_space)) {
-      t->ws = true;
-      continue;
-    } else if (bumpIf(is_newline)) {
-      t->nl = true;
-      continue;
-    } else if (bumpIf(0)) {
-      return true;
-    } else if (bumpIf('\'')) {
-      t->kind = TokenKind::LIT_CHAR;
-      return eat_char(t->cval);
-    } else if (bumpIf('"')) {
-      t->kind = TokenKind::LIT_STR;
-      return eat_string(t->sval);
-    } else if (bumpIf('/')) {
-      if (bumpIf('/')) {
-        eatLineComment();
-        t->nl = true;
-        continue;
-      } else if (bumpIf('*')) {
-        bool hasNl(false);
-        if (!eatBlockComment(hasNl)) {
+    // BumpIf hex chars up to 6 digits
+    // and at most 0x10FFFF
+    uint32_t val(0);
+    int count(0);
+    while (true) {
+      if (is_hexc(peek_.scalar)) {
+        if (count > 5) {
+          Error("overlong unicode escape (must have at most 6 hex digits)\n");
           return false;
         }
-        if (hasNl)
+        val = val * 16 + hexc(Bump().scalar);
+        count++;
+      } else if (BumpIf('}')) {
+        break;
+      } else {
+        Error("invalid character in unicode escape: %c\n", peek_.scalar);
+        return false;
+      }
+    }
+    if (count == 0) {
+      Error("empty character in unicode escape\n");
+      return false;
+    }
+    if (val > 0x10FFFF) {
+      Error("unicode escape must be at most 10FFFF\n");
+      return false;
+    }
+    *c = val;
+  } else {
+    Error("unknown escape sequence\n");
+    return false;
+  }
+  return true;
+}
+
+bool Lexer::EatChar(rune *out) {
+  switch (peek_.scalar) {
+    case '\\':
+      Bump();
+      char c;
+      if (!Escape(&c)) {
+        return false;
+      }
+      *out = rune(c);
+      break;
+    case '\'':
+      Error("empty char literal\n");
+      return false;
+    case '\t':
+    case '\n':
+    case '\r':
+      Error("escape only char\n");
+      return false;
+    default:
+      *out = Bump();
+      break;
+  }
+  if (peek_.scalar != '\'') {
+    Error("more than one character\n");
+    return false;
+  }
+  Bump();
+  return true;
+}
+
+bool Lexer::EatString(std::string *out) {
+  bool terminated(false);
+  int len;
+  char dst[4];
+  while (true) {
+    if (peek_ == '"') {
+      terminated = true;
+      Bump();
+      break;
+    } else if (peek_ == 0 || peek_ == '\n' || peek_ == '\r') {
+      break;
+    } else if (BumpIf('\\')) {
+      Bump();
+      char c;
+      if (!Escape(&c)) {
+        return false;
+      }
+      out->push_back(c);
+    } else {
+      len = Bump().encode_utf8(dst);
+      out->append(dst, len);
+    }
+  }
+  if (!terminated) {
+    Error("unterminated string\n");
+    return false;
+  }
+  return true;
+}
+
+std::unique_ptr<Token> Lexer::Next() {
+  auto t = std::make_unique<Token>();
+
+  while (true) {
+    t->pos = pos_;
+    if (BumpIf(is_space)) {
+      t->ws = true;
+      continue;
+    } else if (BumpIf(is_newline)) {
+      t->nl = true;
+      continue;
+    } else if (BumpIf(0)) {
+      t->kind = TokenKind::END;
+    } else if (BumpIf('\'')) {
+      t->kind = TokenKind::LIT_CHAR;
+      if (!EatChar(&t->cval)) return nullptr;
+    } else if (BumpIf('"')) {
+      t->kind = TokenKind::LIT_STR;
+      if (!EatString(&t->sval)) return nullptr;
+    } else if (BumpIf('/')) {
+      if (BumpIf('/')) {
+        // skip comment
+        EatLineComment();
+        t->nl = true;
+        continue;
+      } else if (BumpIf('*')) {
+        // skip comment
+        bool has_nl(false);
+        if (!EatBlockComment(&has_nl)) {
+          return nullptr;
+        }
+        if (has_nl)
           t->nl = true;
         else
           t->ws = true;
         continue;
       } else {
         t->kind = TokenKind::SLASH;
-        return true;
       }
-    } else if (bumpIf(';')) {
+    } else if (BumpIf(';')) {
       t->kind = TokenKind::SEMI;
-    } else if (bumpIf(',')) {
+    } else if (BumpIf(',')) {
       t->kind = TokenKind::COMMA;
-    } else if (bumpIf('(')) {
+    } else if (BumpIf('(')) {
       t->kind = TokenKind::LPAREN;
-    } else if (bumpIf(')')) {
+    } else if (BumpIf(')')) {
       t->kind = TokenKind::RPAREN;
-    } else if (bumpIf('{')) {
+    } else if (BumpIf('{')) {
       t->kind = TokenKind::LBRACE;
-    } else if (bumpIf('}')) {
+    } else if (BumpIf('}')) {
       t->kind = TokenKind::RBRACE;
-    } else if (bumpIf(':')) {
+    } else if (BumpIf(':')) {
       t->kind = TokenKind::COLON;
-    } else if (bumpIf('=')) {
-      if (bumpIf('=')) {
+    } else if (BumpIf('=')) {
+      if (BumpIf('=')) {
         t->kind = TokenKind::EQEQ;
       } else {
         t->kind = TokenKind::EQ;
       }
-    } else if (bumpIf('!')) {
-      if (bumpIf('=')) {
+    } else if (BumpIf('!')) {
+      if (BumpIf('=')) {
         t->kind = TokenKind::NEQ;
       } else {
         t->kind = TokenKind::NOT;
       }
-    } else if (bumpIf('<')) {
-      if (bumpIf('<')) {
+    } else if (BumpIf('<')) {
+      if (BumpIf('<')) {
         t->kind = TokenKind::SHL;
-      } else if (bumpIf('=')) {
+      } else if (BumpIf('=')) {
         t->kind = TokenKind::LE;
       } else {
         t->kind = TokenKind::LT;
       }
-    } else if (bumpIf('>')) {
-      if (bumpIf('>')) {
+    } else if (BumpIf('>')) {
+      if (BumpIf('>')) {
         t->kind = TokenKind::SHR;
-      } else if (bumpIf('=')) {
+      } else if (BumpIf('=')) {
         t->kind = TokenKind::GE;
       } else {
         t->kind = TokenKind::GT;
       }
-    } else if (bumpIf('-')) {
-      if (bumpIf('>')) {
+    } else if (BumpIf('-')) {
+      if (BumpIf('>')) {
         t->kind = TokenKind::ARROW;
       } else {
         t->kind = TokenKind::MINUS;
       }
-    } else if (bumpIf('&')) {
-      if (bumpIf('&')) {
+    } else if (BumpIf('&')) {
+      if (BumpIf('&')) {
         t->kind = TokenKind::ANDAND;
       } else {
         t->kind = TokenKind::AND;
       }
-    } else if (bumpIf('|')) {
-      if (bumpIf('|')) {
+    } else if (BumpIf('|')) {
+      if (BumpIf('|')) {
         t->kind = TokenKind::OROR;
       } else {
         t->kind = TokenKind::OR;
       }
-    } else if (bumpIf('+')) {
+    } else if (BumpIf('+')) {
       t->kind = TokenKind::PLUS;
-    } else if (bumpIf('*')) {
+    } else if (BumpIf('*')) {
       t->kind = TokenKind::STAR;
-    } else if (bumpIf('^')) {
+    } else if (BumpIf('^')) {
       t->kind = TokenKind::CARET;
-    } else if (bumpIf('%')) {
+    } else if (BumpIf('%')) {
       t->kind = TokenKind::PERCENT;
-    } else if (is_decimalc(peek.scalar)) {
-      return eat_num(t);
-    } else if (is_ident_head(peek.scalar)) {
-      return eat_ident(t);
+    } else if (is_decimalc(peek_.scalar)) {
+      if (!EatNum(t)) return nullptr;
+    } else if (is_ident_head(peek_.scalar)) {
+      if (!EatIdent(t)) return nullptr;
     } else {
-      return error("unsupported char %c", peek.scalar);
+      Error("unsupported char %c", peek_.scalar);
+      return nullptr;
     }
-    return true;
+    return t;
   }
 }
 
-bool Lexer::eat_ident(std::unique_ptr<Token> &t) {
+bool Lexer::EatIdent(std::unique_ptr<Token> &t) {
   char bytes[4] = {0};
-  int len = bump().encode_utf8(bytes);
+  int len = Bump().encode_utf8(bytes);
   std::string name(bytes, len);
-  while (is_ident_body(peek.scalar)) {
-    len = bump().encode_utf8(bytes);
+  while (is_ident_body(peek_.scalar)) {
+    len = Bump().encode_utf8(bytes);
     name.append(bytes, len);
   }
   if (name == "true" || name == "false") {
@@ -270,90 +414,91 @@ bool Lexer::eat_ident(std::unique_ptr<Token> &t) {
   return true;
 }
 
-bool Lexer::read_digits(std::string &s, bool f(uint32_t)) {
+bool Lexer::EatDigits(std::string &s, std::function<bool(uint32_t)> f) {
   bool hasDigits(false);
   while (true) {
-    if (f(peek.scalar)) {
+    if (f(peek_.scalar)) {
       hasDigits = true;
-      s.push_back(bump().scalar);
-    } else if (peek == '_') {
-      bump();
+      s.push_back(Bump().scalar);
+    } else if (peek_ == '_') {
+      Bump();
     } else {
       break;
     }
   }
   if (!hasDigits) {
-    return error("no digits\n");
+    Error("no digits\n");
+    return false;
   }
   return true;
 }
 
-bool Lexer::eat_num(std::unique_ptr<Token> &t) {
+bool Lexer::EatNum(std::unique_ptr<Token> &t) {
   t->kind = TokenKind::LIT_INT;
 
-  auto first = bump();
+  auto first = Bump();
   std::string s("");
   s.push_back(first.scalar);
   int base(10);
   if (first == '0') {
-    if (bumpIf('b')) {
+    if (BumpIf('b')) {
       // binary
       base = 2;
-      if (!read_digits(s, is_bitc)) {
+      if (!EatDigits(s, is_bitc)) {
         return false;
       }
-    } else if (bumpIf('o')) {
+    } else if (BumpIf('o')) {
       // octal
       base = 8;
-      if (!read_digits(s, is_octalc)) {
+      if (!EatDigits(s, is_octalc)) {
         return false;
       }
-    } else if (bumpIf('x')) {
+    } else if (BumpIf('x')) {
       // hex
       base = 16;
-      if (!read_digits(s, is_hexc)) {
+      if (!EatDigits(s, is_hexc)) {
         return false;
       }
-    } else if (is_decimalc(peek.scalar) || peek == '_') {
+    } else if (is_decimalc(peek_.scalar) || peek_ == '_') {
       while (true) {
-        if (is_decimalc(peek.scalar)) {
-          s.push_back(bump().scalar);
-        } else if (peek == '_') {
-          bump();
+        if (is_decimalc(peek_.scalar)) {
+          s.push_back(Bump().scalar);
+        } else if (peek_ == '_') {
+          Bump();
         } else {
           break;
         }
       }
-    } else if (peek == '.' || peek == 'e' || peek == 'E') {
+    } else if (peek_ == '.' || peek_ == 'e' || peek_ == 'E') {
       // do nothing; goto exponent
     } else {
       // just 0
-      t->kind = TokenKind::LIT_INT;
-      return true;
+      return false;
     }
   } else {
     while (true) {
-      if (is_decimalc(peek.scalar)) {
-        s.push_back(bump().scalar);
-      } else if (peek == '_') {
-        bump();
+      if (is_decimalc(peek_.scalar)) {
+        s.push_back(Bump().scalar);
+      } else if (peek_ == '_') {
+        Bump();
       } else {
         break;
       }
     }
   }
 
-  if (peek == '.' || peek == 'e' || peek == 'E') {
+  if (peek_ == '.' || peek_ == 'e' || peek_ == 'E') {
     // fractional part
     if (base != 10) {
-      return error("'%c' exponent requires decimal mantissa\n", peek);
+      Error("'%c' exponent requires decimal mantissa\n", peek_);
+      return false;
     }
-    bool dot = peek == '.';
-    s.push_back(bump().scalar);
-    if (!dot && peek == '-') {
-      s.push_back(bump().scalar);
+    bool dot = peek_ == '.';
+    s.push_back(Bump().scalar);
+    if (!dot && peek_ == '-') {
+      s.push_back(Bump().scalar);
     }
-    if (!read_digits(s, is_decimalc)) {
+    if (!EatDigits(s, is_decimalc)) {
       return false;
     }
     t->kind = TokenKind::LIT_FLOAT;
@@ -361,180 +506,53 @@ bool Lexer::eat_num(std::unique_ptr<Token> &t) {
   } else {
     t->ival = stoull(s, nullptr, base);
     if (t->ival > INT64_MAX) {
-      return error("overflow int64 size\n");
+      Error("overflow int64 size\n");
+      return false;
     }
   }
   return true;
 }
 
-bool Lexer::eat_char(rune &cval) {
-  auto first = peek;
-  switch (first.scalar) {
-    case '\\':
-      bump();
-      char c;
-      if (!escape(c)) {
-        return false;
-      }
-      cval = rune(c);
-      break;
-    case '\'':
-      return error("empty char literal\n");
-    case '\t':
-    case '\n':
-    case '\r':
-      return error("escape only char\n");
-    default:
-      cval = bump();
-      break;
-  }
-  if (peek.scalar != '\'') {
-    return error("more than one character\n");
-  }
-  bump();
-  return true;
-}
-
-bool Lexer::escape(char &c) {
-  if (bumpIf('\'')) {
-    c = '\'';
-  } else if (bumpIf('"')) {
-    c = '"';
-  } else if (bumpIf('\\')) {
-    c = '\\';
-  } else if (bumpIf('0')) {
-    c = '\0';
-  } else if (bumpIf('a')) {
-    c = '\a';
-  } else if (bumpIf('b')) {
-    c = '\b';
-  } else if (bumpIf('f')) {
-    c = '\f';
-  } else if (bumpIf('n')) {
-    c = '\n';
-  } else if (bumpIf('r')) {
-    c = '\r';
-  } else if (bumpIf('t')) {
-    c = '\t';
-  } else if (bumpIf('v')) {
-    c = '\v';
-  } else if (bumpIf('x')) {
-    if (is_hexc(peek.scalar)) {
-      c = hexc(bump().scalar) * 16;
-    } else {
-      return error("non-hex character '%c'\n", peek.scalar);
-    }
-    if (is_hexc(peek.scalar)) {
-      c += hexc(bump().scalar);
-    } else {
-      return error("non-hex character '%c'\n", peek.scalar);
-    }
-  } else if (bumpIf('u')) {
-    if (!bumpIf('{')) {
-      return error("expected '{'");
-    }
-
-    // bumpIf hex chars up to 6 digits
-    // and at most 0x10FFFF
-    uint32_t val(0);
-    int count(0);
-    while (true) {
-      if (is_hexc(peek.scalar)) {
-        if (count > 5) {
-          return error(
-              "overlong unicode escape (must have at most 6 hex digits)\n");
-        }
-        val = val * 16 + hexc(bump().scalar);
-        count++;
-      } else if (bumpIf('}')) {
-        break;
-      } else {
-        return error("invalid character in unicode escape: %c\n", peek.scalar);
-      }
-    }
-    if (count == 0) {
-      return error("empty character in unicode escape\n");
-    }
-    if (val > 0x10FFFF) {
-      return error("unicode escape must be at most 10FFFF\n");
-    }
-    c = val;
-  } else {
-    return error("unknown escape sequence\n");
-  }
-  return true;
-}
-
-bool Lexer::eat_string(std::string &sval) {
-  bool terminated(false);
-  int len;
-  char dst[4];
-  while (true) {
-    auto r = peek;
-    if (r == '"') {
-      terminated = true;
-      bump();
-      break;
-    } else if (r == 0 || r == '\n' || r == '\r') {
-      break;
-    } else if (r == '\\') {
-      bump();
-      char c;
-      if (!escape(c)) {
-        return false;
-      }
-      sval.push_back(c);
-    } else {
-      len = bump().encode_utf8(dst);
-      sval.append(dst, len);
-    }
-  }
-  if (!terminated) {
-    return error("unterminated string\n");
-  }
-  return true;
-}
-
-void Lexer::eatLineComment() {
-  while (peek.scalar != 0 && !is_newline(peek.scalar)) {
-    bump();
+void Lexer::EatLineComment() {
+  while (peek_.scalar != 0 && !is_newline(peek_.scalar)) {
+    Bump();
   }
 }
 
-bool Lexer::eatBlockComment(bool &hasNl) {
+bool Lexer::EatBlockComment(bool *has_nl) {
   int depth(1);
   while (true) {
-    if (peek == 0) {
+    if (peek_ == 0) {
       break;
-    } else if (bumpIf('/')) {
-      if (bump() == '*') {
+    } else if (BumpIf('/')) {
+      if (Bump() == '*') {
         depth++;
       }
-    } else if (bumpIf('*')) {
-      if (bump() == '/') {
+    } else if (BumpIf('*')) {
+      if (Bump() == '/') {
         depth--;
       }
       if (depth == 0) {
         break;
       }
     } else {
-      if (is_newline(peek.scalar)) {
-        hasNl = true;
+      if (is_newline(peek_.scalar)) {
+        *has_nl = true;
       }
-      bump();
+      Bump();
     }
   }
   if (depth != 0) {
-    return error("unterminated block comment\n");
+    Error("unterminated block comment\n");
+    return false;
   }
   return true;
 }
 
 template <typename... Args>
-bool Lexer::error(const char *format, Args const &... args) {
-  fprintf(stderr, "%s:%d:%d: ", filename.c_str(), pos.line, pos.column);
-  fprintf(stderr, format, args...);
-  return false;
+void Lexer::Error(const std::string &fmt, Args... args) {
+  error_ = format("%s:%d:%d: ", filename_.c_str(), pos_.line, pos_.column);
+  error_ += format(fmt, args...);
 }
 
 }  // namespace felis
