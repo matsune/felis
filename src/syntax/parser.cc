@@ -91,7 +91,7 @@ std::unique_ptr<FnDecl> Parser::ParseFnDecl() {
   if (!proto) return nullptr;
   auto block = ParseBlock();
   if (!block) return nullptr;
-  return std::make_unique<FnDecl>(std::move(proto), move(block));
+  return std::make_unique<FnDecl>(std::move(proto), std::move(block));
 }
 
 std::unique_ptr<FnProto> Parser::ParseFnProto() {
@@ -111,9 +111,10 @@ std::unique_ptr<FnProto> Parser::ParseFnProto() {
       return nullptr;
     }
     auto ty = std::make_unique<Ident>(Bump()->sval);
-    return std::make_unique<FnProto>(std::move(name), move(args), move(ty));
+    return std::make_unique<FnProto>(std::move(name), std::move(args),
+                                     std::move(ty));
   } else {
-    return std::make_unique<FnProto>(std::move(name), move(args));
+    return std::make_unique<FnProto>(std::move(name), std::move(args));
   }
 }
 
@@ -165,7 +166,7 @@ std::unique_ptr<FnArg> Parser::ParseFnArg() {
     EXPECT(TokenKind::IDENT);
 
     auto ty = std::make_unique<Ident>(Bump()->sval);
-    return std::make_unique<FnArg>(std::move(ty), move(nameOrTy));
+    return std::make_unique<FnArg>(std::move(ty), std::move(nameOrTy));
   } else {
     return std::make_unique<FnArg>(std::move(nameOrTy));
   }
@@ -210,7 +211,7 @@ std::unique_ptr<Expr> Parser::ParseExpr(uint8_t prec) {
       args.push_back(std::move(first));
 
       if (Peek()->kind == TokenKind::RPAREN) {
-        return std::make_unique<CallExpr>(std::move(ident), move(args));
+        return std::make_unique<CallExpr>(std::move(ident), std::move(args));
       }
 
       while (Peek()->kind != TokenKind::RPAREN) {
@@ -223,10 +224,10 @@ std::unique_ptr<Expr> Parser::ParseExpr(uint8_t prec) {
       }
       Bump();
     }
-    lhs = std::make_unique<CallExpr>(std::move(ident), move(args));
+    lhs = std::make_unique<CallExpr>(std::move(ident), std::move(args));
   }
   if (unOp) {
-    return std::make_unique<UnaryExpr>(std::move(unOp), move(lhs));
+    return std::make_unique<UnaryExpr>(std::move(unOp), std::move(lhs));
   }
 
   if (Peek()->nl) {
@@ -243,7 +244,7 @@ std::unique_ptr<Expr> Parser::ParseExpr(uint8_t prec) {
     Bump();
     auto rhs = ParseExpr(binOp);
     if (!rhs) return nullptr;
-    lhs = std::make_unique<BinaryExpr>(std::move(lhs), binOp, move(rhs));
+    lhs = std::make_unique<BinaryExpr>(std::move(lhs), binOp, std::move(rhs));
   }
 }
 
@@ -292,7 +293,8 @@ std::unique_ptr<Stmt> Parser::ParseStmt() {
     auto expr = ParseExpr();
     if (!expr) return nullptr;
 
-    return std::make_unique<VarDeclStmt>(isLet, std::move(name), move(expr));
+    return std::make_unique<VarDeclStmt>(isLet, std::move(name),
+                                         std::move(expr));
   } else if (Peek()->kind == TokenKind::KW_IF) {
     return ParseIfStmt();
   } else if (Peek()->kind == TokenKind::IDENT) {
@@ -302,7 +304,7 @@ std::unique_ptr<Stmt> Parser::ParseStmt() {
       Bump();
       auto expr = ParseExpr();
       if (!expr) return nullptr;
-      return std::make_unique<AssignStmt>(std::move(name), move(expr));
+      return std::make_unique<AssignStmt>(std::move(name), std::move(expr));
     }
   }
   return ParseExpr();
@@ -318,18 +320,20 @@ std::unique_ptr<IfStmt> Parser::ParseIfStmt() {
   if (!block) return nullptr;
 
   if (Peek()->kind != TokenKind::KW_ELSE) {
-    return std::make_unique<IfStmt>(std::move(cond), move(block));
+    return std::make_unique<IfStmt>(std::move(cond), std::move(block));
   }
   Bump();
 
   if (Peek()->kind == TokenKind::KW_IF) {
     auto els = ParseIfStmt();
     if (!els) return nullptr;
-    return std::make_unique<IfStmt>(std::move(cond), move(block), move(els));
+    return std::make_unique<IfStmt>(std::move(cond), std::move(block),
+                                    std::move(els));
   } else {
     auto els = ParseBlock();
     if (!els) return nullptr;
-    return std::make_unique<IfStmt>(std::move(cond), move(block), move(els));
+    return std::make_unique<IfStmt>(std::move(cond), std::move(block),
+                                    std::move(els));
   }
 }
 
