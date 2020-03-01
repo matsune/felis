@@ -1,9 +1,11 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+
 #include <fstream>
 #include <iostream>
 #include <string>
+
 #include "syntax/syntax.h"
 
 int main(int argc, char *argv[]) {
@@ -42,4 +44,3 @@ int main(int argc, char *argv[]) {
     printer.Print(file);
   }
 }
-

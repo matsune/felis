@@ -1,4 +1,5 @@
 #include "syntax/lexer.h"
+
 #include "string/string.h"
 
 namespace felis {
@@ -473,7 +474,7 @@ bool Lexer::EatNum(std::unique_ptr<Token> &t) {
       // do nothing; goto exponent
     } else {
       // just 0
-      return false;
+      return true;
     }
   } else {
     while (true) {
