@@ -1,4 +1,5 @@
-#include "syntax/printer.h"
+#include "printer.h"
+
 #include <sstream>
 
 namespace felis {

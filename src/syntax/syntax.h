@@ -4,7 +4,6 @@
 #include "syntax/ast.h"
 #include "syntax/lexer.h"
 #include "syntax/parser.h"
-#include "syntax/printer.h"
 #include "syntax/rune.h"
 #include "syntax/token.h"
 

@@ -1,11 +1,14 @@
 #include "syntax/parser.h"
+
 #include <cassert>
 #include <vector>
 
-#define EXPECT(KIND)                                 \
-  if (Peek()->kind != KIND) {                        \
-    Error("expected %s\n", to_string(KIND).c_str()); \
-    return nullptr;                                  \
+#include "string/string.h"
+
+#define EXPECT(KIND)                               \
+  if (Peek()->kind != KIND) {                      \
+    Error("expected %s", to_string(KIND).c_str()); \
+    return nullptr;                                \
   }
 
 namespace felis {
@@ -361,10 +364,10 @@ std::unique_ptr<Block> Parser::ParseBlock() {
 }
 
 template <typename... Args>
-void Parser::Error(const char* format, Args const&... args) {
-  fprintf(stderr, "%s:%d:%d: ", filename_.c_str(), Peek()->pos.line,
-          Peek()->pos.column);
-  fprintf(stderr, format, args...);
+void Parser::Error(const std::string fmt, Args const&... args) {
+  error_ = format("%s:%d:%d: ", filename_.c_str(), Peek()->pos.line,
+                  Peek()->pos.column);
+  error_ += format(fmt, args...);
 }
 
 std::unique_ptr<File> Parser::Parse() {

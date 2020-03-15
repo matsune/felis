@@ -1,24 +1,28 @@
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
+/* #include <llvm/IR/IRBuilder.h> */
+/* #include <llvm/IR/LLVMContext.h> */
+/* #include <llvm/IR/Module.h> */
 
 #include <fstream>
 #include <iostream>
 #include <string>
 
+#include "printer/printer.h"
 #include "syntax/syntax.h"
+
+int error(std::string msg) {
+  std::cerr << "felisc: error: " << msg << std::endl;
+  return 1;
+}
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    std::cerr << "passing no file" << std::endl;
-    return 1;
+    return error("no input file");
   }
   std::string filename = argv[1];
   std::ifstream in;
   in.open(filename);
   if (!in.is_open()) {
-    std::cerr << "failed to open " << filename << std::endl;
-    return 1;
+    return error("failed to open " + filename);
   }
 
   felis::Parser parser(filename);
@@ -28,7 +32,7 @@ int main(int argc, char *argv[]) {
   while (!isEnd) {
     auto t = lexer->Next();
     if (lexer->HasError()) {
-      std::cerr << lexer->Error() << std::endl;
+      error(lexer->Error());
       break;
     }
     isEnd = t->kind == felis::TokenKind::END;
@@ -39,6 +43,9 @@ int main(int argc, char *argv[]) {
   if (!isEnd) return 1;
 
   auto file = parser.Parse();
+  if (parser.HasError()) {
+    return error(parser.Error());
+  }
   if (file) {
     felis::Printer printer;
     printer.Print(file);

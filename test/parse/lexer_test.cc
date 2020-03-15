@@ -8,7 +8,7 @@
 
 namespace felis {
 
-TEST(LexerTest, EmptyInput) {
+TEST(LexerTest, Empty) {
   std::stringstream in;
   in << "";
   Lexer lexer(in);

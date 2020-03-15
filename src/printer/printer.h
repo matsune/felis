@@ -4,7 +4,8 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include "syntax/ast.h"
+
+#include "../syntax/ast.h"
 
 namespace felis {
 
