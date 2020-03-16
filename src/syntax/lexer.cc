@@ -154,18 +154,18 @@ bool Lexer::Escape(char *c) {
     if (is_hexc(peek_.scalar)) {
       *c = hexc(Bump().scalar) * 16;
     } else {
-      Error("non-hex character '%c'\n", peek_.scalar);
+      Raise("non-hex character '%c'\n", peek_.scalar);
       return false;
     }
     if (is_hexc(peek_.scalar)) {
       *c += hexc(Bump().scalar);
     } else {
-      Error("non-hex character '%c'\n", peek_.scalar);
+      Raise("non-hex character '%c'\n", peek_.scalar);
       return false;
     }
   } else if (BumpIf('u')) {
     if (!BumpIf('{')) {
-      Error("expected '{'");
+      Raise("expected '{'");
       return false;
     }
 
@@ -176,7 +176,7 @@ bool Lexer::Escape(char *c) {
     while (true) {
       if (is_hexc(peek_.scalar)) {
         if (count > 5) {
-          Error("overlong unicode escape (must have at most 6 hex digits)\n");
+          Raise("overlong unicode escape (must have at most 6 hex digits)");
           return false;
         }
         val = val * 16 + hexc(Bump().scalar);
@@ -184,21 +184,21 @@ bool Lexer::Escape(char *c) {
       } else if (BumpIf('}')) {
         break;
       } else {
-        Error("invalid character in unicode escape: %c\n", peek_.scalar);
+        Raise("invalid character in unicode escape: %c\n", peek_.scalar);
         return false;
       }
     }
     if (count == 0) {
-      Error("empty character in unicode escape\n");
+      Raise("empty character in unicode escape");
       return false;
     }
     if (val > 0x10FFFF) {
-      Error("unicode escape must be at most 10FFFF\n");
+      Raise("unicode escape must be at most 10FFFF");
       return false;
     }
     *c = val;
   } else {
-    Error("unknown escape sequence\n");
+    Raise("unknown escape sequence");
     return false;
   }
   return true;
@@ -215,19 +215,19 @@ bool Lexer::EatChar(rune *out) {
       *out = rune(c);
       break;
     case '\'':
-      Error("empty char literal\n");
+      Raise("empty char literal");
       return false;
     case '\t':
     case '\n':
     case '\r':
-      Error("escape only char\n");
+      Raise("escape only char");
       return false;
     default:
       *out = Bump();
       break;
   }
   if (peek_.scalar != '\'') {
-    Error("more than one character\n");
+    Raise("more than one character");
     return false;
   }
   Bump();
@@ -258,7 +258,7 @@ bool Lexer::EatString(std::string *out) {
     }
   }
   if (!terminated) {
-    Error("unterminated string\n");
+    Raise("unterminated string");
     return false;
   }
   return true;
@@ -376,7 +376,7 @@ std::unique_ptr<Token> Lexer::Next() {
     } else if (is_ident_head(peek_.scalar)) {
       if (!EatIdent(t)) return nullptr;
     } else {
-      Error("unsupported char %c", peek_.scalar);
+      Raise("unsupported char %c", peek_.scalar);
       return nullptr;
     }
     return t;
@@ -428,7 +428,7 @@ bool Lexer::EatDigits(std::string &s, std::function<bool(uint32_t)> f) {
     }
   }
   if (!hasDigits) {
-    Error("no digits\n");
+    Raise("no digits");
     return false;
   }
   return true;
@@ -491,7 +491,7 @@ bool Lexer::EatNum(std::unique_ptr<Token> &t) {
   if (peek_ == '.' || peek_ == 'e' || peek_ == 'E') {
     // fractional part
     if (base != 10) {
-      Error("'%c' exponent requires decimal mantissa\n", peek_);
+      Raise("'%c' exponent requires decimal mantissa\n", peek_);
       return false;
     }
     bool dot = peek_ == '.';
@@ -507,7 +507,7 @@ bool Lexer::EatNum(std::unique_ptr<Token> &t) {
   } else {
     t->ival = stoull(s, nullptr, base);
     if (t->ival > INT64_MAX) {
-      Error("overflow int64 size\n");
+      Raise("overflow int64 size");
       return false;
     }
   }
@@ -544,16 +544,15 @@ bool Lexer::EatBlockComment(bool *has_nl) {
     }
   }
   if (depth != 0) {
-    Error("unterminated block comment\n");
+    Raise("unterminated block comment");
     return false;
   }
   return true;
 }
 
 template <typename... Args>
-void Lexer::Error(const std::string &fmt, Args... args) {
-  error_ = format("%s:%d:%d: ", filename_.c_str(), pos_.line, pos_.column);
-  error_ += format(fmt, args...);
+void Lexer::Raise(const std::string &fmt, Args... args) {
+  handler_.Raise(pos_, format(fmt, args...));
 }
 
 }  // namespace felis

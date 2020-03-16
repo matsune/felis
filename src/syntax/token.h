@@ -2,21 +2,11 @@
 #define FELIS_SYNTAX_TOKEN_H_
 
 #include <string>
+
+#include "syntax/pos.h"
 #include "syntax/rune.h"
 
 namespace felis {
-
-struct Pos {
-  unsigned int line, column;
-
-  Pos(int line = 1, int column = 1) : line(line), column(column) {}
-
-  void Lines(int ln = 1) {
-    line += ln;
-    column = 1;
-  }
-  void Columns(int col = 1) { column += col; }
-};
 
 struct Token {
   enum Kind {

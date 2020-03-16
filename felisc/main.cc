@@ -10,30 +10,28 @@
 #include "printer/printer.h"
 #include "syntax/syntax.h"
 
-int error(std::string msg) {
-  std::cerr << "felisc: error: " << msg << std::endl;
-  return 1;
-}
-
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    return error("no input file");
+    std::cerr << "felisc: no input file" << std::endl;
+    return 1;
   }
   std::string filename = argv[1];
   std::ifstream in;
   in.open(filename);
   if (!in.is_open()) {
-    return error("failed to open " + filename);
+    std::cerr << "felisc: failed to open " << filename << std::endl;
+    return 1;
   }
 
-  felis::Parser parser(filename);
+  felis::ErrorHandler handler(filename);
+  felis::Parser parser(handler);
 
   bool isEnd(false);
-  felis::Lexer *lexer = new felis::Lexer(in, filename);
+  felis::Lexer *lexer = new felis::Lexer(in, handler);
   while (!isEnd) {
     auto t = lexer->Next();
-    if (lexer->HasError()) {
-      error(lexer->Error());
+    if (handler.HasError()) {
+      handler.Report();
       break;
     }
     isEnd = t->kind == felis::TokenKind::END;
@@ -44,11 +42,10 @@ int main(int argc, char *argv[]) {
   if (!isEnd) return 1;
 
   std::unique_ptr<felis::File> file = parser.Parse();
-  if (parser.HasError()) {
-    return error(parser.Error());
+  if (handler.HasError()) {
+    handler.Report();
+    return 1;
   }
-  /* felis::Printer printer; */
-  /* printer.Print(file); */
 
   felis::TyInferer inferer;
   inferer.Parse(file);

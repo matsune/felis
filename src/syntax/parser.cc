@@ -7,7 +7,7 @@
 
 #define EXPECT(KIND)                               \
   if (Peek()->kind != KIND) {                      \
-    Error("expected %s", to_string(KIND).c_str()); \
+    Raise("expected %s", to_string(KIND).c_str()); \
     return nullptr;                                \
   }
 
@@ -110,7 +110,7 @@ std::unique_ptr<FnProto> Parser::ParseFnProto() {
   if (Peek()->kind == TokenKind::ARROW) {
     Bump();
     if (Peek()->kind != TokenKind::IDENT) {
-      Error("expected ident\n");
+      Raise("expected ident");
       return nullptr;
     }
     auto ty = std::make_unique<Ident>(Bump()->sval);
@@ -123,7 +123,7 @@ std::unique_ptr<FnProto> Parser::ParseFnProto() {
 
 bool Parser::ParseFnArgs(std::vector<std::unique_ptr<FnArg>>& args) {
   if (Peek()->kind != TokenKind::LPAREN) {
-    Error("expected (\n");
+    Raise("expected (");
     return false;
   }
   Bump();
@@ -144,14 +144,14 @@ bool Parser::ParseFnArgs(std::vector<std::unique_ptr<FnArg>>& args) {
     auto arg = ParseFnArg();
     if (!arg) return false;
     if (hasName != arg->withName()) {
-      Error("mixed name in func args\n");
+      Raise("mixed name in func args");
       return false;
     }
     args.push_back(std::move(arg));
   }
 
   if (Peek()->kind != TokenKind::RPAREN) {
-    Error("expected )\n");
+    Raise("expected )");
     return false;
   }
   Bump();
@@ -186,7 +186,7 @@ std::unique_ptr<Expr> Parser::ParseExpr(uint8_t prec) {
   }
 
   if (!is_primary(Peek()->kind)) {
-    Error("expected primary expr\n");
+    Raise("expected primary expr");
     return nullptr;
   }
 
@@ -195,7 +195,7 @@ std::unique_ptr<Expr> Parser::ParseExpr(uint8_t prec) {
 
   if (Peek()->kind == TokenKind::LPAREN) {
     if (lhs->ExprKind() != Expr::Kind::IDENT) {
-      Error("cannot call non function\n");
+      Raise("cannot call non function");
       return nullptr;
     }
     EXPECT(TokenKind::LPAREN);
@@ -364,10 +364,8 @@ std::unique_ptr<Block> Parser::ParseBlock() {
 }
 
 template <typename... Args>
-void Parser::Error(const std::string fmt, Args const&... args) {
-  error_ = format("%s:%d:%d: ", filename_.c_str(), Peek()->pos.line,
-                  Peek()->pos.column);
-  error_ += format(fmt, args...);
+void Parser::Raise(const std::string& fmt, Args... args) {
+  handler_.Raise(Peek()->pos, format(fmt, args...));
 }
 
 std::unique_ptr<File> Parser::Parse() {
@@ -381,7 +379,7 @@ std::unique_ptr<File> Parser::Parse() {
       } else if (Peek()->nl) {
         // nothing
       } else {
-        Error("needs \\n or ;");
+        Raise("needs \\n or ;");
         return nullptr;
       }
     }
@@ -394,8 +392,7 @@ std::unique_ptr<File> Parser::Parse() {
       if (!fn) return nullptr;
       file->fnDecls.push_back(std::move(fn));
     } else {
-      Peek()->debug();
-      Error("unknown top-level token\n");
+      Raise("unknown top-level token");
       return nullptr;
     }
     needs_nl = true;

@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "error/handler.h"
 #include "syntax/ast.h"
 #include "syntax/token.h"
 
@@ -14,7 +15,7 @@ namespace felis {
 
 class Parser {
  public:
-  explicit Parser(std::string filename) : filename_(filename) {}
+  explicit Parser(ErrorHandler &handler) : handler_(handler) {}
 
   void PushToken(std::unique_ptr<Token> &&token) {
     tokens_.push_back(std::move(token));
@@ -22,13 +23,9 @@ class Parser {
 
   std::unique_ptr<File> Parse();
 
-  bool HasError() { return !error_.empty(); }
-  std::string Error() { return error_; }
-
  private:
-  std::string filename_ = "";
+  ErrorHandler &handler_;
   std::deque<std::unique_ptr<Token>> tokens_;
-  std::string error_;
 
   std::unique_ptr<Token> &Peek();
   std::unique_ptr<Token> &Peek2();
@@ -43,8 +40,9 @@ class Parser {
   std::unique_ptr<Stmt> ParseStmt();
   std::unique_ptr<IfStmt> ParseIfStmt();
   std::unique_ptr<Block> ParseBlock();
+
   template <typename... Args>
-  void Error(const std::string fmt, Args const &... args);
+  void Raise(const std::string &fmt, Args... args);
 };
 
 }  // namespace felis
