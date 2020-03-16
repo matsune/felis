@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 
+#include "analysis/ty_inferer.h"
 #include "printer/printer.h"
 #include "syntax/syntax.h"
 
@@ -42,12 +43,13 @@ int main(int argc, char *argv[]) {
   in.close();
   if (!isEnd) return 1;
 
-  auto file = parser.Parse();
+  std::unique_ptr<felis::File> file = parser.Parse();
   if (parser.HasError()) {
     return error(parser.Error());
   }
-  if (file) {
-    felis::Printer printer;
-    printer.Print(file);
-  }
+  /* felis::Printer printer; */
+  /* printer.Print(file); */
+
+  felis::TyInferer inferer;
+  inferer.Parse(file);
 }

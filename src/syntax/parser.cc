@@ -375,9 +375,15 @@ std::unique_ptr<File> Parser::Parse() {
 
   bool needs_nl = false;
   while (Peek()->kind != TokenKind::END) {
-    if (needs_nl && (Peek()->kind != TokenKind::SEMI && !Peek()->nl)) {
-      Error("needs \\n or ;");
-      return nullptr;
+    if (needs_nl) {
+      if (Peek()->kind == TokenKind::SEMI) {
+        Bump();
+      } else if (Peek()->nl) {
+        // nothing
+      } else {
+        Error("needs \\n or ;");
+        return nullptr;
+      }
     }
     if (Peek()->kind == TokenKind::KW_EXT) {
       auto ext = ParseExtern();
@@ -388,6 +394,7 @@ std::unique_ptr<File> Parser::Parse() {
       if (!fn) return nullptr;
       file->fnDecls.push_back(std::move(fn));
     } else {
+      Peek()->debug();
       Error("unknown top-level token\n");
       return nullptr;
     }

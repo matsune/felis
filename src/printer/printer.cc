@@ -48,6 +48,7 @@ void Printer::Print(const std::unique_ptr<File> &file) {
     PrintIndex(i);
     PrintFnDecl(file->fnDecls.at(i).get());
   }
+  printf("\n");
 }
 
 void Printer::WriteLineNum() { printf("%4d ", line_); }
