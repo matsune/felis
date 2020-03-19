@@ -2,61 +2,21 @@
 #define FELIS_ANALYSIS_TY_INFERER_H_
 
 #include <iostream>
-#include <map>
-#include <memory>
-#include <vector>
 
+#include "def_table.h"
 #include "error/handler.h"
 #include "syntax/ast.h"
 
 namespace felis {
-
-using Scope = uint16_t;
-
-class ScopeResolver {
- public:
-  /* Scope Push(Scope current) { */
-  /*   Scope nextId = nextId_; */
-  /*   nextId_++; */
-  /*   parentMap_.insert(nextId, current); */
-  /*   return nextId; */
-  /* }; */
-
- private:
-  std::map<Scope, Scope> parentMap_;
-  Scope nextId_ = 1;
-};
-
-enum DefKind { DEF_FN, DEF_VAR };
-
-enum Ty { INT };
-
-struct Def {
-  std::string name;
-  DefKind kind;
-  Ty ty;
-  Scope scope;
-  Node *ptr;
-
-  Def(std::string name, DefKind kind, Ty ty, Scope scope, Node *ptr)
-      : name(name), kind(kind), ty(ty), scope(scope), ptr(ptr) {}
-};
-
-class DefTable {
- public:
-  DefTable(ErrorHandler &handler) : handler_(handler){};
-  void InsertFn(std::unique_ptr<FnProto> &, Scope);
-
- private:
-  std::vector<std::unique_ptr<Def>> defs_;
-  ErrorHandler &handler_;
-};
 
 class TyInferer {
  public:
   TyInferer(ErrorHandler &handler)
       : handler_(handler), defTable_(DefTable(handler)) {}
   void Parse(std::unique_ptr<File> &file);
+
+  // debug
+  void PrintTable();
 
  private:
   ErrorHandler &handler_;
