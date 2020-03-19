@@ -47,6 +47,13 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  felis::TyInferer inferer;
+  felis::Printer printer;
+  printer.Print(file);
+
+  felis::TyInferer inferer(handler);
   inferer.Parse(file);
+  if (handler.HasError()) {
+    handler.Report();
+    return 1;
+  }
 }

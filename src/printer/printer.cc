@@ -99,7 +99,10 @@ void Printer::PrintExtern(Extern *ext) {
   }
 
   Down("Extern {");
-  { PrintProto(ext->proto.get()); }
+  {
+    PrintProto(ext->proto.get());
+    PrintPos(ext->GetPos());
+  }
   Up("}");
 }
 
@@ -113,6 +116,7 @@ void Printer::PrintFnDecl(FnDecl *fn) {
   {
     PrintProto(fn->proto.get());
     PrintBlock(fn->block.get());
+    PrintPos(fn->GetPos());
   }
   Up("}");
 }
@@ -146,6 +150,7 @@ void Printer::PrintFnArg(FnArg *arg) {
     PrintIdent(arg->name.get());
     Write("Ty: ");
     PrintIdent(arg->ty.get());
+    PrintPos(arg->GetPos());
   }
   Up("}");
 }
@@ -174,7 +179,10 @@ void Printer::PrintIdent(Ident *ident) {
   }
 
   Down("Ident {");
-  { Writeln("Name: " + ident->sval); }
+  {
+    Writeln("Name: " + ident->sval);
+    PrintPos(ident->GetPos());
+  }
   Up("}");
 }
 
@@ -194,6 +202,7 @@ void Printer::PrintStmt(Stmt *stmt) {
         auto ret = reinterpret_cast<RetStmt *>(stmt);
         Write("Expr: ");
         PrintExpr(ret->expr.get());
+        PrintPos(ret->GetPos());
       }
       Up("}");
       break;
@@ -206,6 +215,7 @@ void Printer::PrintStmt(Stmt *stmt) {
         PrintIdent(varDecl->name.get());
         Write("Expr: ");
         PrintExpr(varDecl->expr.get());
+        PrintPos(varDecl->GetPos());
       }
       Up("}");
       break;
@@ -217,6 +227,7 @@ void Printer::PrintStmt(Stmt *stmt) {
         PrintIdent(assign->name.get());
         Write("Expr: ");
         PrintExpr(assign->expr.get());
+        PrintPos(assign->GetPos());
       }
       Up("}");
       break;
@@ -229,6 +240,7 @@ void Printer::PrintStmt(Stmt *stmt) {
         PrintBlock(ifStmt->block.get());
         Write("Else: ");
         PrintStmt(ifStmt->els.get());
+        PrintPos(ifStmt->GetPos());
       }
       Up("}");
       break;
@@ -263,6 +275,7 @@ void Printer::PrintExpr(Expr *expr) {
         Writeln("Op: " + binop_string(binary->op));
         Write("Right: ");
         PrintExpr(binary->rhs.get());
+        PrintPos(binary->GetPos());
       }
       Up("}");
       break;
@@ -291,6 +304,7 @@ void Printer::PrintExpr(Expr *expr) {
         std::string op = *unary->unOp == UnOp::NEG ? "-" : "!";
         Writeln("op: %s", op.c_str());
         PrintExpr(unary->expr.get());
+        PrintPos(unary->GetPos());
       }
       Up("}");
       break;
@@ -310,6 +324,7 @@ void Printer::PrintLit(Lit *lit) {
         auto l = reinterpret_cast<LitInt *>(lit);
         std::string s = tostring(l->ival);
         Writeln("num: " + s);
+        PrintPos(lit->GetPos());
       }
       Up("}");
       break;
@@ -319,6 +334,7 @@ void Printer::PrintLit(Lit *lit) {
         auto l = reinterpret_cast<LitBool *>(lit);
         std::string s = (l->bval ? "true" : "false");
         Writeln("literal: " + s);
+        PrintPos(lit->GetPos());
       }
       Up("}");
       break;
@@ -328,6 +344,7 @@ void Printer::PrintLit(Lit *lit) {
         auto l = reinterpret_cast<LitChar *>(lit);
         std::string s{l->cval};
         Writeln("literal: '" + s + "'");
+        PrintPos(lit->GetPos());
       }
       Up("}");
       break;
@@ -336,10 +353,15 @@ void Printer::PrintLit(Lit *lit) {
       {
         auto l = reinterpret_cast<LitStr *>(lit);
         Writeln("literal: \"" + l->sval + "\"");
+        PrintPos(lit->GetPos());
       }
       Up("}");
       break;
   }
+}
+
+void Printer::PrintPos(Pos pos) {
+  Writeln("Pos: line %d, col %d", pos.line, pos.column);
 }
 
 }  // namespace felis

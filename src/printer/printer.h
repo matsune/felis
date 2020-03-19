@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 
-#include "../syntax/ast.h"
+#include "syntax/ast.h"
 
 namespace felis {
 
@@ -36,6 +36,7 @@ class Printer {
   void PrintProto(FnProto *);
   void PrintFnArg(FnArg *);
   void PrintFnDecl(FnDecl *fn);
+  void PrintPos(Pos pos);
 };
 
 }  // namespace felis

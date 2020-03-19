@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+#include "error/handler.h"
 #include "syntax/ast.h"
 
 namespace felis {
@@ -43,19 +44,27 @@ struct Def {
 
 class DefTable {
  public:
+  DefTable(ErrorHandler &handler) : handler_(handler){};
   void InsertFn(std::unique_ptr<FnProto> &, Scope);
 
  private:
   std::vector<std::unique_ptr<Def>> defs_;
+  ErrorHandler &handler_;
 };
 
 class TyInferer {
  public:
+  TyInferer(ErrorHandler &handler)
+      : handler_(handler), defTable_(DefTable(handler)) {}
   void Parse(std::unique_ptr<File> &file);
 
  private:
+  ErrorHandler &handler_;
   Scope scope_ = 0;
   DefTable defTable_;
+
+  template <typename... Args>
+  void Raise(Pos pos, const std::string &fmt, Args... args);
 };
 
 }  // namespace felis

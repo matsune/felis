@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "string/string.h"
+
 namespace felis {
 
 void DefTable::InsertFn(std::unique_ptr<FnProto> &fnProto, Scope scope) {
@@ -15,8 +17,8 @@ void DefTable::InsertFn(std::unique_ptr<FnProto> &fnProto, Scope scope) {
                          });
   if (it != defs_.end()) {
     auto &def = *it;
-    // TODO: Error Handling
-    std::cerr << "redeclared function " << def->name << std::endl;
+    handler_.Raise(fnProto->name->GetPos(),
+                   format("redeclared function %s", def->name.c_str()));
     return;
   }
   defs_.push_back(std::make_unique<Def>(name, kind, ty, scope, fnProto.get()));
@@ -29,6 +31,11 @@ void TyInferer::Parse(std::unique_ptr<File> &file) {
   for (auto &fn : file->fnDecls) {
     defTable_.InsertFn(fn->proto, scope_);
   }
+}
+
+template <typename... Args>
+void TyInferer::Raise(Pos pos, const std::string &fmt, Args... args) {
+  handler_.Raise(pos, format(fmt, args...));
 }
 
 }  // namespace felis
