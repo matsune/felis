@@ -82,7 +82,7 @@ std::unique_ptr<Extern> Parser::ParseExtern() {
   auto pos = ext->pos;
   auto proto = ParseFnProto();
   if (!proto) return nullptr;
-  return std::make_unique<Extern>(pos, std::move(proto));
+  return std::make_unique<Extern>(nextId_++, pos, std::move(proto));
 }
 
 std::unique_ptr<FnDecl> Parser::ParseFnDecl() {
@@ -90,7 +90,8 @@ std::unique_ptr<FnDecl> Parser::ParseFnDecl() {
   if (!proto) return nullptr;
   auto block = ParseBlock();
   if (!block) return nullptr;
-  return std::make_unique<FnDecl>(std::move(proto), std::move(block));
+  return std::make_unique<FnDecl>(nextId_++, std::move(proto),
+                                  std::move(block));
 }
 
 std::unique_ptr<FnProto> Parser::ParseFnProto() {
@@ -279,6 +280,8 @@ std::unique_ptr<Expr> Parser::ParsePrimary() {
     return std::make_unique<Ident>(pos, token->sval);
   } else if (token->kind == TokenKind::LIT_INT) {
     return std::make_unique<LitInt>(pos, token->ival);
+  } else if (token->kind == TokenKind::LIT_FLOAT) {
+    return std::make_unique<LitFloat>(pos, token->fval);
   } else if (token->kind == TokenKind::LIT_BOOL) {
     return std::make_unique<LitBool>(pos, token->bval);
   } else if (token->kind == TokenKind::LIT_CHAR) {
@@ -301,8 +304,11 @@ std::unique_ptr<Expr> Parser::ParsePrimary() {
 std::unique_ptr<Stmt> Parser::ParseStmt() {
   if (Peek()->kind == TokenKind::KW_RET) {
     Pos pos = Bump()->pos;
-    if (Peek()->kind == TokenKind::RBRACE || Peek()->kind == TokenKind::SEMI) {
+    if (Peek()->kind == TokenKind::SEMI) {
       Bump();
+      return std::make_unique<RetStmt>(pos);
+    }
+    if (Peek()->nl) {
       return std::make_unique<RetStmt>(pos);
     }
     auto expr = ParseExpr();

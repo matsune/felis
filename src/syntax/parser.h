@@ -26,6 +26,7 @@ class Parser {
  private:
   ErrorHandler &handler_;
   std::deque<std::unique_ptr<Token>> tokens_;
+  NodeId nextId_ = 1;
 
   std::unique_ptr<Token> &Peek();
   std::unique_ptr<Token> &Peek2();

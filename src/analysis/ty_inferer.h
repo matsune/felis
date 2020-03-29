@@ -2,6 +2,7 @@
 #define FELIS_ANALYSIS_TY_INFERER_H_
 
 #include <iostream>
+#include <map>
 
 #include "def_table.h"
 #include "error/handler.h"
@@ -11,20 +12,25 @@ namespace felis {
 
 class TyInferer {
  public:
-  TyInferer(ErrorHandler &handler)
-      : handler_(handler), defTable_(DefTable(handler)) {}
+  TyInferer(ErrorHandler &handler) : handler_(handler) {}
   void Parse(std::unique_ptr<File> &file);
-
-  // debug
-  void PrintTable();
 
  private:
   ErrorHandler &handler_;
-  Scope scope_ = 0;
+  uint8_t depth_ = 0;
   DefTable defTable_;
+  std::map<NodeId, DefId> idMap_;
+  const DefFn *currentFn_;
 
   template <typename... Args>
   void Raise(Pos pos, const std::string &fmt, Args... args);
+
+  void InsertFnProto(NodeId nodeId, bool isExt,
+                     const std::unique_ptr<FnProto> &);
+  void Infer(std::unique_ptr<FnDecl> &);
+  void Infer(std::unique_ptr<Stmt> &);
+
+  bool InferTy(Ty &, Expr *);
 };
 
 }  // namespace felis

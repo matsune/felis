@@ -23,6 +23,8 @@ enum BinOp {
   MOD = 23
 };
 
+using NodeId = uint32_t;
+
 struct Node {
   enum Kind { EXTERN, FN_DECL, FN_PROTO, FN_ARG, STMT };
   virtual Kind NodeKind() = 0;
@@ -72,7 +74,7 @@ struct Ident : public Expr {
 struct Lit : public Expr {
   Expr::Kind ExprKind() override { return Expr::Kind::LIT; }
 
-  enum Kind { INT, BOOL, CHAR, STR };
+  enum Kind { INT, FLOAT, BOOL, CHAR, STR };
 
   virtual Kind LitKind() = 0;
   virtual Pos GetPos() override = 0;
@@ -96,6 +98,17 @@ struct LitBool : public Lit {
   bool bval;
 
   explicit LitBool(Pos pos, bool bval = false) : pos(pos), bval(bval) {}
+
+  Pos GetPos() override { return pos; }
+};
+
+struct LitFloat : public Lit {
+  Kind LitKind() override { return Kind::FLOAT; }
+
+  Pos pos;
+  double fval;
+
+  explicit LitFloat(Pos pos, double fval) : pos(pos), fval(fval) {}
 
   Pos GetPos() override { return pos; }
 };
@@ -256,24 +269,27 @@ struct FnProto : public Node {
 };
 
 struct FnDecl : public Node {
+  NodeId id;
   Kind NodeKind() override { return Kind::FN_DECL; }
 
   std::unique_ptr<FnProto> proto;
   std::unique_ptr<Block> block;
 
-  explicit FnDecl(std::unique_ptr<FnProto> proto, std::unique_ptr<Block> block)
-      : proto(std::move(proto)), block(std::move(block)) {}
+  explicit FnDecl(NodeId id, std::unique_ptr<FnProto> proto,
+                  std::unique_ptr<Block> block)
+      : id(id), proto(std::move(proto)), block(std::move(block)) {}
 
   Pos GetPos() override { return proto->pos; }
 };
 
 struct Extern : public Node {
+  NodeId id;
   Kind NodeKind() override { return Kind::EXTERN; }
   std::unique_ptr<FnProto> proto;
   Pos pos;
 
-  explicit Extern(Pos pos, std::unique_ptr<FnProto> proto)
-      : pos(pos), proto(std::move(proto)) {}
+  explicit Extern(NodeId id, Pos pos, std::unique_ptr<FnProto> proto)
+      : id(id), pos(pos), proto(std::move(proto)) {}
 
   Pos GetPos() override { return pos; }
 };

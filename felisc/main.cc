@@ -56,5 +56,4 @@ int main(int argc, char *argv[]) {
     handler.Report();
     return 1;
   }
-  inferer.PrintTable();
 }
