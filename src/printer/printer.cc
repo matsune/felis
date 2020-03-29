@@ -2,6 +2,8 @@
 
 #include <sstream>
 
+#include "string/string.h"
+
 namespace felis {
 
 namespace {
@@ -11,29 +13,6 @@ static std::string tostring(const T &t) {
   std::ostringstream ss;
   ss << t;
   return ss.str();
-}
-
-std::string binop_string(BinOp op) {
-  switch (op) {
-    case BinOp::LT:
-      return ">";
-    case BinOp::LE:
-      return ">=";
-    case BinOp::GT:
-      return "<";
-    case BinOp::GE:
-      return "<=";
-    case BinOp::ADD:
-      return "+";
-    case BinOp::SUB:
-      return "-";
-    case BinOp::MUL:
-      return "*";
-    case BinOp::DIV:
-      return "/";
-    case BinOp::MOD:
-      return "%";
-  }
 }
 
 }  // namespace
@@ -272,7 +251,7 @@ void Printer::PrintExpr(Expr *expr) {
         auto binary = reinterpret_cast<BinaryExpr *>(expr);
         Write("Left: ");
         PrintExpr(binary->lhs.get());
-        Writeln("Op: " + binop_string(binary->op));
+        Writeln("Op: " + ToString(binary->op));
         Write("Right: ");
         PrintExpr(binary->rhs.get());
         PrintPos(binary->GetPos());

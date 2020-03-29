@@ -12,7 +12,6 @@
 namespace felis {
 
 enum Ty { UNKNOWN, VOID, INT, CHAR, STRING, FLOAT, BOOL };
-std::string tyString(Ty ty);
 
 using DefId = uint32_t;
 

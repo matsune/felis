@@ -87,8 +87,6 @@ struct Token {
 
 using TokenKind = Token::Kind;
 
-std::string to_string(TokenKind kind);
-
 }  // namespace felis
 
 #endif  // FELIS_SYNTAX_TOKEN_H_

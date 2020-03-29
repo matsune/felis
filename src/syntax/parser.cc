@@ -96,14 +96,14 @@ std::unique_ptr<FnDecl> Parser::ParseFnDecl() {
 
 std::unique_ptr<FnProto> Parser::ParseFnProto() {
   if (Peek()->kind != TokenKind::KW_FN) {
-    Raise("expected %s", to_string(TokenKind::KW_FN).c_str());
+    Raise("expected %s", ToString(TokenKind::KW_FN).c_str());
     return nullptr;
   }
   auto fn = Bump();
   Pos fnPos = fn->pos;
 
   if (Peek()->kind != TokenKind::IDENT) {
-    Raise("expected %s", to_string(TokenKind::IDENT).c_str());
+    Raise("expected %s", ToString(TokenKind::IDENT).c_str());
     return nullptr;
   }
   auto nameTok = Bump();
@@ -168,7 +168,7 @@ bool Parser::ParseFnArgs(std::vector<std::unique_ptr<FnArg>>& args) {
 
 std::unique_ptr<FnArg> Parser::ParseFnArg() {
   if (Peek()->kind != TokenKind::IDENT) {
-    Raise("expected %s", to_string(TokenKind::IDENT).c_str());
+    Raise("expected %s", ToString(TokenKind::IDENT).c_str());
     return nullptr;
   }
   auto nameOrTyTok = Bump();
@@ -178,7 +178,7 @@ std::unique_ptr<FnArg> Parser::ParseFnArg() {
     Bump();
 
     if (Peek()->kind != TokenKind::IDENT) {
-      Raise("expected %s", to_string(TokenKind::IDENT).c_str());
+      Raise("expected %s", ToString(TokenKind::IDENT).c_str());
       return nullptr;
     }
 
@@ -215,7 +215,7 @@ std::unique_ptr<Expr> Parser::ParseExpr(uint8_t prec) {
       return nullptr;
     }
     if (Peek()->kind != TokenKind::LPAREN) {
-      Raise("expected %s", to_string(TokenKind::LPAREN).c_str());
+      Raise("expected %s", ToString(TokenKind::LPAREN).c_str());
       return nullptr;
     }
     Bump();
@@ -238,7 +238,7 @@ std::unique_ptr<Expr> Parser::ParseExpr(uint8_t prec) {
 
       while (Peek()->kind != TokenKind::RPAREN) {
         if (Peek()->kind != TokenKind::COMMA) {
-          Raise("expected %s", to_string(TokenKind::COMMA).c_str());
+          Raise("expected %s", ToString(TokenKind::COMMA).c_str());
           return nullptr;
         }
         Bump();
@@ -292,7 +292,7 @@ std::unique_ptr<Expr> Parser::ParsePrimary() {
     auto expr = ParseExpr();
     if (!expr) return nullptr;
     if (Peek()->kind != TokenKind::RPAREN) {
-      Raise("expected %s", to_string(TokenKind::RPAREN).c_str());
+      Raise("expected %s", ToString(TokenKind::RPAREN).c_str());
       return nullptr;
     }
     Bump();
@@ -321,13 +321,13 @@ std::unique_ptr<Stmt> Parser::ParseStmt() {
     Pos pos = kw->pos;
 
     if (Peek()->kind != TokenKind::IDENT) {
-      Raise("expected %s", to_string(TokenKind::IDENT).c_str());
+      Raise("expected %s", ToString(TokenKind::IDENT).c_str());
       return nullptr;
     }
     auto name = std::make_unique<Ident>(pos, Bump()->sval);
 
     if (Peek()->kind != TokenKind::EQ) {
-      Raise("expected %s", to_string(TokenKind::EQ).c_str());
+      Raise("expected %s", ToString(TokenKind::EQ).c_str());
       return nullptr;
     }
     Bump();
@@ -355,7 +355,7 @@ std::unique_ptr<Stmt> Parser::ParseStmt() {
 
 std::unique_ptr<IfStmt> Parser::ParseIfStmt() {
   if (Peek()->kind != TokenKind::KW_IF) {
-    Raise("expected %s", to_string(TokenKind::KW_IF).c_str());
+    Raise("expected %s", ToString(TokenKind::KW_IF).c_str());
     return nullptr;
   }
   Pos pos = Bump()->pos;
@@ -385,7 +385,7 @@ std::unique_ptr<IfStmt> Parser::ParseIfStmt() {
 
 std::unique_ptr<Block> Parser::ParseBlock() {
   if (Peek()->kind != TokenKind::LBRACE) {
-    Raise("expected %s", to_string(TokenKind::LBRACE).c_str());
+    Raise("expected %s", ToString(TokenKind::LBRACE).c_str());
     return nullptr;
   }
   Pos pos = Bump()->pos;

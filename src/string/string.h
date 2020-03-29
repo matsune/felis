@@ -5,6 +5,9 @@
 #include <string>
 #include <vector>
 
+#include "analysis/def_table.h"
+#include "syntax/token.h"
+
 namespace felis {
 
 template <typename... Args>
@@ -14,6 +17,10 @@ std::string format(const std::string& fmt, Args... args) {
   std::snprintf(&buf[0], len + 1, fmt.c_str(), args...);
   return std::string(&buf[0], &buf[0] + len);
 }
+
+std::string ToString(TokenKind kind);
+std::string ToString(Ty ty);
+std::string ToString(BinOp op);
 
 }  // namespace felis
 

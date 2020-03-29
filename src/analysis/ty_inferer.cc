@@ -136,7 +136,7 @@ void TyInferer::Infer(std::unique_ptr<Stmt> &stmt) {
         handler_.Raise(
             stmt->GetPos(),
             format("cannot use type %s for function ret type %s",
-                   tyString(ty).c_str(), tyString(currentFn_->ret).c_str()));
+                   ToString(ty).c_str(), ToString(currentFn_->ret).c_str()));
         return;
       }
     } break;
@@ -259,7 +259,7 @@ bool TyInferer::InferTy(Ty &ty, Expr *expr) {
           break;
       }
       handler_.Raise(unary->GetPos(),
-                     format("invalid unary for expr ty %s", tyString(exprTy)));
+                     format("invalid unary for expr ty %s", ToString(exprTy)));
       return false;
     } break;
   }

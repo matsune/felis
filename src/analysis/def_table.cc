@@ -6,25 +6,6 @@
 
 namespace felis {
 
-std::string tyString(Ty ty) {
-  switch (ty) {
-    case Ty::UNKNOWN:
-      return "unknown";
-    case Ty::VOID:
-      return "void";
-    case Ty::BOOL:
-      return "bool";
-    case Ty::INT:
-      return "int";
-    case Ty::CHAR:
-      return "char";
-    case Ty::FLOAT:
-      return "float";
-    case Ty::STRING:
-      return "string";
-  }
-}
-
 DefId DefTable::InsertFn(std::unique_ptr<DefFn> fn) {
   Stack *stack;
   if (fn->depth == 0) {
@@ -87,14 +68,14 @@ void printDef(const std::unique_ptr<Def> &def) {
     auto fn = reinterpret_cast<DefFn *>(def.get());
     std::cout << "KIND: " << (fn->isExt ? "ext" : "fn") << std::endl;
     for (int i = 0; i < fn->args.size(); i++) {
-      std::cout << "ARG " << i << ": " << tyString(fn->args.at(i)) << std::endl;
+      std::cout << "ARG " << i << ": " << ToString(fn->args.at(i)) << std::endl;
     }
-    std::cout << "RET TY: " << tyString(fn->ret) << std::endl;
+    std::cout << "RET TY: " << ToString(fn->ret) << std::endl;
   } else {
     // var
     auto var = reinterpret_cast<DefVar *>(def.get());
     std::cout << "KIND: " << (var->isLet ? "let" : "var") << std::endl;
-    std::cout << "TY: " << tyString(var->ty) << std::endl;
+    std::cout << "TY: " << ToString(var->ty) << std::endl;
   }
   std::cout << "NAME: " << def->name << std::endl;
   std::cout << "DEPTH: " << unsigned(def->depth) << std::endl;
