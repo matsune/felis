@@ -39,7 +39,7 @@ bool DefTable::IsDeclaredFn(uint8_t depth, std::string name) {
 
 bool DefTable::IsDeclaredVar(uint8_t depth, std::string name) {
   auto def = FindVar(depth, name);
-  return def != nullptr && def->depth == depth;
+  return def != nullptr && def->depth <= depth;
 }
 
 DefFn *DefTable::FindFn(uint8_t depth, std::string name) {

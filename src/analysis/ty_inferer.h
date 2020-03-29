@@ -29,8 +29,12 @@ class TyInferer {
                      const std::unique_ptr<FnProto> &);
   void Infer(std::unique_ptr<FnDecl> &);
   void Infer(std::unique_ptr<Stmt> &);
+  void Infer(Block *);
 
   bool InferTy(Ty &, Expr *);
+
+  void PushScope();
+  void PopScope();
 };
 
 }  // namespace felis

@@ -70,10 +70,19 @@ void TyInferer::Parse(std::unique_ptr<File> &file) {
   }
 }
 
-void TyInferer::Infer(std::unique_ptr<FnDecl> &fn) {
-  // First check and insert args
+void TyInferer::PushScope() {
   depth_++;
   defTable_.PushLocal();
+}
+
+void TyInferer::PopScope() {
+  depth_--;
+  defTable_.PopLocal();
+}
+
+void TyInferer::Infer(std::unique_ptr<FnDecl> &fn) {
+  // First check and insert args
+  PushScope();
 
   DefId defId = idMap_.at(fn->id);
   currentFn_ = (DefFn *)defTable_.Get(defId);
@@ -100,9 +109,7 @@ void TyInferer::Infer(std::unique_ptr<FnDecl> &fn) {
   }
 
   // dive into block
-  for (auto &stmt : fn->block->stmts) {
-    Infer(stmt);
-  }
+  Infer(fn->block.get());
   if (handler_.HasError()) {
     return;
   }
@@ -111,12 +118,24 @@ void TyInferer::Infer(std::unique_ptr<FnDecl> &fn) {
   defTable_.PrintLocal();
 
   currentFn_ = nullptr;
-  defTable_.PopLocal();
-  depth_--;
+  PopScope();
+}
+
+void TyInferer::Infer(Block *block) {
+  for (auto &stmt : block->stmts) {
+    Infer(stmt);
+  }
 }
 
 void TyInferer::Infer(std::unique_ptr<Stmt> &stmt) {
   switch (stmt->StmtKind()) {
+    case Stmt::Kind::EXPR: {
+      auto expr = (Expr *)stmt.get();
+      Ty ty;
+      bool ok = InferTy(ty, expr);
+      if (!ok) return;
+    } break;
+
     case Stmt::Kind::RET: {
       auto ret = (RetStmt *)stmt.get();
       Ty ty(Ty::UNKNOWN);
@@ -140,9 +159,74 @@ void TyInferer::Infer(std::unique_ptr<Stmt> &stmt) {
         return;
       }
     } break;
-    default:
-      printf("unimplemented stmt kind %d\n", stmt->StmtKind());
-      exit(1);
+
+    case Stmt::Kind::VAR_DECL: {
+      auto decl = (VarDeclStmt *)stmt.get();
+      if (defTable_.IsDeclaredVar(depth_, decl->name->sval)) {
+        handler_.Raise(decl->GetPos(),
+                       format("redeclared var %s", decl->name->sval));
+        return;
+      }
+      Ty ty;
+      auto ok = InferTy(ty, decl->expr.get());
+      if (!ok) return;
+
+      defTable_.InsertVar(std::make_unique<DefVar>(depth_, decl->name->sval,
+                                                   decl, decl->isLet, ty));
+    } break;
+
+    case Stmt::Kind::ASSIGN: {
+      auto assign = (AssignStmt *)stmt.get();
+      if (!defTable_.IsDeclaredVar(depth_, assign->name->sval)) {
+        handler_.Raise(assign->GetPos(),
+                       format("undeclared var %s", assign->name->sval.c_str()));
+        return;
+      }
+      auto def = defTable_.FindVar(depth_, assign->name->sval);
+      if (def->isLet) {
+        handler_.Raise(assign->GetPos(), format("variable %s is mutable",
+                                                assign->name->sval.c_str()));
+        return;
+      }
+      Ty ty;
+      bool ok = InferTy(ty, assign->expr.get());
+      if (def->ty != ty) {
+        handler_.Raise(assign->expr->GetPos(),
+                       "assigned expr type doesn't match");
+        return;
+      }
+    } break;
+
+    case Stmt::Kind::IF: {
+      auto ifStmt = (IfStmt *)stmt.get();
+      Ty condTy;
+      auto ok = InferTy(condTy, ifStmt->cond.get());
+      if (!ok) return;
+      if (condTy != Ty::BOOL) {
+        handler_.Raise(ifStmt->cond->GetPos(), "non bool if cond");
+        return;
+      }
+
+      PushScope();
+      Infer(ifStmt->block.get());
+      PopScope();
+
+      if (ifStmt->els) {
+        if (ifStmt->els->StmtKind() == Stmt::Kind::IF) {
+          Infer(ifStmt->els);
+        } else if (ifStmt->els->StmtKind() == Stmt::Kind::BLOCK) {
+          PushScope();
+          Infer(ifStmt->els);
+          PopScope();
+        }
+      }
+    } break;
+    case Stmt::Kind::BLOCK: {
+      auto block = (Block *)stmt.get();
+      PushScope();
+      Infer(block);
+      PopScope();
+    } break;
   }
 }
 
