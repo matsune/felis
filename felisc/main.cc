@@ -1,12 +1,9 @@
-/* #include <llvm/IR/IRBuilder.h> */
-/* #include <llvm/IR/LLVMContext.h> */
-/* #include <llvm/IR/Module.h> */
-
 #include <fstream>
 #include <iostream>
 #include <string>
 
 #include "analysis/ty_inferer.h"
+#include "codegen/codegen.h"
 #include "printer/printer.h"
 #include "syntax/syntax.h"
 
@@ -54,6 +51,12 @@ int main(int argc, char *argv[]) {
   inferer.Parse(file);
   if (handler.HasError()) {
     handler.Report();
+    return 1;
+  }
+
+  felis::Codegen gen;
+  if (!gen.CreateTargetMachine()) {
+    std::cerr << gen.Error() << std::endl;
     return 1;
   }
 }
