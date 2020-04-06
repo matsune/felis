@@ -321,7 +321,8 @@ void Printer::PrintLit(Lit *lit) {
       Down("LitChar {");
       {
         auto l = reinterpret_cast<LitChar *>(lit);
-        std::string s{l->cval};
+        // FIXME
+        std::string s{char(l->cval.scalar)};
         Writeln("literal: '" + s + "'");
         PrintPos(lit->GetPos());
       }

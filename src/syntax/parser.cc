@@ -285,7 +285,7 @@ std::unique_ptr<Expr> Parser::ParsePrimary() {
   } else if (token->kind == TokenKind::LIT_BOOL) {
     return std::make_unique<LitBool>(pos, token->bval);
   } else if (token->kind == TokenKind::LIT_CHAR) {
-    return std::make_unique<LitChar>(pos, token->ival);
+    return std::make_unique<LitChar>(pos, token->cval);
   } else if (token->kind == TokenKind::LIT_STR) {
     return std::make_unique<LitStr>(pos, token->sval);
   } else if (token->kind == TokenKind::LPAREN) {

@@ -2,8 +2,7 @@
 #include <iostream>
 #include <string>
 
-#include "analysis/ty_inferer.h"
-#include "codegen/codegen.h"
+#include "ir/builder.h"
 #include "printer/printer.h"
 #include "syntax/syntax.h"
 
@@ -44,19 +43,12 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  felis::Printer printer;
-  printer.Print(file);
+  /* felis::Printer printer; */
+  /* printer.Print(file); */
 
-  felis::TyInferer inferer(handler);
-  inferer.Parse(file);
-  if (handler.HasError()) {
+  felis::Builder builder(handler);
+  if (!builder.Build(std::move(file))) {
     handler.Report();
-    return 1;
-  }
-
-  felis::Codegen gen;
-  if (!gen.CreateTargetMachine()) {
-    std::cerr << gen.Error() << std::endl;
     return 1;
   }
 }

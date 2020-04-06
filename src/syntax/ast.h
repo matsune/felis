@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "syntax/pos.h"
+#include "syntax/rune.h"
 
 namespace felis {
 
@@ -128,9 +129,9 @@ struct LitChar : public Lit {
   Kind LitKind() override { return Kind::CHAR; }
 
   Pos pos;
-  char cval;
+  rune cval;
 
-  explicit LitChar(Pos pos, char cval = 0) : pos(pos), cval(cval) {}
+  explicit LitChar(Pos pos, rune cval) : pos(pos), cval(cval) {}
 
   Pos GetPos() override { return pos; }
 };

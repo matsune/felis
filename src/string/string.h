@@ -5,7 +5,8 @@
 #include <string>
 #include <vector>
 
-#include "analysis/def_table.h"
+#include "ir/symtab.h"
+#include "syntax/ast.h"
 #include "syntax/token.h"
 
 namespace felis {

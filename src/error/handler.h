@@ -13,11 +13,15 @@ namespace felis
 {
 
 struct Error {
-  Pos pos;
+  Pos* pos;
   std::string message;
 
-  Error(Pos pos = Pos(), std::string message = "")
-      : pos(pos), message(message) {}
+  Error(Pos pos, std::string message = "")
+      : pos(new Pos(pos)), message(message) {}
+  Error(std::string message = "") : pos(nullptr), message(message) {}
+  ~Error() {
+    if (pos) delete pos;
+  }
 };
 
 class ErrorHandler {
@@ -30,6 +34,7 @@ class ErrorHandler {
   void SetFilename(std::string filename) { filename_ = filename; };
 
   void Raise(Pos pos, std::string message);
+  void Raise(std::string message);
 
   bool HasError() { return !errors_.empty(); }
 
