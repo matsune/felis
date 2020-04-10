@@ -7,7 +7,7 @@
 
 namespace felis {
 
-namespace {
+namespace {  // fileprivate
 
 inline bool is_lit(TokenKind kind) {
   return kind == TokenKind::LIT_INT || kind == TokenKind::LIT_FLOAT ||
@@ -411,7 +411,7 @@ std::unique_ptr<Block> Parser::ParseBlock() {
 
 template <typename... Args>
 void Parser::Raise(const std::string& fmt, Args... args) {
-  handler_.Raise(Peek()->pos, format(fmt, args...));
+  /* handler_.Raise(Peek()->pos, format(fmt, args...)); */
 }
 
 std::unique_ptr<File> Parser::Parse() {

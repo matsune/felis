@@ -6,22 +6,22 @@
 #include <memory>
 #include <string>
 
-#include "error/handler.h"
+#include "err/handler.h"
+#include "err/result.h"
 #include "pos.h"
 #include "token.h"
 
 namespace felis {
 
+template <class T>
+using LexResult = Result<T, PosError>;
+
 class Lexer {
  public:
-  Lexer(std::basic_istream<char> &in, ErrorHandler &handler)
-      : in_(in), handler_(handler) {
-    peek_ = Scan();
-  }
-  std::unique_ptr<Token> Next();
+  Lexer(std::basic_istream<char> &in) : in_(in) { peek_ = Scan(); }
+  LexResult<Token> Next();
 
  private:
-  ErrorHandler &handler_;
   std::basic_istream<char> &in_;
   Pos pos_;
   rune peek_;
@@ -30,17 +30,17 @@ class Lexer {
   rune Bump();
   bool BumpIf(uint32_t);
   bool BumpIf(std::function<bool(uint32_t)>);
-  bool EatChar(rune *);
-  bool Escape(char *);
-  bool EatString(std::string *);
+  LexResult<rune> EatChar();
+  LexResult<char> Escape();
+  LexResult<std::string> EatString();
   void EatLineComment();
-  bool EatBlockComment(bool *has_nl);
-  bool EatIdent(std::unique_ptr<Token> &);
-  bool EatNum(std::unique_ptr<Token> &);
-  bool EatDigits(std::string &, std::function<bool(uint32_t)>);
+  LexResult<bool> EatBlockComment();
+  LexResult<Token> EatIdent();
+  LexResult<Token> EatNum();
+  LexResult<std::string> EatDigits(std::function<bool(uint32_t)>);
 
-  template <typename... Args>
-  void Raise(const std::string &fmt, Args... args);
+  template <typename T, typename... Args>
+  LexResult<T> Raise(const std::string &fmt, Args... args);
 };
 
 }  // namespace felis

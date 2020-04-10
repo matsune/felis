@@ -14,6 +14,10 @@ struct rune {
 
   explicit rune(uint32_t scalar = 0) : scalar(scalar) {}
 
+  rune &operator=(char const &ch) {
+    scalar = ch;
+    return *this;
+  };
   int len_utf8();
   int encode_utf8(char[4]);
 };

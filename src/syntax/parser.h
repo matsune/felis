@@ -15,7 +15,7 @@ namespace felis {
 
 class Parser {
  public:
-  explicit Parser(ErrorHandler &handler) : handler_(handler) {}
+  explicit Parser() {}  //: handler_(handler) {}
 
   void PushToken(std::unique_ptr<Token> &&token) {
     tokens_.push_back(std::move(token));
@@ -24,7 +24,7 @@ class Parser {
   std::unique_ptr<File> Parse();
 
  private:
-  ErrorHandler &handler_;
+  /* ErrorHandler &handler_; */
   std::deque<std::unique_ptr<Token>> tokens_;
   NodeId nextId_ = 1;
 

@@ -8,6 +8,16 @@
 
 namespace felis {
 
+struct Tok {
+  union {
+    std::string sval;
+    uint64_t ival;
+    rune cval;
+    double fval;
+    bool bval;
+  };
+};
+
 struct Token {
   enum Kind {
     END,  // '\0'
@@ -71,8 +81,8 @@ struct Token {
   double fval;
   bool bval;
 
-  Token()
-      : kind(Kind::END),
+  Token(Kind kind = Kind::END)
+      : kind(kind),
         pos(Pos()),
         ws(false),
         nl(false),
