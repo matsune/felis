@@ -4,8 +4,6 @@
 
 #include "ir/builder.h"
 #include "printer/printer.h"
-/* #include "syntax/syntax.h" */
-/* #include "err/handler.h" */
 #include "syntax/lexer.h"
 #include "syntax/parser.h"
 
@@ -28,27 +26,30 @@ int main(int argc, char *argv[]) {
   bool isEnd(false);
   felis::Lexer *lexer = new felis::Lexer(in);
   while (!isEnd) {
-    auto res = lexer->Next();
-    if (!res) {
-      auto posErr = res.UnwrapErr();
+    auto lexRes = lexer->Next();
+    if (!lexRes) {
+      auto posErr = lexRes.UnwrapErr();
       std::cerr << filename << ":" << posErr->what() << std::endl;
       break;
     }
-    isEnd = res.UnwrapOk()->kind == felis::TokenKind::END;
-    parser.PushToken(move(res.UnwrapOk()));
+    auto tok = lexRes.Unwrap();
+    isEnd = tok->kind == felis::TokenKind::END;
+    parser.PushToken(std::unique_ptr<felis::Token>(tok));
   }
   delete lexer;
   in.close();
   if (!isEnd) return 1;
 
-  /* std::unique_ptr<felis::File> file = parser.Parse(); */
-  /* if (handler.HasError()) { */
-  /*   handler.Report(); */
-  /*   return 1; */
-  /* } */
-
-  /* felis::Printer printer; */
-  /* printer.Print(file); */
+  auto parseRes = parser.Parse();
+  if (!parseRes) {
+    auto posErr = parseRes.UnwrapErr();
+    std::cerr << filename << ":" << posErr->what() << std::endl;
+    return 1;
+  }
+  auto file = parseRes.Unwrap();
+  felis::Printer printer;
+  printer.Print(file);
+  delete file;
 
   /* felis::Builder builder(handler); */
   /* if (!builder.Build(std::move(file))) { */

@@ -208,7 +208,9 @@ LexResult<rune> Lexer::EatChar() {
       if (!res) {
         return res.Raise<rune>();
       }
-      r = *res.UnwrapOk();
+      char *ch = res.Unwrap();
+      r = *ch;
+      delete ch;
     } break;
     case '\'':
       return Raise<rune>("empty char literal");
@@ -244,7 +246,9 @@ LexResult<std::string> Lexer::EatString() {
       Bump();
       auto res = Escape();
       if (!res) return res.Raise<std::string>();
-      out.push_back(*res.UnwrapOk());
+      auto ch = res.Unwrap();
+      out.push_back(*ch);
+      delete ch;
     } else {
       len = Bump().encode_utf8(dst);
       out.append(dst, len);
@@ -257,7 +261,7 @@ LexResult<std::string> Lexer::EatString() {
 }
 
 LexResult<Token> Lexer::Next() {
-  auto tok = std::make_unique<Token>();
+  auto tok = new Token;
 
   while (true) {
     tok->pos = pos_;
@@ -273,12 +277,16 @@ LexResult<Token> Lexer::Next() {
       tok->kind = TokenKind::LIT_CHAR;
       auto res = EatChar();
       if (!res) return res.Raise<Token>();
-      tok->cval = *res.UnwrapOk();
+      auto r = res.Unwrap();
+      tok->cval = *r;
+      delete r;
     } else if (BumpIf('"')) {
       tok->kind = TokenKind::LIT_STR;
       auto res = EatString();
       if (!res) return res.Raise<Token>();
-      tok->sval = *res.UnwrapOk();
+      auto s = res.Unwrap();
+      tok->sval = *s;
+      delete s;
     } else if (BumpIf('/')) {
       if (BumpIf('/')) {
         // skip comment
@@ -289,11 +297,12 @@ LexResult<Token> Lexer::Next() {
         // skip comment
         auto res = EatBlockComment();
         if (!res) return res.Raise<Token>();
-        bool hasNl = *res.UnwrapOk();
-        if (hasNl)
+        auto hasNl = res.Unwrap();
+        if (*hasNl)
           tok->nl = true;
         else
           tok->ws = true;
+        delete hasNl;
         continue;
       } else {
         tok->kind = TokenKind::SLASH;
@@ -369,20 +378,22 @@ LexResult<Token> Lexer::Next() {
     } else if (is_decimalc(peek_.scalar)) {
       auto res = EatNum();
       if (!res) return res;
-      auto t = res.UnwrapOk();
+      auto t = res.Unwrap();
       tok->kind = t->kind;
       tok->ival = t->ival;
       tok->fval = t->fval;
+      delete t;
     } else if (is_ident_head(peek_.scalar)) {
       auto res = EatIdent();
       if (!res) return res;
-      auto t = res.UnwrapOk();
+      auto t = res.Unwrap();
       tok->kind = t->kind;
       tok->sval = t->sval;
+      delete t;
     } else {
       return Raise<Token>("unsupported char %c", peek_.scalar);
     }
-    return LexResult<Token>::Ok(std::move(tok));
+    return LexResult<Token>::Ok(tok);
   }
 }
 
@@ -442,8 +453,8 @@ LexResult<Token> Lexer::EatNum() {
   TokenKind kind(TokenKind::LIT_INT);
 
   auto first = Bump();
-  std::string s("");
-  s.push_back(first.scalar);
+  std::string str("");
+  str.push_back(first.scalar);
   int base(10);
   if (first == '0') {
     if (BumpIf('b')) {
@@ -453,8 +464,9 @@ LexResult<Token> Lexer::EatNum() {
       if (!res) {
         return res.Raise<Token>();
       }
-      std::string digitsStr = *res.UnwrapOk();
-      s += digitsStr;
+      auto s = res.Unwrap();
+      str += *s;
+      delete s;
     } else if (BumpIf('o')) {
       // octal
       base = 8;
@@ -462,8 +474,9 @@ LexResult<Token> Lexer::EatNum() {
       if (!res) {
         return res.Raise<Token>();
       }
-      std::string digitsStr = *res.UnwrapOk();
-      s += digitsStr;
+      auto s = res.Unwrap();
+      str += *s;
+      delete s;
     } else if (BumpIf('x')) {
       // hex
       base = 16;
@@ -471,12 +484,13 @@ LexResult<Token> Lexer::EatNum() {
       if (!res) {
         return res.Raise<Token>();
       }
-      std::string digitsStr = *res.UnwrapOk();
-      s += digitsStr;
+      auto s = res.Unwrap();
+      str += *s;
+      delete s;
     } else if (is_decimalc(peek_.scalar) || peek_ == '_') {
       while (true) {
         if (is_decimalc(peek_.scalar)) {
-          s.push_back(Bump().scalar);
+          str.push_back(Bump().scalar);
         } else if (peek_ == '_') {
           Bump();
         } else {
@@ -492,7 +506,7 @@ LexResult<Token> Lexer::EatNum() {
   } else {
     while (true) {
       if (is_decimalc(peek_.scalar)) {
-        s.push_back(Bump().scalar);
+        str.push_back(Bump().scalar);
       } else if (peek_ == '_') {
         Bump();
       } else {
@@ -507,22 +521,24 @@ LexResult<Token> Lexer::EatNum() {
       return Raise<Token>("'%c' exponent requires decimal mantissa\n", peek_);
     }
     bool dot = peek_ == '.';
-    s.push_back(Bump().scalar);
+    str.push_back(Bump().scalar);
     if (!dot && peek_ == '-') {
-      s.push_back(Bump().scalar);
+      str.push_back(Bump().scalar);
     }
 
     auto res = EatDigits(is_decimalc);
     if (!res) {
       return res.Raise<Token>();
     }
-    s += *res.UnwrapOk();
+    auto s = res.Unwrap();
+    str += *s;
+    delete s;
 
     auto tok = new Token(TokenKind::LIT_FLOAT);
-    tok->fval = stold(s);
+    tok->fval = stold(str);
     return LexResult<Token>::Ok(tok);
   } else {
-    uint64_t ival = stoull(s, nullptr, base);
+    uint64_t ival = stoull(str, nullptr, base);
     if (ival > INT64_MAX) {
       return Raise<Token>("overflow int64 size");
     }

@@ -11,7 +11,7 @@ namespace felis {
 
 class Printer {
  public:
-  void Print(const std::unique_ptr<File> &);
+  void Print(const File *);
 
  private:
   uint16_t depth_ = 0;

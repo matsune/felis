@@ -16,54 +16,70 @@ class Result {
   Result(const Result &) = delete;
   Result(Result &&) = default;
 
-  Result(std::unique_ptr<T> &&t) : t_(std::move(t)), e_(nullptr), ok_(true){};
-
-  Result(std::unique_ptr<E> &&e) : t_(nullptr), e_(std::move(e)), ok_(false){};
+  ~Result() {
+    if (t_) delete t_;
+    if (e_) delete e_;
+  }
 
   operator bool() const { return ok_; };
 
   template <class... Args>
   static Result Ok(Args &&... args) {
-    return Result(std::make_unique<T>(args...));
+    return Result(new T(args...));
   }
 
-  static Result Ok(T *t) { return Result(std::unique_ptr<T>(t)); }
-  static Result Ok(std::unique_ptr<T> t) { return Result(std::move(t)); }
+  static Result Ok(T *t) { return Result(t); }
 
   template <class... Args>
   static Result Err(Args &&... args) {
-    return Result(std::make_unique<E>(args...));
+    return Result(new E(args...));
   }
 
-  static Result Err(E *e) { return Result(std::unique_ptr<E>(e)); }
+  static Result Err(E *e) { return Result(e); }
 
   template <class TT>
   Result<TT, E> Raise() {
-    return Result<TT, E>(move(this->e_));
+    return Result<TT, E>::Err(this->UnwrapErr());
+  }
+
+  template <class TT>
+  Result<TT, E> Into() {
+    return Result<TT, E>::Ok((TT *)this->Unwrap());
   }
 
   bool IsOk() { return ok_; }
   bool IsErr() { return !ok_; }
 
-  std::unique_ptr<T> UnwrapOk() {
+  // `this` won't manage <T> or <E> pointer after unwrapping,
+  // so you need to free pointer at where you call this method.
+  T *Unwrap() {
     if (IsErr()) {
       std::fprintf(stderr, "Attempting to unwrap an error Result\n");
       std::terminate();
     }
-    return std::move(t_);
+
+    T *tmp = t_;
+    t_ = nullptr;
+    return tmp;
   }
 
-  std::unique_ptr<E> UnwrapErr() {
+  E *UnwrapErr() {
     if (IsOk()) {
       std::fprintf(stderr, "Attempting to unwrapErr an ok Result\n");
       std::terminate();
     }
-    return std::move(e_);
+
+    E *tmp = e_;
+    e_ = nullptr;
+    return tmp;
   }
 
  private:
-  std::unique_ptr<T> t_;
-  std::unique_ptr<E> e_;
+  Result(T *t) : t_(t), e_(nullptr), ok_(true){};
+  Result(E *e) : t_(nullptr), e_(e), ok_(false){};
+
+  T *t_;
+  E *e_;
   bool ok_;
 };
 

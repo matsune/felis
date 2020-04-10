@@ -89,7 +89,7 @@ std::shared_ptr<DefFn> Builder::InsertDefFn(
 
   auto def = std::make_shared<DefFn>(proto->name->sval);
 
-  for (auto& arg : proto->args) {
+  for (auto& arg : *proto->args) {
     Ty ty = TyFromIdent(arg->ty);
     if (ty == Ty::UNKNOWN) {
       handler_.Raise(arg->ty->GetPos(),
@@ -261,7 +261,7 @@ bool Builder::Build(Expr* expr, llvm::Value*& value, Ty& ty) {
       llvm::Value* exprValue;
       bool ok = Build(unary->expr.get(), exprValue, exprTy);
       if (!ok) return false;
-      switch (*unary->unOp.get()) {
+      switch (unary->unOp) {
         case UnOp::NEG:
           if (exprTy == Ty::INT) {
             ty = Ty::INT;
@@ -445,8 +445,8 @@ bool Builder::Build(std::unique_ptr<FnDecl>& fnDecl,
   // args
   auto func = def->func;
   auto it = func->arg_begin();
-  for (int i = 0; i < fnDecl->proto->args.size(); i++) {
-    auto name = fnDecl->proto->args.at(i)->name->sval;
+  for (int i = 0; i < fnDecl->proto->args->size(); i++) {
+    auto name = fnDecl->proto->args->at(i)->name->sval;
     it->setName(name);
 
     auto defArg = std::make_shared<DefArg>(name, def->args.at(i));

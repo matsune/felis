@@ -17,7 +17,7 @@ static std::string tostring(const T &t) {
 
 }  // namespace
 
-void Printer::Print(const std::unique_ptr<File> &file) {
+void Printer::Print(const File *file) {
   WriteLineNum();
   for (int i = 0; i < file->externs.size(); i++) {
     PrintIndex(i);
@@ -109,9 +109,9 @@ void Printer::PrintProto(FnProto *proto) {
   PrintIdent(proto->name.get());
   Down("FnArgs [");
   {
-    for (int i = 0; i < proto->args.size(); i++) {
+    for (int i = 0; i < proto->args->size(); i++) {
       PrintIndex(i);
-      PrintFnArg(proto->args[i].get());
+      PrintFnArg(proto->args->at(i).get());
     }
   }
   Up("]");
@@ -280,7 +280,7 @@ void Printer::PrintExpr(Expr *expr) {
       Down("Unary {");
       {
         auto unary = reinterpret_cast<UnaryExpr *>(expr);
-        std::string op = *unary->unOp == UnOp::NEG ? "-" : "!";
+        std::string op = unary->unOp == UnOp::NEG ? "-" : "!";
         Writeln("op: %s", op.c_str());
         PrintExpr(unary->expr.get());
         PrintPos(unary->GetPos());
