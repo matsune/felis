@@ -1,7 +1,5 @@
 #include "syntax/lexer.h"
 
-#include "string/string.h"
-
 namespace felis {
 
 namespace {
@@ -490,7 +488,7 @@ std::unique_ptr<Token> Lexer::EatNum() {
     if (ival > INT64_MAX) {
       Throw("overflow int64 size");
     }
-    auto tok = new Token(TokenKind::LIT_FLOAT);
+    auto tok = new Token(TokenKind::LIT_INT);
     tok->ival = ival;
     return std::unique_ptr<Token>(tok);
   }
@@ -535,7 +533,7 @@ bool Lexer::EatBlockComment() {
 
 template <typename... Args>
 void Lexer::Throw(const std::string &fmt, Args... args) {
-  throw CompileError(pos_, format(fmt, args...));
+  throw CompileError::CreatePosFmt(pos_, fmt, args...);
 }
 
 }  // namespace felis

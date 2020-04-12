@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 
+#include "string/string.h"
 #include "syntax/pos.h"
 
 namespace felis
@@ -18,6 +19,12 @@ class CompileError : public std::exception {
     std::ostringstream ss;
     ss << pos.line << ":" << pos.column << " " << msg;
     msg_ = ss.str();
+  };
+
+  template <typename... Args>
+  static CompileError CreatePosFmt(Pos pos, const std::string& fmt,
+                                   Args... args) {
+    return CompileError(pos, format(fmt, args...));
   };
 
   const char* what() const throw() { return msg_.c_str(); }

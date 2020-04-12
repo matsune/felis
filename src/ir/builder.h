@@ -22,28 +22,26 @@ class Builder {
   Builder(std::string moduleName = "felis")
       : module_(moduleName, ctx_), builder_(ctx_){};
   bool CreateTargetMachine(std::string &err);
-  bool Build(std::unique_ptr<File>);
+  void Build(std::unique_ptr<File>);
 
  private:
   llvm::LLVMContext ctx_;
   llvm::Module module_;
   llvm::IRBuilder<> builder_;
   std::unique_ptr<llvm::TargetMachine> machine_;
-
+  SymTabManager sm_;
   std::shared_ptr<DefFn> currentFn_;
 
-  SymTabManager sm_;
+  llvm::Type *getLLVMTyFromTy(Ty ty);
 
   std::shared_ptr<DefFn> InsertDefFn(bool isExt,
                                      const std::unique_ptr<FnProto> &);
 
-  bool Build(std::unique_ptr<FnProto> &, std::shared_ptr<DefFn>);
-  bool Build(std::unique_ptr<FnDecl> &, std::shared_ptr<DefFn>);
-  bool Build(Block *);
-  bool Build(std::unique_ptr<Stmt> &);
-  bool Build(Expr *expr, llvm::Value *&value, Ty &ty);
-
-  llvm::Type *getLLVMTyFromTy(Ty ty);
+  void Build(std::unique_ptr<FnProto> &, std::shared_ptr<DefFn>);
+  void Build(std::unique_ptr<FnDecl> &, std::shared_ptr<DefFn>);
+  void Build(Block *);
+  void Build(std::unique_ptr<Stmt> &);
+  void Build(Expr *expr, llvm::Value *&value, Ty &ty);
 };
 
 }  // namespace felis

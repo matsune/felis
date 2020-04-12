@@ -56,4 +56,9 @@ int main(int argc, char *argv[]) {
     std::cerr << filename << ":" << err << std::endl;
     return 1;
   }
+  try {
+    builder.Build(std::move(file));
+  } catch (const felis::CompileError &e) {
+    std::cerr << filename << ":" << e.what() << std::endl;
+  }
 }

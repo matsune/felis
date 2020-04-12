@@ -3,8 +3,6 @@
 #include <cassert>
 #include <vector>
 
-#include "string/string.h"
-
 namespace felis {
 
 namespace {  // fileprivate
@@ -431,7 +429,7 @@ std::unique_ptr<File> Parser::Parse() {
 
 template <typename... Args>
 void Parser::Throw(const std::string& fmt, Args... args) {
-  throw CompileError(Peek()->pos, format(fmt, args...));
+  throw CompileError::CreatePosFmt(Peek()->pos, fmt, args...);
 }
 
 }  // namespace felis

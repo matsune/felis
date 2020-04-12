@@ -173,12 +173,12 @@ void Printer::PrintStmt(Stmt *stmt) {
 
   switch (stmt->StmtKind()) {
     case Stmt::Kind::EXPR:
-      PrintExpr(reinterpret_cast<Expr *>(stmt));
+      PrintExpr(dynamic_cast<Expr *>(stmt));
       break;
     case Stmt::Kind::RET:
       Down("Ret {");
       {
-        auto ret = reinterpret_cast<RetStmt *>(stmt);
+        auto ret = dynamic_cast<RetStmt *>(stmt);
         Write("Expr: ");
         PrintExpr(ret->expr.get());
         PrintPos(ret->GetPos());
@@ -188,7 +188,7 @@ void Printer::PrintStmt(Stmt *stmt) {
     case Stmt::Kind::VAR_DECL:
       Down("VarDecl {");
       {
-        auto varDecl = reinterpret_cast<VarDeclStmt *>(stmt);
+        auto varDecl = dynamic_cast<VarDeclStmt *>(stmt);
         Writeln("Decl: %s", varDecl->isLet ? "let" : "var");
         Write("Name: ");
         PrintIdent(varDecl->name.get());
@@ -201,7 +201,7 @@ void Printer::PrintStmt(Stmt *stmt) {
     case Stmt::Kind::ASSIGN:
       Down("Assign {");
       {
-        auto assign = reinterpret_cast<AssignStmt *>(stmt);
+        auto assign = dynamic_cast<AssignStmt *>(stmt);
         Write("Name: ");
         PrintIdent(assign->name.get());
         Write("Expr: ");
@@ -213,7 +213,7 @@ void Printer::PrintStmt(Stmt *stmt) {
     case Stmt::Kind::IF:
       Down("If {");
       {
-        auto ifStmt = reinterpret_cast<IfStmt *>(stmt);
+        auto ifStmt = dynamic_cast<IfStmt *>(stmt);
         Write("Cond: ");
         PrintExpr(ifStmt->cond.get());
         PrintBlock(ifStmt->block.get());
@@ -224,7 +224,7 @@ void Printer::PrintStmt(Stmt *stmt) {
       Up("}");
       break;
     case Stmt::Kind::BLOCK:
-      PrintBlock(reinterpret_cast<Block *>(stmt));
+      PrintBlock(dynamic_cast<Block *>(stmt));
       break;
     default:
       std::cout << "unimplemented" << std::endl;
@@ -240,15 +240,15 @@ void Printer::PrintExpr(Expr *expr) {
 
   switch (expr->ExprKind()) {
     case Expr::Kind::IDENT:
-      PrintIdent(reinterpret_cast<Ident *>(expr));
+      PrintIdent(dynamic_cast<Ident *>(expr));
       break;
     case Expr::Kind::LIT:
-      PrintLit(reinterpret_cast<Lit *>(expr));
+      PrintLit(dynamic_cast<Lit *>(expr));
       break;
     case Expr::Kind::BINARY:
       Down("BinaryExpr {");
       {
-        auto binary = reinterpret_cast<BinaryExpr *>(expr);
+        auto binary = dynamic_cast<BinaryExpr *>(expr);
         Write("Left: ");
         PrintExpr(binary->lhs.get());
         Writeln("Op: " + ToString(binary->op));
@@ -261,7 +261,7 @@ void Printer::PrintExpr(Expr *expr) {
     case Expr::Kind::CALL:
       Down("Call {");
       {
-        auto call = reinterpret_cast<CallExpr *>(expr);
+        auto call = dynamic_cast<CallExpr *>(expr);
         Write("Ident: ");
         PrintIdent(call->ident.get());
         Down("Args [");
@@ -279,7 +279,7 @@ void Printer::PrintExpr(Expr *expr) {
     case Expr::Kind::UNARY:
       Down("Unary {");
       {
-        auto unary = reinterpret_cast<UnaryExpr *>(expr);
+        auto unary = dynamic_cast<UnaryExpr *>(expr);
         std::string op = unary->unOp == UnOp::NEG ? "-" : "!";
         Writeln("op: %s", op.c_str());
         PrintExpr(unary->expr.get());
@@ -300,8 +300,18 @@ void Printer::PrintLit(Lit *lit) {
     case Lit::Kind::INT:
       Down("LitInt {");
       {
-        auto l = reinterpret_cast<LitInt *>(lit);
+        auto l = dynamic_cast<LitInt *>(lit);
         std::string s = tostring(l->ival);
+        Writeln("num: " + s);
+        PrintPos(lit->GetPos());
+      }
+      Up("}");
+      break;
+    case Lit::Kind::FLOAT:
+      Down("LitFloat {");
+      {
+        auto f = dynamic_cast<LitFloat *>(lit);
+        std::string s = tostring(f->fval);
         Writeln("num: " + s);
         PrintPos(lit->GetPos());
       }
@@ -310,7 +320,7 @@ void Printer::PrintLit(Lit *lit) {
     case Lit::Kind::BOOL:
       Down("LitBool {");
       {
-        auto l = reinterpret_cast<LitBool *>(lit);
+        auto l = dynamic_cast<LitBool *>(lit);
         std::string s = (l->bval ? "true" : "false");
         Writeln("literal: " + s);
         PrintPos(lit->GetPos());
@@ -320,7 +330,7 @@ void Printer::PrintLit(Lit *lit) {
     case Lit::Kind::CHAR:
       Down("LitChar {");
       {
-        auto l = reinterpret_cast<LitChar *>(lit);
+        auto l = dynamic_cast<LitChar *>(lit);
         // FIXME
         std::string s{char(l->cval.scalar)};
         Writeln("literal: '" + s + "'");
@@ -331,7 +341,7 @@ void Printer::PrintLit(Lit *lit) {
     case Lit::Kind::STR:
       Down("LitSTR {");
       {
-        auto l = reinterpret_cast<LitStr *>(lit);
+        auto l = dynamic_cast<LitStr *>(lit);
         Writeln("literal: \"" + l->sval + "\"");
         PrintPos(lit->GetPos());
       }
