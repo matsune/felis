@@ -9,23 +9,23 @@ namespace felis
 
 {
 
-class Error2 {
+class Error {
  public:
-  Error2(const Error2&) = delete;
+  Error(const Error&) = delete;
 
-  Error2(Error2&&) = default;
+  Error(Error&&) = default;
 
-  Error2() = default;
-  ~Error2() = default;
+  Error() = default;
+  ~Error() = default;
 
   virtual std::string what() = 0;
 };
 
-class PosError : Error2 {
+class PosError : Error {
  public:
   PosError(Pos pos, std::string msg) : pos_(pos), msg_(msg){};
 
-  std::string what() {
+  std::string what() override {
     std::ostringstream ss;
     ss << pos_.line << ":" << pos_.column << " " << msg_;
     return ss.str();
@@ -34,6 +34,16 @@ class PosError : Error2 {
  protected:
   Pos pos_;
   std::string msg_;
+};
+
+class StrError : Error {
+ public:
+  StrError(std::string str) : str_(str){};
+
+  std::string what() override { return str_; }
+
+ private:
+  std::string str_;
 };
 
 }  // namespace felis

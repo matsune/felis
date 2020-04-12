@@ -11,17 +11,21 @@
 #include <memory>
 #include <string>
 
-#include "error/handler.h"
+#include "err/error.h"
+#include "err/result.h"
 #include "symtab.h"
 #include "syntax/ast.h"
 
 namespace felis {
 
+template <class T>
+using BuildResult = Result<T, Error>;
+
 class Builder {
  public:
-  Builder(ErrorHandler &handler, std::string moduleName = "felis")
-      : handler_(handler), module_(moduleName, ctx_), builder_(ctx_){};
-  bool CreateTargetMachine();
+  Builder(std::string moduleName = "felis")
+      : module_(moduleName, ctx_), builder_(ctx_){};
+  bool CreateTargetMachine(std::string &err);
   bool Build(std::unique_ptr<File>);
 
  private:
@@ -33,7 +37,6 @@ class Builder {
   std::shared_ptr<DefFn> currentFn_;
 
   SymTabManager sm_;
-  ErrorHandler &handler_;
 
   std::shared_ptr<DefFn> InsertDefFn(bool isExt,
                                      const std::unique_ptr<FnProto> &);

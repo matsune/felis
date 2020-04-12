@@ -17,7 +17,7 @@ static std::string tostring(const T &t) {
 
 }  // namespace
 
-void Printer::Print(const File *file) {
+void Printer::Print(const std::unique_ptr<File> &file) {
   WriteLineNum();
   for (int i = 0; i < file->externs.size(); i++) {
     PrintIndex(i);

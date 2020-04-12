@@ -20,7 +20,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  /* felis::ErrorHandler2 handler(filename); */
   felis::Parser parser;
 
   bool isEnd(false);
@@ -46,12 +45,16 @@ int main(int argc, char *argv[]) {
     std::cerr << filename << ":" << posErr->what() << std::endl;
     return 1;
   }
-  auto file = parseRes.Unwrap();
+  auto file = std::unique_ptr<felis::File>(parseRes.Unwrap());
   felis::Printer printer;
   printer.Print(file);
-  delete file;
 
-  /* felis::Builder builder(handler); */
+  felis::Builder builder;
+  std::string err;
+  if (!builder.CreateTargetMachine(err)) {
+    std::cerr << filename << ":" << err << std::endl;
+    return 1;
+  }
   /* if (!builder.Build(std::move(file))) { */
   /*   handler.Report(); */
   /*   return 1; */
