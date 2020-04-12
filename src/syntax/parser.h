@@ -7,15 +7,11 @@
 #include <utility>
 #include <vector>
 
-#include "err/error.h"
-#include "err/result.h"
+#include "error/error.h"
 #include "syntax/ast.h"
 #include "syntax/token.h"
 
 namespace felis {
-
-template <class T>
-using ParseResult = Result<T, PosError>;
 
 class Parser {
  public:
@@ -25,7 +21,7 @@ class Parser {
     tokens_.push_back(std::move(token));
   }
 
-  ParseResult<File> Parse();
+  std::unique_ptr<File> Parse();
 
  private:
   std::deque<std::unique_ptr<Token>> tokens_;
@@ -34,19 +30,19 @@ class Parser {
   std::unique_ptr<Token> &Peek();
   std::unique_ptr<Token> &Peek2();
   std::unique_ptr<Token> Bump();
-  ParseResult<Extern> ParseExtern();
-  ParseResult<FnDecl> ParseFnDecl();
-  ParseResult<FnProto> ParseFnProto();
-  ParseResult<FnArgs> ParseFnArgs();
-  ParseResult<FnArg> ParseFnArg();
-  ParseResult<Expr> ParseExpr(uint8_t prec = 0);
-  ParseResult<Expr> ParsePrimary();
-  ParseResult<Stmt> ParseStmt();
-  ParseResult<IfStmt> ParseIfStmt();
-  ParseResult<Block> ParseBlock();
+  std::unique_ptr<Extern> ParseExtern();
+  std::unique_ptr<FnDecl> ParseFnDecl();
+  std::unique_ptr<FnProto> ParseFnProto();
+  std::vector<std::unique_ptr<FnArg>> ParseFnArgs();
+  std::unique_ptr<FnArg> ParseFnArg();
+  Expr *ParseExpr(uint8_t prec = 0);
+  Expr *ParsePrimary();
+  std::unique_ptr<Stmt> ParseStmt();
+  std::unique_ptr<IfStmt> ParseIfStmt();
+  std::unique_ptr<Block> ParseBlock();
 
-  template <typename T, typename... Args>
-  ParseResult<T> Raise(const std::string &fmt, Args... args);
+  template <typename... Args>
+  void Throw(const std::string &fmt, Args... args);
 };
 
 }  // namespace felis

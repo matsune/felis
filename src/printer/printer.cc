@@ -109,9 +109,9 @@ void Printer::PrintProto(FnProto *proto) {
   PrintIdent(proto->name.get());
   Down("FnArgs [");
   {
-    for (int i = 0; i < proto->args->size(); i++) {
+    for (int i = 0; i < proto->args.size(); i++) {
       PrintIndex(i);
-      PrintFnArg(proto->args->at(i).get());
+      PrintFnArg(proto->args.at(i).get());
     }
   }
   Up("]");

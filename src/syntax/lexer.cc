@@ -127,7 +127,7 @@ bool Lexer::BumpIf(std::function<bool(uint32_t)> f) {
   return false;
 }
 
-LexResult<char> Lexer::Escape() {
+char Lexer::Escape() {
   char c;
   if (BumpIf('\'')) {
     c = '\'';
@@ -155,16 +155,16 @@ LexResult<char> Lexer::Escape() {
     if (is_hexc(peek_.scalar)) {
       c = hexc(Bump().scalar) * 16;
     } else {
-      return Raise<char>("non-hex character '%c'\n", peek_.scalar);
+      Throw("non-hex character '%c'\n", peek_.scalar);
     }
     if (is_hexc(peek_.scalar)) {
       c += hexc(Bump().scalar);
     } else {
-      return Raise<char>("non-hex character '%c'\n", peek_.scalar);
+      Throw("non-hex character '%c'\n", peek_.scalar);
     }
   } else if (BumpIf('u')) {
     if (!BumpIf('{')) {
-      return Raise<char>("expected '{'");
+      Throw("expected '{'");
     }
 
     // BumpIf hex chars up to 6 digits
@@ -174,66 +174,57 @@ LexResult<char> Lexer::Escape() {
     while (true) {
       if (is_hexc(peek_.scalar)) {
         if (count > 5) {
-          return Raise<char>(
-              "overlong unicode escape (must have at most 6 hex digits)");
+          Throw("overlong unicode escape (must have at most 6 hex digits)");
         }
         val = val * 16 + hexc(Bump().scalar);
         count++;
       } else if (BumpIf('}')) {
         break;
       } else {
-        return Raise<char>("invalid character in unicode escape: %c\n",
-                           peek_.scalar);
+        Throw("invalid character in unicode escape: %c\n", peek_.scalar);
       }
     }
     if (count == 0) {
-      return Raise<char>("empty character in unicode escape");
+      Throw("empty character in unicode escape");
     }
     if (val > 0x10FFFF) {
-      return Raise<char>("unicode escape must be at most 10FFFF");
+      Throw("unicode escape must be at most 10FFFF");
     }
     c = val;
   } else {
-    return Raise<char>("unknown escape sequence");
+    Throw("unknown escape sequence");
   }
-  return LexResult<char>::Ok(c);
+  return c;
 }
 
-LexResult<rune> Lexer::EatChar() {
+rune Lexer::EatChar() {
   rune r;
   switch (peek_.scalar) {
     case '\\': {
       Bump();
-      auto res = Escape();
-      if (!res) {
-        return res.Raise<rune>();
-      }
-      char *ch = res.Unwrap();
-      r = *ch;
-      delete ch;
+      r = Escape();
     } break;
     case '\'':
-      return Raise<rune>("empty char literal");
+      Throw("empty char literal");
     case '\t':
     case '\n':
     case '\r':
-      return Raise<rune>("escape only char");
+      Throw("escape only char");
     default:
       r = Bump();
       break;
   }
   if (peek_.scalar != '\'') {
-    return Raise<rune>("more than one character");
+    Throw("more than one character");
   }
   Bump();
-  return LexResult<rune>::Ok(r);
+  return r;
 }
 
-LexResult<std::string> Lexer::EatString() {
+void Lexer::EatString(std::string &str) {
   bool terminated(false);
   int len;
   char dst[4];
-  std::string out("");
 
   while (true) {
     if (peek_ == '"') {
@@ -244,23 +235,18 @@ LexResult<std::string> Lexer::EatString() {
       break;
     } else if (BumpIf('\\')) {
       Bump();
-      auto res = Escape();
-      if (!res) return res.Raise<std::string>();
-      auto ch = res.Unwrap();
-      out.push_back(*ch);
-      delete ch;
+      str.push_back(Escape());
     } else {
       len = Bump().encode_utf8(dst);
-      out.append(dst, len);
+      str.append(dst, len);
     }
   }
   if (!terminated) {
-    return Raise<std::string>("unterminated string");
+    Throw("unterminated string");
   }
-  return LexResult<std::string>::Ok(out);
 }
 
-LexResult<Token> Lexer::Next() {
+std::unique_ptr<Token> Lexer::Next() {
   auto tok = new Token;
 
   while (true) {
@@ -275,18 +261,10 @@ LexResult<Token> Lexer::Next() {
       tok->kind = TokenKind::END;
     } else if (BumpIf('\'')) {
       tok->kind = TokenKind::LIT_CHAR;
-      auto res = EatChar();
-      if (!res) return res.Raise<Token>();
-      auto r = res.Unwrap();
-      tok->cval = *r;
-      delete r;
+      tok->cval = EatChar();
     } else if (BumpIf('"')) {
       tok->kind = TokenKind::LIT_STR;
-      auto res = EatString();
-      if (!res) return res.Raise<Token>();
-      auto s = res.Unwrap();
-      tok->sval = *s;
-      delete s;
+      EatString(tok->sval);
     } else if (BumpIf('/')) {
       if (BumpIf('/')) {
         // skip comment
@@ -295,14 +273,11 @@ LexResult<Token> Lexer::Next() {
         continue;
       } else if (BumpIf('*')) {
         // skip comment
-        auto res = EatBlockComment();
-        if (!res) return res.Raise<Token>();
-        auto hasNl = res.Unwrap();
-        if (*hasNl)
+        auto hasNl = EatBlockComment();
+        if (hasNl)
           tok->nl = true;
         else
           tok->ws = true;
-        delete hasNl;
         continue;
       } else {
         tok->kind = TokenKind::SLASH;
@@ -376,28 +351,27 @@ LexResult<Token> Lexer::Next() {
     } else if (BumpIf('%')) {
       tok->kind = TokenKind::PERCENT;
     } else if (is_decimalc(peek_.scalar)) {
-      auto res = EatNum();
-      if (!res) return res;
-      auto t = res.Unwrap();
+      auto t = EatNum();
       tok->kind = t->kind;
-      tok->ival = t->ival;
-      tok->fval = t->fval;
-      delete t;
+      if (t->kind == TokenKind::LIT_INT) {
+        tok->ival = t->ival;
+      } else if (t->kind == TokenKind::LIT_FLOAT) {
+        tok->fval = t->fval;
+      } else {
+        // unreachable
+      }
     } else if (is_ident_head(peek_.scalar)) {
-      auto res = EatIdent();
-      if (!res) return res;
-      auto t = res.Unwrap();
+      auto t = EatIdent();
       tok->kind = t->kind;
       tok->sval = t->sval;
-      delete t;
     } else {
-      return Raise<Token>("unsupported char %c", peek_.scalar);
+      Throw("unsupported char %c", peek_.scalar);
     }
-    return LexResult<Token>::Ok(tok);
+    return std::unique_ptr<Token>(tok);
   }
 }
 
-LexResult<Token> Lexer::EatIdent() {
+std::unique_ptr<Token> Lexer::EatIdent() {
   char bytes[4] = {0};
   int len = Bump().encode_utf8(bytes);
   std::string name(bytes, len);
@@ -427,16 +401,15 @@ LexResult<Token> Lexer::EatIdent() {
     tok->kind = TokenKind::IDENT;
     tok->sval = name;
   }
-  return LexResult<Token>::Ok(tok);
+  return std::unique_ptr<Token>(tok);
 }
 
-LexResult<std::string> Lexer::EatDigits(std::function<bool(uint32_t)> f) {
-  std::string s;
+void Lexer::EatDigits(std::string &str, std::function<bool(uint32_t)> f) {
   bool hasDigits(false);
   while (true) {
     if (f(peek_.scalar)) {
       hasDigits = true;
-      s.push_back(Bump().scalar);
+      str.push_back(Bump().scalar);
     } else if (peek_ == '_') {
       Bump();
     } else {
@@ -444,12 +417,11 @@ LexResult<std::string> Lexer::EatDigits(std::function<bool(uint32_t)> f) {
     }
   }
   if (!hasDigits) {
-    return Raise<std::string>("no digits");
+    Throw("no digits");
   }
-  return LexResult<std::string>::Ok(s);
 }
 
-LexResult<Token> Lexer::EatNum() {
+std::unique_ptr<Token> Lexer::EatNum() {
   TokenKind kind(TokenKind::LIT_INT);
 
   auto first = Bump();
@@ -460,33 +432,15 @@ LexResult<Token> Lexer::EatNum() {
     if (BumpIf('b')) {
       // binary
       base = 2;
-      auto res = EatDigits(is_bitc);
-      if (!res) {
-        return res.Raise<Token>();
-      }
-      auto s = res.Unwrap();
-      str += *s;
-      delete s;
+      EatDigits(str, is_bitc);
     } else if (BumpIf('o')) {
       // octal
       base = 8;
-      auto res = EatDigits(is_octalc);
-      if (!res) {
-        return res.Raise<Token>();
-      }
-      auto s = res.Unwrap();
-      str += *s;
-      delete s;
+      EatDigits(str, is_octalc);
     } else if (BumpIf('x')) {
       // hex
       base = 16;
-      auto res = EatDigits(is_hexc);
-      if (!res) {
-        return res.Raise<Token>();
-      }
-      auto s = res.Unwrap();
-      str += *s;
-      delete s;
+      EatDigits(str, is_hexc);
     } else if (is_decimalc(peek_.scalar) || peek_ == '_') {
       while (true) {
         if (is_decimalc(peek_.scalar)) {
@@ -501,7 +455,7 @@ LexResult<Token> Lexer::EatNum() {
       // do nothing; goto exponent
     } else {
       // just 0
-      return LexResult<Token>::Ok(kind);
+      return std::make_unique<Token>(kind);
     }
   } else {
     while (true) {
@@ -518,7 +472,7 @@ LexResult<Token> Lexer::EatNum() {
   if (peek_ == '.' || peek_ == 'e' || peek_ == 'E') {
     // fractional part
     if (base != 10) {
-      return Raise<Token>("'%c' exponent requires decimal mantissa\n", peek_);
+      Throw("'%c' exponent requires decimal mantissa\n", peek_);
     }
     bool dot = peek_ == '.';
     str.push_back(Bump().scalar);
@@ -526,25 +480,19 @@ LexResult<Token> Lexer::EatNum() {
       str.push_back(Bump().scalar);
     }
 
-    auto res = EatDigits(is_decimalc);
-    if (!res) {
-      return res.Raise<Token>();
-    }
-    auto s = res.Unwrap();
-    str += *s;
-    delete s;
+    EatDigits(str, is_decimalc);
 
     auto tok = new Token(TokenKind::LIT_FLOAT);
     tok->fval = stold(str);
-    return LexResult<Token>::Ok(tok);
+    return std::unique_ptr<Token>(tok);
   } else {
     uint64_t ival = stoull(str, nullptr, base);
     if (ival > INT64_MAX) {
-      return Raise<Token>("overflow int64 size");
+      Throw("overflow int64 size");
     }
     auto tok = new Token(TokenKind::LIT_FLOAT);
     tok->ival = ival;
-    return LexResult<Token>::Ok(tok);
+    return std::unique_ptr<Token>(tok);
   }
 }
 
@@ -554,7 +502,7 @@ void Lexer::EatLineComment() {
   }
 }
 
-LexResult<bool> Lexer::EatBlockComment() {
+bool Lexer::EatBlockComment() {
   int depth(1);
   bool hasNl(false);
 
@@ -580,14 +528,14 @@ LexResult<bool> Lexer::EatBlockComment() {
     }
   }
   if (depth != 0) {
-    return Raise<bool>("unterminated block comment");
+    Throw("unterminated block comment");
   }
-  return LexResult<bool>::Ok(hasNl);
+  return hasNl;
 }
 
-template <typename T, typename... Args>
-LexResult<T> Lexer::Raise(const std::string &fmt, Args... args) {
-  return LexResult<T>::Err(pos_, format(fmt, args...));
+template <typename... Args>
+void Lexer::Throw(const std::string &fmt, Args... args) {
+  throw CompileError(pos_, format(fmt, args...));
 }
 
 }  // namespace felis

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 
+#include "error/error.h"
 #include "ir/builder.h"
 #include "printer/printer.h"
 #include "syntax/lexer.h"
@@ -25,27 +26,27 @@ int main(int argc, char *argv[]) {
   bool isEnd(false);
   felis::Lexer *lexer = new felis::Lexer(in);
   while (!isEnd) {
-    auto lexRes = lexer->Next();
-    if (!lexRes) {
-      auto posErr = lexRes.UnwrapErr();
-      std::cerr << filename << ":" << posErr->what() << std::endl;
+    try {
+      auto token = lexer->Next();
+      isEnd = token->kind == felis::TokenKind::END;
+      parser.PushToken(std::move(token));
+    } catch (const felis::CompileError &e) {
+      std::cerr << filename << ":" << e.what() << std::endl;
       break;
     }
-    auto tok = lexRes.Unwrap();
-    isEnd = tok->kind == felis::TokenKind::END;
-    parser.PushToken(std::unique_ptr<felis::Token>(tok));
   }
   delete lexer;
   in.close();
   if (!isEnd) return 1;
 
-  auto parseRes = parser.Parse();
-  if (!parseRes) {
-    auto posErr = parseRes.UnwrapErr();
-    std::cerr << filename << ":" << posErr->what() << std::endl;
+  std::unique_ptr<felis::File> file;
+  try {
+    file = parser.Parse();
+  } catch (const felis::CompileError &e) {
+    std::cerr << filename << ":" << e.what() << std::endl;
     return 1;
   }
-  auto file = std::unique_ptr<felis::File>(parseRes.Unwrap());
+
   felis::Printer printer;
   printer.Print(file);
 
@@ -55,8 +56,4 @@ int main(int argc, char *argv[]) {
     std::cerr << filename << ":" << err << std::endl;
     return 1;
   }
-  /* if (!builder.Build(std::move(file))) { */
-  /*   handler.Report(); */
-  /*   return 1; */
-  /* } */
 }

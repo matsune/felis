@@ -159,8 +159,9 @@ struct CallExpr : public Expr {
   std::unique_ptr<Ident> ident;
   std::vector<std::unique_ptr<Expr>> args;
 
-  CallExpr(Ident* ident, std::vector<std::unique_ptr<Expr>> args)
-      : ident(std::unique_ptr<Ident>(ident)), args(std::move(args)) {}
+  CallExpr(std::unique_ptr<Ident> ident,
+           std::vector<std::unique_ptr<Expr>> args)
+      : ident(std::move(ident)), args(std::move(args)) {}
 
   Pos GetPos() override { return ident->pos; }
 };
@@ -172,8 +173,8 @@ struct UnaryExpr : public Expr {
   UnOp unOp;
   std::unique_ptr<Expr> expr;
 
-  UnaryExpr(Pos pos, UnOp unOp, Expr* expr)
-      : pos(pos), unOp(unOp), expr(std::unique_ptr<Expr>(expr)) {}
+  UnaryExpr(Pos pos, UnOp unOp, std::unique_ptr<Expr> expr)
+      : pos(pos), unOp(unOp), expr(std::move(expr)) {}
 
   Pos GetPos() override { return pos; }
 };
@@ -198,10 +199,10 @@ struct VarDeclStmt : public Stmt {
   std::unique_ptr<Expr> expr;
   Pos pos;
 
-  VarDeclStmt(Pos pos, bool isLet, Ident* name, Expr* expr)
+  VarDeclStmt(Pos pos, bool isLet, std::unique_ptr<Ident> name, Expr* expr)
       : pos(pos),
         isLet(isLet),
-        name(std::unique_ptr<Ident>(name)),
+        name(std::move(name)),
         expr(std::unique_ptr<Expr>(expr)) {}
 
   Pos GetPos() override { return pos; }
@@ -213,8 +214,8 @@ struct AssignStmt : public Stmt {
   std::unique_ptr<Ident> name;
   std::unique_ptr<Expr> expr;
 
-  AssignStmt(Ident* name, Expr* expr)
-      : name(std::unique_ptr<Ident>(name)), expr(std::unique_ptr<Expr>(expr)) {}
+  AssignStmt(std::unique_ptr<Ident> name, Expr* expr)
+      : name(std::move(name)), expr(std::unique_ptr<Expr>(expr)) {}
 
   Pos GetPos() override { return name->pos; }
 };
@@ -227,11 +228,12 @@ struct IfStmt : public Stmt {
   std::unique_ptr<Stmt> els;  // block or if
   Pos pos;
 
-  IfStmt(Pos pos, Expr* cond, Block* block, Stmt* els = nullptr)
+  IfStmt(Pos pos, Expr* cond, std::unique_ptr<Block> block,
+         std::unique_ptr<Stmt> els = nullptr)
       : pos(pos),
         cond(std::unique_ptr<Expr>(cond)),
-        block(std::unique_ptr<Block>(block)),
-        els(std::unique_ptr<Stmt>(els)) {}
+        block(std::move(block)),
+        els(std::move(els)) {}
 
   Pos GetPos() override { return pos; }
 };
@@ -244,27 +246,27 @@ struct FnArg : public Node {
 
   bool withName() { return name != nullptr; }
 
-  FnArg(Ident* ty, Ident* name = nullptr)
-      : ty(std::unique_ptr<Ident>(ty)), name(std::unique_ptr<Ident>(name)) {}
+  FnArg(std::unique_ptr<Ident> ty, std::unique_ptr<Ident> name = nullptr)
+      : ty(std::move(ty)), name(std::move(name)) {}
 
   Pos GetPos() override { return withName() ? name->pos : ty->pos; }
 };
-
-using FnArgs = std::vector<std::unique_ptr<FnArg>>;
 
 struct FnProto : public Node {
   Kind NodeKind() override { return Kind::FN_PROTO; }
 
   std::unique_ptr<Ident> name;
-  std::unique_ptr<FnArgs> args;
+  std::vector<std::unique_ptr<FnArg>> args;
   std::unique_ptr<Ident> ret;
   Pos pos;
 
-  FnProto(Pos pos, Ident* name, FnArgs* args, Ident* ret = nullptr)
+  FnProto(Pos pos, std::unique_ptr<Ident> name,
+          std::vector<std::unique_ptr<FnArg>> args,
+          std::unique_ptr<Ident> ret = nullptr)
       : pos(pos),
-        name(std::unique_ptr<Ident>(name)),
-        args(std::unique_ptr<FnArgs>(args)),
-        ret(std::unique_ptr<Ident>(ret)) {}
+        name(std::move(name)),
+        args(std::move(args)),
+        ret(std::move(ret)) {}
 
   Pos GetPos() override { return pos; }
 };
@@ -276,10 +278,9 @@ struct FnDecl : public Node {
   std::unique_ptr<FnProto> proto;
   std::unique_ptr<Block> block;
 
-  explicit FnDecl(NodeId id, FnProto* proto, Block* block)
-      : id(id),
-        proto(std::unique_ptr<FnProto>(proto)),
-        block(std::unique_ptr<Block>(block)) {}
+  explicit FnDecl(NodeId id, std::unique_ptr<FnProto> proto,
+                  std::unique_ptr<Block> block)
+      : id(id), proto(std::move(proto)), block(std::move(block)) {}
 
   Pos GetPos() override { return proto->pos; }
 };
@@ -290,8 +291,8 @@ struct Extern : public Node {
   std::unique_ptr<FnProto> proto;
   Pos pos;
 
-  explicit Extern(NodeId id, Pos pos, FnProto* proto)
-      : id(id), pos(pos), proto(std::unique_ptr<FnProto>(proto)) {}
+  explicit Extern(NodeId id, Pos pos, std::unique_ptr<FnProto> proto)
+      : id(id), pos(pos), proto(std::move(proto)) {}
 
   Pos GetPos() override { return pos; }
 };

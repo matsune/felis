@@ -11,15 +11,11 @@
 #include <memory>
 #include <string>
 
-#include "err/error.h"
-#include "err/result.h"
+#include "error/error.h"
 #include "symtab.h"
 #include "syntax/ast.h"
 
 namespace felis {
-
-template <class T>
-using BuildResult = Result<T, Error>;
 
 class Builder {
  public:
