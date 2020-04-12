@@ -147,8 +147,10 @@ struct BinaryExpr : public Expr {
   std::unique_ptr<Expr> rhs;
   BinOp op;
 
-  BinaryExpr(std::unique_ptr<Expr> lhs, BinOp op, std::unique_ptr<Expr> rhs)
-      : lhs(std::move(lhs)), rhs(std::move(rhs)), op(op) {}
+  BinaryExpr(Expr* lhs, BinOp op, Expr* rhs)
+      : lhs(std::unique_ptr<Expr>(lhs)),
+        rhs(std::unique_ptr<Expr>(rhs)),
+        op(op) {}
 
   Pos GetPos() override { return lhs->GetPos(); }
 };
@@ -173,8 +175,8 @@ struct UnaryExpr : public Expr {
   UnOp unOp;
   std::unique_ptr<Expr> expr;
 
-  UnaryExpr(Pos pos, UnOp unOp, std::unique_ptr<Expr> expr)
-      : pos(pos), unOp(unOp), expr(std::move(expr)) {}
+  UnaryExpr(Pos pos, UnOp unOp, Expr* expr)
+      : pos(pos), unOp(unOp), expr(std::unique_ptr<Expr>(expr)) {}
 
   Pos GetPos() override { return pos; }
 };

@@ -219,7 +219,7 @@ Expr* Parser::ParseExpr(uint8_t prec) {
       }
 
       if (Peek()->kind == TokenKind::RPAREN) {
-        return new CallExpr(std::unique_ptr<Ident>((Ident*)lhs),
+        return new CallExpr(std::unique_ptr<Ident>(dynamic_cast<Ident*>(lhs)),
                             std::move(args));
       }
 
@@ -240,10 +240,11 @@ Expr* Parser::ParseExpr(uint8_t prec) {
       }
       Bump();
     }
-    lhs = new CallExpr(std::unique_ptr<Ident>((Ident*)lhs), std::move(args));
+    lhs = new CallExpr(std::unique_ptr<Ident>(dynamic_cast<Ident*>(lhs)),
+                       std::move(args));
   }
   if (unOp) {
-    return new UnaryExpr(pos, *unOp, std::unique_ptr<Expr>(lhs));
+    return new UnaryExpr(pos, *unOp, lhs);
   }
 
   if (Peek()->nl) {
@@ -262,8 +263,7 @@ Expr* Parser::ParseExpr(uint8_t prec) {
     Bump();
     try {
       Expr* rhs = ParseExpr(binOp);
-      lhs = new BinaryExpr(std::unique_ptr<Expr>(lhs), binOp,
-                           std::unique_ptr<Expr>(rhs));
+      lhs = new BinaryExpr(lhs, binOp, rhs);
     } catch (const CompileError& e) {
       delete lhs;
       throw e;
