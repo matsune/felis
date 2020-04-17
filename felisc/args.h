@@ -2,20 +2,14 @@
 #include <memory>
 #include <string>
 
-enum Emit {
-  LLVM_IR = (1u << 1),
-  LLVM_BC = (1u << 2),
-  ASM = (1u << 3),
-  OBJ = (1u << 4),
-  LINK = (1u << 5)
-};
+#include "ir/builder.h"
 
 struct Opts {
-  Opts(std::string filename, bool printAst, u_int8_t emit)
-      : filename(filename), printAst(printAst), emit(emit){};
+  Opts(std::string filename, bool printAst, felis::Emits emits)
+      : filename(filename), printAst(printAst), emits(emits){};
   std::string filename;
   bool printAst;
-  u_int8_t emit;
+  felis::Emits emits;
 };
 
 std::unique_ptr<Opts> ParseArgs(int argc, char *argv[]) {
@@ -45,15 +39,15 @@ std::unique_ptr<Opts> ParseArgs(int argc, char *argv[]) {
   uint8_t emit;
   for (auto &e : result["emit"].as<std::vector<std::string>>()) {
     if (e == "llvm-ir") {
-      emit |= Emit::LLVM_IR;
+      emit |= felis::EmitType::LLVM_IR;
     } else if (e == "llvm-bc") {
-      emit |= Emit::LLVM_BC;
+      emit |= felis::EmitType::LLVM_BC;
     } else if (e == "asm") {
-      emit |= Emit::ASM;
+      emit |= felis::EmitType::ASM;
     } else if (e == "obj") {
-      emit |= Emit::OBJ;
+      emit |= felis::EmitType::OBJ;
     } else if (e == "link") {
-      emit |= Emit::LINK;
+      emit |= felis::EmitType::LINK;
     } else {
       std::cerr << "unknown emit flag" << std::endl;
       exit(1);

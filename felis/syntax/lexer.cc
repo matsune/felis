@@ -361,7 +361,14 @@ std::unique_ptr<Token> Lexer::Next() {
     } else if (is_ident_head(peek_.scalar)) {
       auto t = EatIdent();
       tok->kind = t->kind;
-      tok->sval = t->sval;
+      switch (t->kind) {
+        case TokenKind::LIT_BOOL:
+          tok->bval = t->bval;
+          break;
+        default:
+          tok->sval = t->sval;
+          break;
+      }
     } else {
       Throw("unsupported char %c", peek_.scalar);
     }

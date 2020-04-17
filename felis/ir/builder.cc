@@ -1,6 +1,7 @@
 #include "builder.h"
 
 #include <llvm/ADT/StringMap.h>
+#include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/IR/Function.h>
 #include <llvm/MC/SubtargetFeature.h>
 #include <llvm/Support/Host.h>
@@ -359,12 +360,14 @@ void Builder::Build(std::unique_ptr<Stmt>& stmt) {
         throw CompileError::CreatePosFmt(ifStmt->cond->GetPos(),
                                          "non bool if cond");
       }
+      llvm::Value* cond =
+          builder_.CreateICmpNE(condValue, llvm::ConstantInt::getFalse(ctx_));
 
       llvm::BasicBlock* thenBB =
           llvm::BasicBlock::Create(ctx_, "then", currentFn_->func);
       llvm::BasicBlock* elseBB =
           llvm::BasicBlock::Create(ctx_, "else", currentFn_->func);
-      builder_.CreateCondBr(condValue, thenBB, elseBB);
+      builder_.CreateCondBr(cond, thenBB, elseBB);
       builder_.SetInsertPoint(thenBB);
 
       sm_.Push();
@@ -451,7 +454,10 @@ void Builder::Build(std::unique_ptr<File> file) {
     currentFn_ = nullptr;
   }
 
-  module_.print(llvm::outs(), nullptr);
+  if (emits_ & EmitType::LLVM_IR) module_.print(llvm::outs(), nullptr);
+
+  if (emits_ & EmitType::LLVM_BC)
+    llvm::WriteBitcodeToFile(module_, llvm::outs());
 };
 
 }  // namespace felis

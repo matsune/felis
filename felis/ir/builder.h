@@ -17,10 +17,20 @@
 
 namespace felis {
 
+enum EmitType {
+  LINK = (1u << 0),
+  LLVM_IR = (1u << 1),
+  LLVM_BC = (1u << 2),
+  ASM = (1u << 3),
+  OBJ = (1u << 4),
+};
+
+using Emits = uint8_t;
+
 class Builder {
  public:
-  Builder(std::string moduleName = "felis")
-      : module_(moduleName, ctx_), builder_(ctx_){};
+  Builder(Emits emits = EmitType::LINK)
+      : module_("felis", ctx_), builder_(ctx_), emits_(emits){};
   bool CreateTargetMachine(std::string &err);
   void Build(std::unique_ptr<File>);
 
@@ -31,6 +41,7 @@ class Builder {
   std::unique_ptr<llvm::TargetMachine> machine_;
   SymTabManager sm_;
   std::shared_ptr<DefFn> currentFn_;
+  Emits emits_;
 
   llvm::Type *getLLVMTyFromTy(Ty ty);
 

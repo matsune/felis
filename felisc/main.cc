@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 
   if (opts->printAst) felis::Printer().Print(file);
 
-  felis::Builder builder;
+  felis::Builder builder(opts->emits);
   std::string err;
   if (!builder.CreateTargetMachine(err)) {
     std::cerr << opts->filename << ":" << err << std::endl;
