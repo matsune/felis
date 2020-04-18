@@ -3,6 +3,7 @@
 #include <llvm/ADT/StringMap.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/MC/SubtargetFeature.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/TargetRegistry.h>
@@ -453,11 +454,47 @@ void Builder::Build(std::unique_ptr<File> file) {
     Build(fnDecl, def);
     currentFn_ = nullptr;
   }
-
-  if (emits_ & EmitType::LLVM_IR) module_.print(llvm::outs(), nullptr);
-
-  if (emits_ & EmitType::LLVM_BC)
-    llvm::WriteBitcodeToFile(module_, llvm::outs());
 };
+
+void Builder::EmitLLVMIR(std::string filename) {
+  std::error_code errCode;
+  llvm::raw_fd_ostream out(filename, errCode);
+  if (errCode) {
+    throw std::runtime_error(errCode.message());
+  }
+  module_.print(out, nullptr);
+}
+
+void Builder::EmitLLVMBC(std::string filename) {
+  std::error_code errCode;
+  llvm::raw_fd_ostream out(filename, errCode);
+  if (errCode) {
+    throw std::runtime_error(errCode.message());
+  }
+  llvm::WriteBitcodeToFile(module_, out);
+}
+
+void Builder::EmitCodeGen(std::string filename,
+                          llvm::TargetMachine::CodeGenFileType ft) {
+  std::error_code errCode;
+  llvm::raw_fd_ostream out(filename, errCode);
+  if (errCode) {
+    throw std::runtime_error(errCode.message());
+  }
+  llvm::legacy::PassManager pass;
+  module_.setDataLayout(machine_->createDataLayout());
+  machine_->addPassesToEmitFile(pass, out, nullptr, ft);
+  pass.run(module_);
+  out.flush();
+}
+
+void Builder::EmitASM(std::string filename) {
+  EmitCodeGen(filename,
+              llvm::TargetMachine::CodeGenFileType::CGFT_AssemblyFile);
+}
+
+void Builder::EmitOBJ(std::string filename) {
+  EmitCodeGen(filename, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
+}
 
 }  // namespace felis

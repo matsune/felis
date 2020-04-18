@@ -349,26 +349,9 @@ std::unique_ptr<Token> Lexer::Next() {
     } else if (BumpIf('%')) {
       tok->kind = TokenKind::PERCENT;
     } else if (is_decimalc(peek_.scalar)) {
-      auto t = EatNum();
-      tok->kind = t->kind;
-      if (t->kind == TokenKind::LIT_INT) {
-        tok->ival = t->ival;
-      } else if (t->kind == TokenKind::LIT_FLOAT) {
-        tok->fval = t->fval;
-      } else {
-        // unreachable
-      }
+      EatNum(tok);
     } else if (is_ident_head(peek_.scalar)) {
-      auto t = EatIdent();
-      tok->kind = t->kind;
-      switch (t->kind) {
-        case TokenKind::LIT_BOOL:
-          tok->bval = t->bval;
-          break;
-        default:
-          tok->sval = t->sval;
-          break;
-      }
+      EatIdent(tok);
     } else {
       Throw("unsupported char %c", peek_.scalar);
     }
@@ -376,7 +359,7 @@ std::unique_ptr<Token> Lexer::Next() {
   }
 }
 
-std::unique_ptr<Token> Lexer::EatIdent() {
+void Lexer::EatIdent(Token *tok) {
   char bytes[4] = {0};
   int len = Bump().encode_utf8(bytes);
   std::string name(bytes, len);
@@ -384,7 +367,6 @@ std::unique_ptr<Token> Lexer::EatIdent() {
     len = Bump().encode_utf8(bytes);
     name.append(bytes, len);
   }
-  auto tok = new Token;
   if (name == "true" || name == "false") {
     tok->kind = TokenKind::LIT_BOOL;
     tok->bval = name == "true";
@@ -406,7 +388,6 @@ std::unique_ptr<Token> Lexer::EatIdent() {
     tok->kind = TokenKind::IDENT;
     tok->sval = name;
   }
-  return std::unique_ptr<Token>(tok);
 }
 
 void Lexer::EatDigits(std::string &str, std::function<bool(uint32_t)> f) {
@@ -426,7 +407,7 @@ void Lexer::EatDigits(std::string &str, std::function<bool(uint32_t)> f) {
   }
 }
 
-std::unique_ptr<Token> Lexer::EatNum() {
+void Lexer::EatNum(Token *tok) {
   TokenKind kind(TokenKind::LIT_INT);
 
   auto first = Bump();
@@ -460,7 +441,9 @@ std::unique_ptr<Token> Lexer::EatNum() {
       // do nothing; goto exponent
     } else {
       // just 0
-      return std::make_unique<Token>(kind);
+      tok->kind = kind;
+      tok->ival = 0;
+      return;
     }
   } else {
     while (true) {
@@ -487,17 +470,15 @@ std::unique_ptr<Token> Lexer::EatNum() {
 
     EatDigits(str, is_decimalc);
 
-    auto tok = new Token(TokenKind::LIT_FLOAT);
+    tok->kind = TokenKind::LIT_FLOAT;
     tok->fval = stold(str);
-    return std::unique_ptr<Token>(tok);
   } else {
     uint64_t ival = stoull(str, nullptr, base);
     if (ival > INT64_MAX) {
       Throw("overflow int64 size");
     }
-    auto tok = new Token(TokenKind::LIT_INT);
+    tok->kind = TokenKind::LIT_INT;
     tok->ival = ival;
-    return std::unique_ptr<Token>(tok);
   }
 }
 

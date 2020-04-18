@@ -31,8 +31,8 @@ class Lexer {
   void EatString(std::string &);
   void EatLineComment();
   bool EatBlockComment();
-  std::unique_ptr<Token> EatIdent();
-  std::unique_ptr<Token> EatNum();
+  void EatIdent(Token *);
+  void EatNum(Token *);
   void EatDigits(std::string &, std::function<bool(uint32_t)>);
 
   template <typename... Args>

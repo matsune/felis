@@ -17,22 +17,15 @@
 
 namespace felis {
 
-enum EmitType {
-  LINK = (1u << 0),
-  LLVM_IR = (1u << 1),
-  LLVM_BC = (1u << 2),
-  ASM = (1u << 3),
-  OBJ = (1u << 4),
-};
-
-using Emits = uint8_t;
-
 class Builder {
  public:
-  Builder(Emits emits = EmitType::LINK)
-      : module_("felis", ctx_), builder_(ctx_), emits_(emits){};
+  Builder() : module_("felis", ctx_), builder_(ctx_){};
   bool CreateTargetMachine(std::string &err);
   void Build(std::unique_ptr<File>);
+  void EmitLLVMIR(std::string filename);
+  void EmitLLVMBC(std::string filename);
+  void EmitASM(std::string filename);
+  void EmitOBJ(std::string filename);
 
  private:
   llvm::LLVMContext ctx_;
@@ -41,7 +34,6 @@ class Builder {
   std::unique_ptr<llvm::TargetMachine> machine_;
   SymTabManager sm_;
   std::shared_ptr<DefFn> currentFn_;
-  Emits emits_;
 
   llvm::Type *getLLVMTyFromTy(Ty ty);
 
@@ -53,6 +45,7 @@ class Builder {
   void Build(Block *);
   void Build(std::unique_ptr<Stmt> &);
   void Build(Expr *expr, llvm::Value *&value, Ty &ty);
+  void EmitCodeGen(std::string, llvm::TargetMachine::CodeGenFileType);
 };
 
 }  // namespace felis
