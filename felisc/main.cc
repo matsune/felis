@@ -3,6 +3,7 @@
 #include <string>
 
 #include "args.h"
+#include "check/check.h"
 #include "error/error.h"
 #include "ir/builder.h"
 #include "printer/printer.h"
@@ -42,32 +43,35 @@ int main(int argc, char *argv[]) {
 
   if (opts->printAst) felis::Printer().Print(file);
 
-  felis::Builder builder;
-  std::string err;
-  if (!builder.CreateTargetMachine(err)) {
-    std::cerr << opts->filename << ":" << err << std::endl;
-    return 1;
-  }
-  try {
-    builder.Build(std::move(file));
-  } catch (const felis::CompileError &e) {
-    std::cerr << opts->filename << ":" << e.what() << std::endl;
-  }
-  try {
-    if (opts->emits & EmitType::LLVM_IR) {
-      builder.EmitLLVMIR(opts->outputName(EmitType::LLVM_IR));
-    }
-    if (opts->emits & EmitType::LLVM_BC) {
-      builder.EmitLLVMBC(opts->outputName(EmitType::LLVM_BC));
-    }
-    if (opts->emits & EmitType::ASM) {
-      builder.EmitASM(opts->outputName(EmitType::ASM));
-    }
-    if (opts->emits & EmitType::OBJ) {
-      builder.EmitOBJ(opts->outputName(EmitType::OBJ));
-    }
-  } catch (std::runtime_error err) {
-    std::cerr << err.what() << std::endl;
-    return 1;
-  }
+  felis::Checker checker;
+  checker.SetupBuiltin();
+  checker.Check(file);
+  /* felis::Builder builder; */
+  /* std::string err; */
+  /* if (!builder.CreateTargetMachine(err)) { */
+  /*   std::cerr << opts->filename << ":" << err << std::endl; */
+  /*   return 1; */
+  /* } */
+  /* try { */
+  /*   builder.Build(std::move(file)); */
+  /* } catch (const felis::CompileError &e) { */
+  /*   std::cerr << opts->filename << ":" << e.what() << std::endl; */
+  /* } */
+  /* try { */
+  /*   if (opts->emits & EmitType::LLVM_IR) { */
+  /*     builder.EmitLLVMIR(opts->outputName(EmitType::LLVM_IR)); */
+  /*   } */
+  /*   if (opts->emits & EmitType::LLVM_BC) { */
+  /*     builder.EmitLLVMBC(opts->outputName(EmitType::LLVM_BC)); */
+  /*   } */
+  /*   if (opts->emits & EmitType::ASM) { */
+  /*     builder.EmitASM(opts->outputName(EmitType::ASM)); */
+  /*   } */
+  /*   if (opts->emits & EmitType::OBJ) { */
+  /*     builder.EmitOBJ(opts->outputName(EmitType::OBJ)); */
+  /*   } */
+  /* } catch (std::runtime_error err) { */
+  /*   std::cerr << err.what() << std::endl; */
+  /*   return 1; */
+  /* } */
 }
