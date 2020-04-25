@@ -9,14 +9,10 @@ namespace felis {
 void Checker::SetupBuiltin() {
   assert(currentScope_->IsTop());
   // insert basic types into global scope
-  currentScope_->InsertType("void",
-                            std::make_shared<BasicType>(Type::Kind::VOID));
-  currentScope_->InsertType("i32",
-                            std::make_shared<BasicType>(Type::Kind::I32));
-  currentScope_->InsertType("bool",
-                            std::make_shared<BasicType>(Type::Kind::BOOL));
-  currentScope_->InsertType("char",
-                            std::make_shared<BasicType>(Type::Kind::CHAR));
+  currentScope_->InsertType("void", Type(Type::Kind::VOID));
+  currentScope_->InsertType("i32", Type(Type::Kind::I32));
+  currentScope_->InsertType("bool", Type(Type::Kind::BOOL));
+  currentScope_->InsertType("char", Type(Type::Kind::CHAR));
 }
 
 void Checker::Check(std::unique_ptr<File>& file) {
@@ -26,6 +22,22 @@ void Checker::Check(std::unique_ptr<File>& file) {
   for (auto& fn : file->fnDecls) {
     InsertFnDecl(false, fn->proto);
   }
+
+  for (auto& fn : file->fnDecls) {
+    Check(fn);
+  }
+}
+
+void Checker::Check(std::unique_ptr<FnDecl>& decl) {
+  OpenScope();
+  for (auto& arg : decl->proto->args) {
+    // arg-name duplication is already checked in parser
+    currentScope_->InsertDecl(
+        arg->name->sval,
+        std::make_shared<Decl>(arg->name->sval, LookupType(arg->ty->sval),
+                               Decl::Kind::ARG));
+  }
+  CloseScope();
 }
 
 std::shared_ptr<Decl> Checker::InsertFnDecl(
@@ -40,26 +52,25 @@ std::shared_ptr<Decl> Checker::InsertFnDecl(
 
   for (auto& arg : proto->args) {
     auto ty = LookupType(arg->ty->sval);
-    if (!ty) {
+    if (ty.IsUnknown()) {
       throw CompileError::CreatePosFmt(arg->ty->GetPos(), "unknown arg type %s",
                                        arg->ty->sval.c_str());
     }
     fnType->args.push_back(ty);
   }
-  std::shared_ptr<Type> retTy;
+  Type retTy;
   if (proto->ret) {
     retTy = LookupType(proto->ret->sval);
-    if (!retTy) {
+    if (retTy.IsUnknown()) {
       throw CompileError::CreatePosFmt(proto->ret->GetPos(),
                                        "unknown ret type %s",
                                        proto->ret->sval.c_str());
     }
   } else {
-    retTy = std::make_shared<BasicType>(Type::Kind::VOID);
+    retTy = Type(Type::Kind::VOID);
   }
   Decl::Kind kind = isExt ? Decl::Kind::EXT : Decl::Kind::FN;
-  auto decl =
-      std::make_shared<Decl>(proto->name->sval, std::move(fnType), kind);
+  auto decl = std::make_shared<Decl>(proto->name->sval, *fnType, kind);
   currentScope_->InsertDecl(proto->name->sval, decl);
   return decl;
 }
@@ -87,14 +98,14 @@ std::shared_ptr<Decl> Checker::LookupDecl(std::string name) {
   return nullptr;
 }
 
-std::shared_ptr<Type> Checker::LookupType(std::string name) {
+Type Checker::LookupType(std::string name) {
   auto scope = currentScope_;
   while (scope) {
     auto ty = scope->FindType(name);
-    if (ty) return ty;
+    if (!ty.IsUnknown()) return ty;
     scope = scope->GetParent();
   }
-  return nullptr;
+  return Type();
 }
 
 }  // namespace felis

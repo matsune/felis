@@ -133,6 +133,10 @@ std::vector<std::unique_ptr<FnArg>> Parser::ParseFnArgs() {
 
   auto arg = ParseFnArg();
   bool hasName = arg->withName();
+  std::map<std::string, bool> nameMap;
+  if (hasName) {
+    nameMap[arg->name->sval] = true;
+  }
   args.push_back(std::move(arg));
 
   while (Peek()->kind == TokenKind::COMMA) {
@@ -141,6 +145,12 @@ std::vector<std::unique_ptr<FnArg>> Parser::ParseFnArgs() {
     arg = ParseFnArg();
     if (hasName != arg->withName()) {
       Throw("mixed name in func args");
+    }
+    if (hasName) {
+      if (nameMap.count(arg->name->sval)) {
+        Throw("duplicate argument %s", arg->name->sval.c_str());
+      }
+      nameMap[arg->name->sval] = true;
     }
     args.push_back(std::move(arg));
   }

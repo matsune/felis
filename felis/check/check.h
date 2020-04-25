@@ -12,6 +12,7 @@ namespace felis {
 
 struct Type {
   enum Kind {
+    UNKNOWN,
     // FuncType
     FUNC,
     // BasicType
@@ -20,32 +21,28 @@ struct Type {
     BOOL,
     CHAR,
   };
-  virtual Kind kind() = 0;
+  Type(Type::Kind kind = Kind::UNKNOWN) : kind_(kind){};
+  Kind kind() { return kind_; };
+  bool IsUnknown() { return kind_ == Kind::UNKNOWN; }
+
+ private:
+  Kind kind_;
 };
 
 struct FuncType : public Type {
-  Type::Kind kind() { return Type::Kind::FUNC; }
+  FuncType() : Type(Type::Kind::FUNC){};
 
-  std::vector<std::shared_ptr<Type>> args;
-  std::shared_ptr<Type> ret;
-};
-
-struct BasicType : public Type {
-  BasicType(Type::Kind kind) : kind_(kind){};
-
-  Type::Kind kind() { return kind_; }
-
- private:
-  Type::Kind kind_;
+  std::vector<Type> args;
+  Type ret;
 };
 
 struct Decl {
   enum Kind { EXT, FN, ARG, VAR, LET };
   std::string name;
-  std::unique_ptr<Type> type;
+  Type type;
   Kind kind;
 
-  Decl(std::string name, std::unique_ptr<Type> type, Kind kind)
+  Decl(std::string name, Type type, Kind kind)
       : name(name), type(std::move(type)), kind(kind) {}
 
   bool IsAssignable() {
@@ -74,15 +71,13 @@ class Scope {
     declMap_.emplace(name, decl);
   }
 
-  std::shared_ptr<Type> FindType(std::string name) {
+  Type FindType(std::string name) {
     auto it = typeMap_.find(name);
     if (it != typeMap_.end()) return it->second;
-    return nullptr;
+    return Type();
   }
 
-  void InsertType(std::string name, std::shared_ptr<Type> type) {
-    typeMap_.emplace(name, type);
-  }
+  void InsertType(std::string name, Type type) { typeMap_.emplace(name, type); }
 
   std::shared_ptr<Scope> GetParent() { return parent_; }
 
@@ -91,7 +86,7 @@ class Scope {
  private:
   std::shared_ptr<Scope> parent_;
   std::map<std::string, std::shared_ptr<Decl>> declMap_;
-  std::map<std::string, std::shared_ptr<Type>> typeMap_;
+  std::map<std::string, Type> typeMap_;
 };
 
 class Checker {
@@ -105,12 +100,46 @@ class Checker {
 
   std::shared_ptr<Decl> InsertFnDecl(bool isExt,
                                      const std::unique_ptr<FnProto>& proto);
+  void Check(std::unique_ptr<FnDecl>&);
 
   void OpenScope();
   void CloseScope();
   bool CanDecl(std::string name);
   std::shared_ptr<Decl> LookupDecl(std::string name);
-  std::shared_ptr<Type> LookupType(std::string name);
+  Type LookupType(std::string name);
+};
+
+struct Value {
+  enum Kind { CONSTANT, VARIABLE };
+
+  virtual Kind ValueKind() = 0;
+  Type type;
+};
+
+struct Constant : public Value {
+  Value::Kind ValueKind() { return Value::Kind::CONSTANT; }
+
+  enum Kind { INT, BOOL };
+  virtual Constant::Kind ConstantKind() = 0;
+};
+
+struct IntConstant : public Constant {
+  IntConstant(uint64_t val) : val(val){};
+  uint64_t val;
+
+  Constant::Kind ConstantKind() { return Constant::Kind::INT; };
+};
+
+struct BoolConstant : public Constant {
+  BoolConstant(bool val) : val(val){};
+  bool val;
+
+  Constant::Kind ConstantKind() { return Constant::Kind::BOOL; };
+};
+
+struct Variable : public Value {
+  Value::Kind ValueKind() { return Value::Kind::VARIABLE; }
+  std::shared_ptr<Decl> decl;
 };
 
 }  // namespace felis
