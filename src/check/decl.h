@@ -1,6 +1,8 @@
 #ifndef FELIS_CHECK_DECL_H_
 #define FELIS_CHECK_DECL_H_
 
+#include <assert.h>
+
 #include <memory>
 #include <string>
 
@@ -16,6 +18,11 @@ struct Decl {
 
   Decl(std::string name, std::shared_ptr<Type> type, Kind kind)
       : name(name), type(std::move(type)), kind(kind) {}
+
+  FuncType* AsFuncType() {
+    assert(IsFunc());
+    return (FuncType*)type.get();
+  }
 
   bool IsAssignable() {
     switch (kind) {

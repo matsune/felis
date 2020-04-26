@@ -24,11 +24,12 @@ class Checker {
  private:
   std::shared_ptr<Scope> currentScope_;
   std::map<ast::Node*, std::shared_ptr<Decl>> node_decl_;
+  std::shared_ptr<Decl> currentFunc_;
 
   void CheckFnDecl(std::unique_ptr<ast::FnDecl>&);
   void CheckStmt(std::unique_ptr<ast::Stmt>&);
   std::unique_ptr<hir::Constant> MakeLit(ast::Lit* lit);
-  std::unique_ptr<hir::Expr> MakeExp(ast::Expr* expr);
+  std::unique_ptr<hir::Expr> MakeExpr(ast::Expr* expr);
   void TryExpTy(hir::Expr*, std::shared_ptr<Type>);
   void TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty);
   void CheckBinary(std::unique_ptr<hir::Expr>& lhs,

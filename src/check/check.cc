@@ -31,11 +31,11 @@ void Checker::Check(std::unique_ptr<ast::File>& file) {
 }
 
 void Checker::CheckFnDecl(std::unique_ptr<ast::FnDecl>& fnDecl) {
+  auto decl = node_decl_[fnDecl.get()];
+  decl->Debug();
+  currentFunc_ = decl;
+
   OpenScope();
-  {
-    auto decl = node_decl_[fnDecl.get()];
-    decl->Debug();
-  }
   for (auto& arg : fnDecl->proto->args) {
     // arg-name duplication is already checked in parser
     auto argDecl = std::make_shared<Decl>(
@@ -56,45 +56,36 @@ void Checker::CheckStmt(std::unique_ptr<ast::Stmt>& stmt) {
     } break;
 
     case ast::Stmt::Kind::RET: {
-      throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented ret");
-      /* auto ret = (RetStmt*)stmt.get(); */
-      /* llvm::Value* value(nullptr); */
-      /* Ty ty; */
-
-      /* if (ret->expr) { */
-      /*   Build(ret->expr.get(), value, ty); */
-      /* } else { */
-      /*   ty = Ty::VOID; */
-      /* } */
-
-      /* if (ty == Ty::UNKNOWN) { */
-      /*   throw CompileError::CreatePosFmt(ret->expr->GetPos(), */
-      /*                                    "unknown ret type"); */
-      /* } */
-      /* if (currentFn_->ret != ty) { */
-      /*   throw CompileError::CreatePosFmt( */
-      /*       stmt->GetPos(), "cannot use type %s for function ret type %s", */
-      /*       ToString(ty).c_str(), ToString(currentFn_->ret).c_str()); */
-      /* } */
-      /* if (ty == Ty::VOID) { */
-      /*   builder_.CreateRetVoid(); */
-      /* } else { */
-      /*   builder_.CreateRet(value); */
-      /* } */
+      std::cout << "ret ";
+      auto retStmt = (ast::RetStmt*)stmt.get();
+      auto funcType = currentFunc_->AsFuncType();
+      if (retStmt->expr) {
+        auto expr = MakeExpr(retStmt->expr.get());
+        if (*expr->Ty() != *funcType->ret) TryExpTy(expr.get(), funcType->ret);
+        expr->Debug();
+      } else {
+        // empty return
+        if (!funcType->ret->IsVoid()) {
+          throw CompileError::CreatePosFmt(retStmt->GetPos(),
+                                           "func type is not void");
+        }
+        std::cout << " void" << std::endl;
+      }
     } break;
 
     case ast::Stmt::Kind::VAR_DECL: {
+      std::cout << "varDecl ";
       auto declStmt = (ast::VarDeclStmt*)stmt.get();
       std::string name = declStmt->name->sval;
       if (!CanDecl(name)) {
         throw CompileError::CreatePosFmt(declStmt->GetPos(),
                                          "redeclared var %s", name.c_str());
       }
-      auto exp = MakeExp(declStmt->expr.get());
+      auto exp = MakeExpr(declStmt->expr.get());
       auto decl = std::make_shared<Decl>(
           name, exp->Ty(), declStmt->isLet ? Decl::Kind::LET : Decl::Kind::VAR);
       RecordNodeDecl(declStmt, decl);
-      return;
+      decl->Debug();
 
     } break;
 
@@ -178,7 +169,7 @@ void Checker::CheckStmt(std::unique_ptr<ast::Stmt>& stmt) {
   }
 }
 
-std::unique_ptr<hir::Expr> Checker::MakeExp(ast::Expr* expr) {
+std::unique_ptr<hir::Expr> Checker::MakeExpr(ast::Expr* expr) {
   switch (expr->ExprKind()) {
     case ast::Expr::Kind::LIT: {
       auto lit = (ast::Lit*)expr;
@@ -208,7 +199,7 @@ std::unique_ptr<hir::Expr> Checker::MakeExp(ast::Expr* expr) {
       call->decl = decl;
       for (int i = 0; i < callExpr->args.size(); i++) {
         auto& arg = callExpr->args[i];
-        auto exp = MakeExp(arg.get());
+        auto exp = MakeExpr(arg.get());
         auto ty = fnType->args[i];
         TryExpTy(exp.get(), ty);
         call->argExprs.push_back(std::move(exp));
@@ -235,12 +226,12 @@ std::unique_ptr<hir::Expr> Checker::MakeExp(ast::Expr* expr) {
     case ast::Expr::Kind::UNARY: {
       auto unaryExpr = (ast::UnaryExpr*)expr;
       return std::make_unique<hir::Unary>(unaryExpr->GetPos(), unaryExpr->unOp,
-                                          MakeExp(unaryExpr->expr.get()));
+                                          MakeExpr(unaryExpr->expr.get()));
     } break;
     case ast::Expr::Kind::BINARY: {
       auto binaryExpr = (ast::BinaryExpr*)expr;
-      auto lhs = MakeExp(binaryExpr->lhs.get());
-      auto rhs = MakeExp(binaryExpr->rhs.get());
+      auto lhs = MakeExpr(binaryExpr->lhs.get());
+      auto rhs = MakeExpr(binaryExpr->rhs.get());
       CheckBinary(lhs, rhs, binaryExpr->op);
       return std::make_unique<hir::Binary>(binaryExpr->GetPos(), binaryExpr->op,
                                            std::move(lhs), std::move(rhs));
@@ -361,16 +352,16 @@ void Checker::TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty) {
 }
 
 // check exp's type and try to set type `ty`
-void Checker::TryExpTy(hir::Expr* exp, std::shared_ptr<Type> ty) {
-  switch (exp->ExprKind()) {
+void Checker::TryExpTy(hir::Expr* expr, std::shared_ptr<Type> ty) {
+  switch (expr->ExprKind()) {
     case hir::Expr::Kind::VALUE: {
-      auto value = (hir::Value*)exp;
+      auto value = (hir::Value*)expr;
       switch (value->ValueKind()) {
         case hir::Value::Kind::VARIABLE: {
           // Variables can't be casted implicitly
           auto var = (hir::Variable*)value;
           if (*var->decl->type != *ty) {
-            throw CompileError::CreatePosFmt(exp->pos,
+            throw CompileError::CreatePosFmt(expr->pos,
                                              "unmatched variable type");
           }
         } break;
@@ -382,7 +373,7 @@ void Checker::TryExpTy(hir::Expr* exp, std::shared_ptr<Type> ty) {
       }
     }
     case hir::Expr::Kind::BINARY: {
-      auto binary = (hir::Binary*)exp;
+      auto binary = (hir::Binary*)expr;
       if (*binary->Ty() == *ty) return;
       TryExpTy(binary->lhs.get(), ty);
       TryExpTy(binary->rhs.get(), ty);
@@ -390,8 +381,8 @@ void Checker::TryExpTy(hir::Expr* exp, std::shared_ptr<Type> ty) {
         throw CompileError::CreatePosFmt(binary->pos, "unmatched binary type");
     } break;
     default: {
-      if (*exp->Ty() != *ty) {
-        throw CompileError::CreatePosFmt(exp->pos, "unmatched exp type");
+      if (*expr->Ty() != *ty) {
+        throw CompileError::CreatePosFmt(expr->pos, "unmatched exp type");
       }
     } break;
   }
