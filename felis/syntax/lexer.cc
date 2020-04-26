@@ -474,9 +474,6 @@ void Lexer::EatNum(Token *tok) {
     tok->fval = stold(str);
   } else {
     uint64_t ival = stoull(str, nullptr, base);
-    if (ival > INT64_MAX) {
-      Throw("overflow int64 size");
-    }
     tok->kind = TokenKind::LIT_INT;
     tok->ival = ival;
   }

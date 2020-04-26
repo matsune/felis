@@ -122,4 +122,52 @@ std::string ToString(BinOp op) {
   }
 }
 
+std::string ToString(Decl::Kind kind) {
+  switch (kind) {
+    case Decl::Kind::EXT:
+      return "EXT";
+    case Decl::Kind::FN:
+      return "FN";
+    case Decl::Kind::ARG:
+      return "ARG";
+    case Decl::Kind::VAR:
+      return "VAR";
+    case Decl::Kind::LET:
+      return "LET";
+  };
+}
+
+std::string ToString(Type *type) {
+  switch (type->TypeKind()) {
+    case Type::Kind::FUNC: {
+      auto funcType = (FuncType *)type;
+      std::string str = "func(";
+      int i = 0;
+      for (auto &arg : funcType->args) {
+        if (i++ > 0) {
+          str += ", ";
+        }
+        str += ToString(arg.get());
+      }
+      str += ")";
+      if (!funcType->ret->IsVoid()) {
+        str += " -> " + ToString(funcType->ret.get());
+      }
+      return str;
+    } break;
+    case Type::Kind::VOID:
+      return "void";
+    case Type::Kind::I32:
+      return "i32";
+    case Type::Kind::F32:
+      return "f32";
+    case Type::Kind::BOOL:
+      return "bool";
+    case Type::Kind::CHAR:
+      return "char";
+    case Type::Kind::STRING:
+      return "string";
+  }
+}
+
 }  // namespace felis

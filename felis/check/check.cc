@@ -9,35 +9,422 @@ namespace felis {
 void Checker::SetupBuiltin() {
   assert(currentScope_->IsTop());
   // insert basic types into global scope
-  currentScope_->InsertType("void", Type(Type::Kind::VOID));
-  currentScope_->InsertType("i32", Type(Type::Kind::I32));
-  currentScope_->InsertType("bool", Type(Type::Kind::BOOL));
-  currentScope_->InsertType("char", Type(Type::Kind::CHAR));
+  currentScope_->InsertType("void", std::make_shared<Type>(Type::Kind::VOID));
+  currentScope_->InsertType("i32", std::make_shared<Type>(Type::Kind::I32));
+  currentScope_->InsertType("bool", std::make_shared<Type>(Type::Kind::BOOL));
+  currentScope_->InsertType("char", std::make_shared<Type>(Type::Kind::CHAR));
 }
 
 void Checker::Check(std::unique_ptr<File>& file) {
   for (auto& ext : file->externs) {
-    InsertFnDecl(true, ext->proto);
+    auto decl = InsertFnDecl(true, ext->proto);
+    RecordNodeDecl(ext.get(), decl);
   }
   for (auto& fn : file->fnDecls) {
-    InsertFnDecl(false, fn->proto);
+    auto decl = InsertFnDecl(false, fn->proto);
+    RecordNodeDecl(fn.get(), decl);
   }
 
   for (auto& fn : file->fnDecls) {
-    Check(fn);
+    CheckFnDecl(fn);
   }
 }
 
-void Checker::Check(std::unique_ptr<FnDecl>& decl) {
+void Checker::CheckFnDecl(std::unique_ptr<FnDecl>& fnDecl) {
   OpenScope();
-  for (auto& arg : decl->proto->args) {
+  {
+    auto decl = node_decl_[fnDecl.get()];
+    decl->Debug();
+  }
+  for (auto& arg : fnDecl->proto->args) {
     // arg-name duplication is already checked in parser
-    currentScope_->InsertDecl(
-        arg->name->sval,
-        std::make_shared<Decl>(arg->name->sval, LookupType(arg->ty->sval),
-                               Decl::Kind::ARG));
+    auto argDecl = std::make_shared<Decl>(
+        arg->name->sval, LookupType(arg->ty->sval), Decl::Kind::ARG);
+    currentScope_->InsertDecl(arg->name->sval, argDecl);
+  }
+  for (auto& stmt : fnDecl->block->stmts) {
+    CheckStmt(stmt);
   }
   CloseScope();
+}
+
+void Checker::CheckStmt(std::unique_ptr<Stmt>& stmt) {
+  switch (stmt->StmtKind()) {
+    case Stmt::Kind::EXPR: {
+      throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented expr");
+      auto expr = (Expr*)stmt.get();
+    } break;
+
+    case Stmt::Kind::RET: {
+      throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented ret");
+      /* auto ret = (RetStmt*)stmt.get(); */
+      /* llvm::Value* value(nullptr); */
+      /* Ty ty; */
+
+      /* if (ret->expr) { */
+      /*   Build(ret->expr.get(), value, ty); */
+      /* } else { */
+      /*   ty = Ty::VOID; */
+      /* } */
+
+      /* if (ty == Ty::UNKNOWN) { */
+      /*   throw CompileError::CreatePosFmt(ret->expr->GetPos(), */
+      /*                                    "unknown ret type"); */
+      /* } */
+      /* if (currentFn_->ret != ty) { */
+      /*   throw CompileError::CreatePosFmt( */
+      /*       stmt->GetPos(), "cannot use type %s for function ret type %s", */
+      /*       ToString(ty).c_str(), ToString(currentFn_->ret).c_str()); */
+      /* } */
+      /* if (ty == Ty::VOID) { */
+      /*   builder_.CreateRetVoid(); */
+      /* } else { */
+      /*   builder_.CreateRet(value); */
+      /* } */
+    } break;
+
+    case Stmt::Kind::VAR_DECL: {
+      auto declStmt = (VarDeclStmt*)stmt.get();
+      std::string name = declStmt->name->sval;
+      if (!CanDecl(name)) {
+        throw CompileError::CreatePosFmt(declStmt->GetPos(),
+                                         "redeclared var %s", name.c_str());
+      }
+      auto exp = MakeExp(declStmt->expr.get());
+      auto decl = std::make_shared<Decl>(
+          name, exp->Ty(), declStmt->isLet ? Decl::Kind::LET : Decl::Kind::VAR);
+      RecordNodeDecl(declStmt, decl);
+      return;
+
+    } break;
+
+    case Stmt::Kind::ASSIGN: {
+      throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented assign");
+      /* auto assign = (AssignStmt*)stmt.get(); */
+      /* auto defVar = sm_.LookupVariable(assign->name->sval); */
+      /* if (!defVar) { */
+      /*   throw CompileError::CreatePosFmt(assign->GetPos(), "undeclared var
+       * %s", */
+      /*                                    *assign->name->sval.c_str()); */
+      /* } */
+      /* if (!defVar->IsMut()) { */
+      /*   throw CompileError::CreatePosFmt(assign->GetPos(), */
+      /*                                    "variable %s is mutable", */
+      /*                                    assign->name->sval.c_str()); */
+      /* } */
+      /* Ty ty; */
+      /* llvm::Value* value; */
+      /* Build(assign->expr.get(), value, ty); */
+      /* if (defVar->ty != ty) { */
+      /*   throw CompileError::CreatePosFmt(assign->expr->GetPos(), */
+      /*                                    "assigned expr type doesn't match");
+       */
+      /* } */
+
+      /* builder_.CreateStore(value, defVar->Value()); */
+    } break;
+
+    case Stmt::Kind::IF: {
+      throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented if");
+      /* auto ifStmt = (IfStmt*)stmt.get(); */
+      /* Ty condTy; */
+      /* llvm::Value* condValue; */
+      /* Build(ifStmt->cond.get(), condValue, condTy); */
+      /* if (condTy != Ty::BOOL) { */
+      /*   throw CompileError::CreatePosFmt(ifStmt->cond->GetPos(), */
+      /*                                    "non bool if cond"); */
+      /* } */
+      /* llvm::Value* cond = */
+      /*     builder_.CreateICmpNE(condValue,
+       * llvm::ConstantInt::getFalse(ctx_)); */
+
+      /* llvm::BasicBlock* thenBB = */
+      /*     llvm::BasicBlock::Create(ctx_, "then", currentFn_->func); */
+      /* llvm::BasicBlock* elseBB = */
+      /*     llvm::BasicBlock::Create(ctx_, "else", currentFn_->func); */
+      /* builder_.CreateCondBr(cond, thenBB, elseBB); */
+      /* builder_.SetInsertPoint(thenBB); */
+
+      /* sm_.Push(); */
+
+      /* Build(ifStmt->block.get()); */
+
+      /* sm_.Pop(); */
+
+      /* builder_.CreateBr(elseBB); */
+      /* builder_.SetInsertPoint(elseBB); */
+
+      /* if (ifStmt->els) { */
+      /*   if (ifStmt->els->StmtKind() == Stmt::Kind::IF) { */
+      /*     auto elsStmt = (IfStmt*)ifStmt->els.get(); */
+      /*     Build(ifStmt->els); */
+      /*   } else if (ifStmt->els->StmtKind() == Stmt::Kind::BLOCK) { */
+      /*     auto elsBlock = (Block*)ifStmt->els.get(); */
+      /*     sm_.Push(); */
+      /*     Build(elsBlock); */
+      /*     sm_.Pop(); */
+      /*   } */
+      /* } */
+    } break;
+    case Stmt::Kind::BLOCK: {
+      throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented block");
+      /* auto block = (Block*)stmt.get(); */
+      /* sm_.Push(); */
+
+      /* Build(block); */
+
+      /* sm_.Pop(); */
+    } break;
+  }
+}
+
+std::unique_ptr<hir::Expr> Checker::MakeExp(Expr* expr) {
+  switch (expr->ExprKind()) {
+    case Expr::Kind::LIT: {
+      auto lit = (Lit*)expr;
+      return MakeLit(lit);
+    } break;
+
+    case Expr::Kind::CALL: {
+      auto callExpr = (CallExpr*)expr;
+
+      auto decl = LookupDecl(callExpr->ident->sval);
+      if (decl == nullptr) {
+        throw CompileError::CreatePosFmt(callExpr->GetPos(),
+                                         "undefined function %s",
+                                         callExpr->ident->sval.c_str());
+      }
+      if (!decl->IsFunc()) {
+        throw CompileError::CreatePosFmt(callExpr->GetPos(),
+                                         "%s is not declared as function",
+                                         callExpr->ident->sval.c_str());
+      }
+      auto fnType = (FuncType*)decl->type.get();
+      if (fnType->args.size() != callExpr->args.size()) {
+        throw CompileError::CreatePosFmt(callExpr->GetPos(),
+                                         "args count doesn't match");
+      }
+      auto call = std::make_unique<hir::Call>(callExpr->GetPos());
+      call->decl = decl;
+      for (int i = 0; i < callExpr->args.size(); i++) {
+        auto& arg = callExpr->args[i];
+        auto exp = MakeExp(arg.get());
+        auto ty = fnType->args[i];
+        TryExpTy(exp.get(), ty);
+        call->argExprs.push_back(std::move(exp));
+      }
+      return std::move(call);
+    } break;
+
+    case Expr::Kind::IDENT: {
+      auto ident = (Ident*)expr;
+      auto decl = LookupDecl(ident->sval);
+      if (decl == nullptr) {
+        throw CompileError::CreatePosFmt(
+            ident->GetPos(), "undefined function %s", ident->sval.c_str());
+      }
+      if (decl->IsFunc()) {
+        throw CompileError::CreatePosFmt(ident->GetPos(),
+                                         "%s is not declared as variable",
+                                         ident->sval.c_str());
+      }
+      auto value = std::make_unique<hir::Variable>(ident->GetPos());
+      value->decl = decl;
+      return std::move(value);
+    } break;
+    case Expr::Kind::UNARY: {
+      auto unaryExpr = (UnaryExpr*)expr;
+      return std::make_unique<hir::Unary>(unaryExpr->GetPos(), unaryExpr->unOp,
+                                          MakeExp(unaryExpr->expr.get()));
+    } break;
+    case Expr::Kind::BINARY: {
+      auto binaryExpr = (BinaryExpr*)expr;
+      auto lhs = MakeExp(binaryExpr->lhs.get());
+      auto rhs = MakeExp(binaryExpr->rhs.get());
+      CheckBinary(lhs, rhs, binaryExpr->op);
+      return std::make_unique<hir::Binary>(binaryExpr->GetPos(), binaryExpr->op,
+                                           std::move(lhs), std::move(rhs));
+    } break;
+    default:
+      return nullptr;
+  }
+}
+
+bool IsAddOperandType(Type::Kind kind) {
+  switch (kind) {
+    case Type::Kind::I32:
+    case Type::Kind::F32:
+    case Type::Kind::CHAR:
+      return true;
+    default:
+      return false;
+  }
+}
+
+int NumPrior(std::shared_ptr<Type> ty) {
+  if (ty->TypeKind() == Type::Kind::F32) {
+    return 2;
+  } else if (ty->TypeKind() == Type::Kind::I32) {
+    return 1;
+  } else if (ty->TypeKind() == Type::Kind::CHAR) {
+    return 0;
+  } else {
+    exit(1);
+  }
+}
+
+void Checker::CheckBinary(std::unique_ptr<hir::Expr>& lhs,
+                          std::unique_ptr<hir::Expr>& rhs, BinOp op) {
+  auto lhsTy = lhs->Ty();
+  auto rhsTy = rhs->Ty();
+  switch (op) {
+    case BinOp::ADD: {
+      if (!IsAddOperandType(lhsTy->TypeKind())) {
+        throw CompileError::CreatePosFmt(lhs->pos, "cannot add lhs type");
+      }
+      if (!IsAddOperandType(rhsTy->TypeKind())) {
+        throw CompileError::CreatePosFmt(rhs->pos, "cannot add rhs type");
+      }
+      auto lhsTyPri = NumPrior(lhsTy);
+      auto rhsTyPri = NumPrior(rhsTy);
+      if (lhsTyPri == rhsTyPri) {
+        return;
+      } else if (lhsTyPri < rhsTyPri) {
+        // try cast lhs
+        TryExpTy(lhs.get(), rhsTy);
+      } else {
+        // try cast rhs
+        TryExpTy(rhs.get(), lhsTy);
+      }
+    } break;
+    default:
+      // TODO:
+      throw CompileError::CreatePosFmt(lhs->pos, "unimplemented check ibnary");
+  }
+}
+
+void Checker::TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty) {
+  switch (cons->ConstantKind()) {
+    case hir::Constant::Kind::CHAR: {
+      // char may be int or float
+      auto charConst = (hir::CharConstant*)cons;
+      switch (ty->TypeKind()) {
+        case Type::CHAR:
+          return;
+        case Type::I32: {
+          auto rune = charConst->val;
+          delete charConst;
+          cons = new hir::IntConstant(rune.scalar, true);
+        } break;
+        default:
+          // TODO:
+          throw CompileError::CreatePosFmt(
+              cons->pos, "unimplemented charConst implicit cast");
+      }
+    } break;
+    case hir::Constant::Kind::INT: {
+      // int may be float
+      // and check overflow
+      auto intConst = (hir::IntConstant*)cons;
+      switch (ty->TypeKind()) {
+        case Type::I32:
+          if (intConst->is32) return;
+
+          if (intConst->val > INT32_MAX) {
+            throw CompileError::CreatePosFmt(cons->pos, "overflow int32");
+          }
+          intConst->is32 = true;
+          return;
+        case Type::F32:
+          // TODO:
+          /* double fval = double(intConst->val); */
+          throw CompileError::CreatePosFmt(
+              cons->pos, "unimplemented floatConst implicit cast");
+
+        default:
+          throw CompileError::CreatePosFmt(cons->pos, "can't cast");
+      }
+    } break;
+    case hir::Constant::Kind::BOOL:
+      if (!ty->IsBool())
+        throw CompileError::CreatePosFmt(cons->pos, "can't cast bool");
+      break;
+    case hir::Constant::Kind::FLOAT:
+      if (!ty->IsF32())
+        throw CompileError::CreatePosFmt(cons->pos, "can't cast f32");
+      break;
+    case hir::Constant::Kind::STRING:
+      if (!ty->IsString())
+        throw CompileError::CreatePosFmt(cons->pos, "can't cast string");
+      break;
+  }
+}
+
+// check exp's type and try to set type `ty`
+void Checker::TryExpTy(hir::Expr* exp, std::shared_ptr<Type> ty) {
+  switch (exp->ExprKind()) {
+    case hir::Expr::Kind::VALUE: {
+      auto value = (hir::Value*)exp;
+      switch (value->ValueKind()) {
+        case hir::Value::Kind::VARIABLE: {
+          // Variables can't be casted implicitly
+          auto var = (hir::Variable*)value;
+          if (*var->decl->type != *ty) {
+            throw CompileError::CreatePosFmt(exp->pos,
+                                             "unmatched variable type");
+          }
+        } break;
+        case hir::Value::Kind::CONSTANT: {
+          // Constants can be casted implicitly
+          auto cons = (hir::Constant*)value;
+          TryConstantTy(cons, ty);
+        } break;
+      }
+    }
+    case hir::Expr::Kind::BINARY: {
+      auto binary = (hir::Binary*)exp;
+      if (*binary->Ty() == *ty) return;
+      TryExpTy(binary->lhs.get(), ty);
+      TryExpTy(binary->rhs.get(), ty);
+      if (*binary->Ty() != *ty)
+        throw CompileError::CreatePosFmt(binary->pos, "unmatched binary type");
+    } break;
+    default: {
+      if (*exp->Ty() != *ty) {
+        throw CompileError::CreatePosFmt(exp->pos, "unmatched exp type");
+      }
+    } break;
+  }
+}  // namespace felis
+
+std::unique_ptr<hir::Constant> Checker::MakeLit(Lit* lit) {
+  switch (lit->LitKind()) {
+    case Lit::Kind::INT: {
+      auto litInt = (LitInt*)lit;
+      return std::make_unique<hir::IntConstant>(lit->GetPos(), litInt->ival);
+    } break;
+    case Lit::Kind::FLOAT: {
+      auto litFloat = (LitFloat*)lit;
+      return std::make_unique<hir::FloatConstant>(lit->GetPos(),
+                                                  litFloat->fval);
+    } break;
+    case Lit::Kind::BOOL: {
+      auto litBool = (LitBool*)lit;
+      return std::make_unique<hir::BoolConstant>(lit->GetPos(), litBool->bval);
+    } break;
+    case Lit::Kind::CHAR: {
+      auto litChar = (LitChar*)lit;
+      return std::make_unique<hir::CharConstant>(lit->GetPos(), litChar->cval);
+    } break;
+    case Lit::Kind::STR: {
+      auto litStr = (LitStr*)lit;
+      return std::make_unique<hir::StringConstant>(lit->GetPos(), litStr->sval);
+    } break;
+  }
+}
+
+void Checker::RecordNodeDecl(Node* node, std::shared_ptr<Decl> decl) {
+  node_decl_[node] = decl;
 }
 
 std::shared_ptr<Decl> Checker::InsertFnDecl(
@@ -48,29 +435,29 @@ std::shared_ptr<Decl> Checker::InsertFnDecl(
                                      proto->name->sval.c_str());
   }
 
-  auto fnType = std::make_unique<FuncType>();
-
+  std::vector<std::shared_ptr<Type>> args;
   for (auto& arg : proto->args) {
     auto ty = LookupType(arg->ty->sval);
-    if (ty.IsUnknown()) {
+    if (!ty) {
       throw CompileError::CreatePosFmt(arg->ty->GetPos(), "unknown arg type %s",
                                        arg->ty->sval.c_str());
     }
-    fnType->args.push_back(ty);
+    args.push_back(ty);
   }
-  Type retTy;
+  std::shared_ptr<Type> retTy;
   if (proto->ret) {
     retTy = LookupType(proto->ret->sval);
-    if (retTy.IsUnknown()) {
+    if (!retTy) {
       throw CompileError::CreatePosFmt(proto->ret->GetPos(),
                                        "unknown ret type %s",
                                        proto->ret->sval.c_str());
     }
   } else {
-    retTy = Type(Type::Kind::VOID);
+    retTy = std::make_shared<Type>(Type::Kind::VOID);
   }
+  auto fnType = std::make_shared<FuncType>(std::move(args), std::move(retTy));
   Decl::Kind kind = isExt ? Decl::Kind::EXT : Decl::Kind::FN;
-  auto decl = std::make_shared<Decl>(proto->name->sval, *fnType, kind);
+  auto decl = std::make_shared<Decl>(proto->name->sval, fnType, kind);
   currentScope_->InsertDecl(proto->name->sval, decl);
   return decl;
 }
@@ -98,14 +485,14 @@ std::shared_ptr<Decl> Checker::LookupDecl(std::string name) {
   return nullptr;
 }
 
-Type Checker::LookupType(std::string name) {
+std::shared_ptr<Type> Checker::LookupType(std::string name) {
   auto scope = currentScope_;
   while (scope) {
     auto ty = scope->FindType(name);
-    if (!ty.IsUnknown()) return ty;
+    if (ty) return ty;
     scope = scope->GetParent();
   }
-  return Type();
+  return nullptr;
 }
 
 }  // namespace felis
