@@ -15,7 +15,7 @@ void Checker::SetupBuiltin() {
   currentScope_->InsertType("char", std::make_shared<Type>(Type::Kind::CHAR));
 }
 
-void Checker::Check(std::unique_ptr<File>& file) {
+void Checker::Check(std::unique_ptr<ast::File>& file) {
   for (auto& ext : file->externs) {
     auto decl = InsertFnDecl(true, ext->proto);
     RecordNodeDecl(ext.get(), decl);
@@ -30,7 +30,7 @@ void Checker::Check(std::unique_ptr<File>& file) {
   }
 }
 
-void Checker::CheckFnDecl(std::unique_ptr<FnDecl>& fnDecl) {
+void Checker::CheckFnDecl(std::unique_ptr<ast::FnDecl>& fnDecl) {
   OpenScope();
   {
     auto decl = node_decl_[fnDecl.get()];
@@ -48,14 +48,14 @@ void Checker::CheckFnDecl(std::unique_ptr<FnDecl>& fnDecl) {
   CloseScope();
 }
 
-void Checker::CheckStmt(std::unique_ptr<Stmt>& stmt) {
+void Checker::CheckStmt(std::unique_ptr<ast::Stmt>& stmt) {
   switch (stmt->StmtKind()) {
-    case Stmt::Kind::EXPR: {
+    case ast::Stmt::Kind::EXPR: {
       throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented expr");
-      auto expr = (Expr*)stmt.get();
+      auto expr = (ast::Expr*)stmt.get();
     } break;
 
-    case Stmt::Kind::RET: {
+    case ast::Stmt::Kind::RET: {
       throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented ret");
       /* auto ret = (RetStmt*)stmt.get(); */
       /* llvm::Value* value(nullptr); */
@@ -83,8 +83,8 @@ void Checker::CheckStmt(std::unique_ptr<Stmt>& stmt) {
       /* } */
     } break;
 
-    case Stmt::Kind::VAR_DECL: {
-      auto declStmt = (VarDeclStmt*)stmt.get();
+    case ast::Stmt::Kind::VAR_DECL: {
+      auto declStmt = (ast::VarDeclStmt*)stmt.get();
       std::string name = declStmt->name->sval;
       if (!CanDecl(name)) {
         throw CompileError::CreatePosFmt(declStmt->GetPos(),
@@ -98,7 +98,7 @@ void Checker::CheckStmt(std::unique_ptr<Stmt>& stmt) {
 
     } break;
 
-    case Stmt::Kind::ASSIGN: {
+    case ast::Stmt::Kind::ASSIGN: {
       throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented assign");
       /* auto assign = (AssignStmt*)stmt.get(); */
       /* auto defVar = sm_.LookupVariable(assign->name->sval); */
@@ -124,7 +124,7 @@ void Checker::CheckStmt(std::unique_ptr<Stmt>& stmt) {
       /* builder_.CreateStore(value, defVar->Value()); */
     } break;
 
-    case Stmt::Kind::IF: {
+    case ast::Stmt::Kind::IF: {
       throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented if");
       /* auto ifStmt = (IfStmt*)stmt.get(); */
       /* Ty condTy; */
@@ -166,7 +166,7 @@ void Checker::CheckStmt(std::unique_ptr<Stmt>& stmt) {
       /*   } */
       /* } */
     } break;
-    case Stmt::Kind::BLOCK: {
+    case ast::Stmt::Kind::BLOCK: {
       throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented block");
       /* auto block = (Block*)stmt.get(); */
       /* sm_.Push(); */
@@ -178,15 +178,15 @@ void Checker::CheckStmt(std::unique_ptr<Stmt>& stmt) {
   }
 }
 
-std::unique_ptr<hir::Expr> Checker::MakeExp(Expr* expr) {
+std::unique_ptr<hir::Expr> Checker::MakeExp(ast::Expr* expr) {
   switch (expr->ExprKind()) {
-    case Expr::Kind::LIT: {
-      auto lit = (Lit*)expr;
+    case ast::Expr::Kind::LIT: {
+      auto lit = (ast::Lit*)expr;
       return MakeLit(lit);
     } break;
 
-    case Expr::Kind::CALL: {
-      auto callExpr = (CallExpr*)expr;
+    case ast::Expr::Kind::CALL: {
+      auto callExpr = (ast::CallExpr*)expr;
 
       auto decl = LookupDecl(callExpr->ident->sval);
       if (decl == nullptr) {
@@ -216,8 +216,8 @@ std::unique_ptr<hir::Expr> Checker::MakeExp(Expr* expr) {
       return std::move(call);
     } break;
 
-    case Expr::Kind::IDENT: {
-      auto ident = (Ident*)expr;
+    case ast::Expr::Kind::IDENT: {
+      auto ident = (ast::Ident*)expr;
       auto decl = LookupDecl(ident->sval);
       if (decl == nullptr) {
         throw CompileError::CreatePosFmt(
@@ -232,13 +232,13 @@ std::unique_ptr<hir::Expr> Checker::MakeExp(Expr* expr) {
       value->decl = decl;
       return std::move(value);
     } break;
-    case Expr::Kind::UNARY: {
-      auto unaryExpr = (UnaryExpr*)expr;
+    case ast::Expr::Kind::UNARY: {
+      auto unaryExpr = (ast::UnaryExpr*)expr;
       return std::make_unique<hir::Unary>(unaryExpr->GetPos(), unaryExpr->unOp,
                                           MakeExp(unaryExpr->expr.get()));
     } break;
-    case Expr::Kind::BINARY: {
-      auto binaryExpr = (BinaryExpr*)expr;
+    case ast::Expr::Kind::BINARY: {
+      auto binaryExpr = (ast::BinaryExpr*)expr;
       auto lhs = MakeExp(binaryExpr->lhs.get());
       auto rhs = MakeExp(binaryExpr->rhs.get());
       CheckBinary(lhs, rhs, binaryExpr->op);
@@ -274,11 +274,11 @@ int NumPrior(std::shared_ptr<Type> ty) {
 }
 
 void Checker::CheckBinary(std::unique_ptr<hir::Expr>& lhs,
-                          std::unique_ptr<hir::Expr>& rhs, BinOp op) {
+                          std::unique_ptr<hir::Expr>& rhs, ast::BinOp op) {
   auto lhsTy = lhs->Ty();
   auto rhsTy = rhs->Ty();
   switch (op) {
-    case BinOp::ADD: {
+    case ast::BinOp::ADD: {
       if (!IsAddOperandType(lhsTy->TypeKind())) {
         throw CompileError::CreatePosFmt(lhs->pos, "cannot add lhs type");
       }
@@ -397,38 +397,38 @@ void Checker::TryExpTy(hir::Expr* exp, std::shared_ptr<Type> ty) {
   }
 }  // namespace felis
 
-std::unique_ptr<hir::Constant> Checker::MakeLit(Lit* lit) {
+std::unique_ptr<hir::Constant> Checker::MakeLit(ast::Lit* lit) {
   switch (lit->LitKind()) {
-    case Lit::Kind::INT: {
-      auto litInt = (LitInt*)lit;
+    case ast::Lit::Kind::INT: {
+      auto litInt = (ast::LitInt*)lit;
       return std::make_unique<hir::IntConstant>(lit->GetPos(), litInt->ival);
     } break;
-    case Lit::Kind::FLOAT: {
-      auto litFloat = (LitFloat*)lit;
+    case ast::Lit::Kind::FLOAT: {
+      auto litFloat = (ast::LitFloat*)lit;
       return std::make_unique<hir::FloatConstant>(lit->GetPos(),
                                                   litFloat->fval);
     } break;
-    case Lit::Kind::BOOL: {
-      auto litBool = (LitBool*)lit;
+    case ast::Lit::Kind::BOOL: {
+      auto litBool = (ast::LitBool*)lit;
       return std::make_unique<hir::BoolConstant>(lit->GetPos(), litBool->bval);
     } break;
-    case Lit::Kind::CHAR: {
-      auto litChar = (LitChar*)lit;
+    case ast::Lit::Kind::CHAR: {
+      auto litChar = (ast::LitChar*)lit;
       return std::make_unique<hir::CharConstant>(lit->GetPos(), litChar->cval);
     } break;
-    case Lit::Kind::STR: {
-      auto litStr = (LitStr*)lit;
+    case ast::Lit::Kind::STR: {
+      auto litStr = (ast::LitStr*)lit;
       return std::make_unique<hir::StringConstant>(lit->GetPos(), litStr->sval);
     } break;
   }
 }
 
-void Checker::RecordNodeDecl(Node* node, std::shared_ptr<Decl> decl) {
+void Checker::RecordNodeDecl(ast::Node* node, std::shared_ptr<Decl> decl) {
   node_decl_[node] = decl;
 }
 
 std::shared_ptr<Decl> Checker::InsertFnDecl(
-    bool isExt, const std::unique_ptr<FnProto>& proto) {
+    bool isExt, const std::unique_ptr<ast::FnProto>& proto) {
   if (!CanDecl(proto->name->sval)) {
     throw CompileError::CreatePosFmt(proto->name->GetPos(),
                                      "redeclared function %s",

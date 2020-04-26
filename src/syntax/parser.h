@@ -21,25 +21,25 @@ class Parser {
     tokens_.push_back(std::move(token));
   }
 
-  std::unique_ptr<File> Parse();
+  std::unique_ptr<ast::File> Parse();
 
  private:
   std::deque<std::unique_ptr<Token>> tokens_;
-  NodeId nextId_ = 1;
+  ast::NodeId nextId_ = 1;
 
   std::unique_ptr<Token> &Peek();
   std::unique_ptr<Token> &Peek2();
   std::unique_ptr<Token> Bump();
-  std::unique_ptr<Extern> ParseExtern();
-  std::unique_ptr<FnDecl> ParseFnDecl();
-  std::unique_ptr<FnProto> ParseFnProto();
-  std::vector<std::unique_ptr<FnArg>> ParseFnArgs();
-  std::unique_ptr<FnArg> ParseFnArg();
-  Expr *ParseExpr(uint8_t prec = 0);
-  Expr *ParsePrimary();
-  std::unique_ptr<Stmt> ParseStmt();
-  std::unique_ptr<IfStmt> ParseIfStmt();
-  std::unique_ptr<Block> ParseBlock();
+  std::unique_ptr<ast::Extern> ParseExtern();
+  std::unique_ptr<ast::FnDecl> ParseFnDecl();
+  std::unique_ptr<ast::FnProto> ParseFnProto();
+  std::vector<std::unique_ptr<ast::FnArg>> ParseFnArgs();
+  std::unique_ptr<ast::FnArg> ParseFnArg();
+  ast::Expr *ParseExpr(uint8_t prec = 0);
+  ast::Expr *ParsePrimary();
+  std::unique_ptr<ast::Stmt> ParseStmt();
+  std::unique_ptr<ast::IfStmt> ParseIfStmt();
+  std::unique_ptr<ast::Block> ParseBlock();
 
   template <typename... Args>
   void Throw(const std::string &fmt, Args... args);

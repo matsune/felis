@@ -11,7 +11,7 @@ namespace felis {
 
 class Printer {
  public:
-  void Print(const std::unique_ptr<File> &);
+  void Print(const std::unique_ptr<ast::File> &);
 
  private:
   uint16_t depth_ = 0;
@@ -26,16 +26,16 @@ class Printer {
   void Writeln(const std::string format, Args const &... args);
   void Down(std::string);
   void Up(std::string);
-  void PrintIdent(Ident *ident);
-  void PrintStmt(Stmt *stmt);
-  void PrintExpr(Expr *expr);
-  void PrintLit(Lit *lit);
-  void PrintBlock(Block *block);
+  void PrintIdent(ast::Ident *ident);
+  void PrintStmt(ast::Stmt *stmt);
+  void PrintExpr(ast::Expr *expr);
+  void PrintLit(ast::Lit *lit);
+  void PrintBlock(ast::Block *block);
   void PrintIndex(int idx);
-  void PrintExtern(Extern *);
-  void PrintProto(FnProto *);
-  void PrintFnArg(FnArg *);
-  void PrintFnDecl(FnDecl *fn);
+  void PrintExtern(ast::Extern *);
+  void PrintProto(ast::FnProto *);
+  void PrintFnArg(ast::FnArg *);
+  void PrintFnDecl(ast::FnDecl *fn);
   void PrintPos(Pos pos);
 };
 

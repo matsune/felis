@@ -5,12 +5,11 @@
 #include "args.h"
 #include "check/check.h"
 #include "error/error.h"
-#include "ir/builder.h"
 #include "printer/printer.h"
 #include "syntax/lexer.h"
 #include "syntax/parser.h"
 
-std::unique_ptr<felis::File> ParseFile(std::ifstream &in) {
+std::unique_ptr<felis::ast::File> ParseFile(std::ifstream &in) {
   felis::Parser parser;
   felis::Lexer lexer(in);
   bool isEnd(false);
@@ -31,7 +30,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  std::unique_ptr<felis::File> file;
+  std::unique_ptr<felis::ast::File> file;
   try {
     file = ParseFile(in);
   } catch (const felis::CompileError &e) {

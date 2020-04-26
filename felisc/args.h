@@ -2,8 +2,6 @@
 #include <memory>
 #include <string>
 
-#include "ir/builder.h"
-
 enum EmitType {
   LINK = (1u << 0),
   LLVM_IR = (1u << 1),
@@ -63,7 +61,6 @@ struct Opts {
   bool isMultiEmits;
 
   std::string outputName(EmitType emit) {
-    assert(emits & emit);
     if (output.empty()) {
       return fileStem(filename) + extOfEmit(emit);
     }

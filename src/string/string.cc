@@ -80,44 +80,44 @@ std::string ToString(TokenKind kind) {
   }
 }
 
-std::string ToString(Ty ty) {
-  switch (ty) {
-    case Ty::UNKNOWN:
-      return "unknown";
-    case Ty::VOID:
-      return "void";
-    case Ty::BOOL:
-      return "bool";
-    case Ty::INT:
-      return "int";
-    case Ty::CHAR:
-      return "char";
-    case Ty::FLOAT:
-      return "float";
-    case Ty::STRING:
-      return "string";
-  }
-}
+/* std::string ToString(Ty ty) { */
+/*   switch (ty) { */
+/*     case Ty::UNKNOWN: */
+/*       return "unknown"; */
+/*     case Ty::VOID: */
+/*       return "void"; */
+/*     case Ty::BOOL: */
+/*       return "bool"; */
+/*     case Ty::INT: */
+/*       return "int"; */
+/*     case Ty::CHAR: */
+/*       return "char"; */
+/*     case Ty::FLOAT: */
+/*       return "float"; */
+/*     case Ty::STRING: */
+/*       return "string"; */
+/*   } */
+/* } */
 
-std::string ToString(BinOp op) {
+std::string ToString(ast::BinOp op) {
   switch (op) {
-    case BinOp::LT:
+    case ast::BinOp::LT:
       return ">";
-    case BinOp::LE:
+    case ast::BinOp::LE:
       return ">=";
-    case BinOp::GT:
+    case ast::BinOp::GT:
       return "<";
-    case BinOp::GE:
+    case ast::BinOp::GE:
       return "<=";
-    case BinOp::ADD:
+    case ast::BinOp::ADD:
       return "+";
-    case BinOp::SUB:
+    case ast::BinOp::SUB:
       return "-";
-    case BinOp::MUL:
+    case ast::BinOp::MUL:
       return "*";
-    case BinOp::DIV:
+    case ast::BinOp::DIV:
       return "/";
-    case BinOp::MOD:
+    case ast::BinOp::MOD:
       return "%";
   }
 }

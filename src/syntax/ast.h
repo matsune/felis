@@ -10,6 +10,8 @@
 
 namespace felis {
 
+namespace ast {
+
 enum BinOp {
   LT = 1,
   LE = 2,
@@ -303,6 +305,8 @@ struct File {
   std::vector<std::unique_ptr<Extern>> externs;
   std::vector<std::unique_ptr<FnDecl>> fnDecls;
 };
+
+}  // namespace ast
 
 }  // namespace felis
 

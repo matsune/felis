@@ -17,7 +17,7 @@ static std::string tostring(const T &t) {
 
 }  // namespace
 
-void Printer::Print(const std::unique_ptr<File> &file) {
+void Printer::Print(const std::unique_ptr<ast::File> &file) {
   WriteLineNum();
   for (int i = 0; i < file->externs.size(); i++) {
     PrintIndex(i);
@@ -71,7 +71,7 @@ void Printer::Up(std::string s) {
 
 void Printer::PrintIndex(int idx) { Write("[%d] ", idx); }
 
-void Printer::PrintExtern(Extern *ext) {
+void Printer::PrintExtern(ast::Extern *ext) {
   if (!ext) {
     Writeln("null");
     return;
@@ -85,7 +85,7 @@ void Printer::PrintExtern(Extern *ext) {
   Up("}");
 }
 
-void Printer::PrintFnDecl(FnDecl *fn) {
+void Printer::PrintFnDecl(ast::FnDecl *fn) {
   if (!fn) {
     Writeln("null");
     return;
@@ -100,7 +100,7 @@ void Printer::PrintFnDecl(FnDecl *fn) {
   Up("}");
 }
 
-void Printer::PrintProto(FnProto *proto) {
+void Printer::PrintProto(ast::FnProto *proto) {
   if (!proto) {
     Writeln("null");
     return;
@@ -117,7 +117,7 @@ void Printer::PrintProto(FnProto *proto) {
   Up("]");
 }
 
-void Printer::PrintFnArg(FnArg *arg) {
+void Printer::PrintFnArg(ast::FnArg *arg) {
   if (!arg) {
     Writeln("null");
     return;
@@ -134,7 +134,7 @@ void Printer::PrintFnArg(FnArg *arg) {
   Up("}");
 }
 
-void Printer::PrintBlock(Block *block) {
+void Printer::PrintBlock(ast::Block *block) {
   if (!block) {
     Writeln("null");
     return;
@@ -151,7 +151,7 @@ void Printer::PrintBlock(Block *block) {
   Up("}");
 }
 
-void Printer::PrintIdent(Ident *ident) {
+void Printer::PrintIdent(ast::Ident *ident) {
   if (!ident) {
     Writeln("null");
     return;
@@ -165,30 +165,30 @@ void Printer::PrintIdent(Ident *ident) {
   Up("}");
 }
 
-void Printer::PrintStmt(Stmt *stmt) {
+void Printer::PrintStmt(ast::Stmt *stmt) {
   if (!stmt) {
     Writeln("null");
     return;
   }
 
   switch (stmt->StmtKind()) {
-    case Stmt::Kind::EXPR:
-      PrintExpr(dynamic_cast<Expr *>(stmt));
+    case ast::Stmt::Kind::EXPR:
+      PrintExpr(dynamic_cast<ast::Expr *>(stmt));
       break;
-    case Stmt::Kind::RET:
+    case ast::Stmt::Kind::RET:
       Down("Ret {");
       {
-        auto ret = dynamic_cast<RetStmt *>(stmt);
+        auto ret = dynamic_cast<ast::RetStmt *>(stmt);
         Write("Expr: ");
         PrintExpr(ret->expr.get());
         PrintPos(ret->GetPos());
       }
       Up("}");
       break;
-    case Stmt::Kind::VAR_DECL:
+    case ast::Stmt::Kind::VAR_DECL:
       Down("VarDecl {");
       {
-        auto varDecl = dynamic_cast<VarDeclStmt *>(stmt);
+        auto varDecl = dynamic_cast<ast::VarDeclStmt *>(stmt);
         Writeln("Decl: %s", varDecl->isLet ? "let" : "var");
         Write("Name: ");
         PrintIdent(varDecl->name.get());
@@ -198,10 +198,10 @@ void Printer::PrintStmt(Stmt *stmt) {
       }
       Up("}");
       break;
-    case Stmt::Kind::ASSIGN:
+    case ast::Stmt::Kind::ASSIGN:
       Down("Assign {");
       {
-        auto assign = dynamic_cast<AssignStmt *>(stmt);
+        auto assign = dynamic_cast<ast::AssignStmt *>(stmt);
         Write("Name: ");
         PrintIdent(assign->name.get());
         Write("Expr: ");
@@ -210,10 +210,10 @@ void Printer::PrintStmt(Stmt *stmt) {
       }
       Up("}");
       break;
-    case Stmt::Kind::IF:
+    case ast::Stmt::Kind::IF:
       Down("If {");
       {
-        auto ifStmt = dynamic_cast<IfStmt *>(stmt);
+        auto ifStmt = dynamic_cast<ast::IfStmt *>(stmt);
         Write("Cond: ");
         PrintExpr(ifStmt->cond.get());
         PrintBlock(ifStmt->block.get());
@@ -223,8 +223,8 @@ void Printer::PrintStmt(Stmt *stmt) {
       }
       Up("}");
       break;
-    case Stmt::Kind::BLOCK:
-      PrintBlock(dynamic_cast<Block *>(stmt));
+    case ast::Stmt::Kind::BLOCK:
+      PrintBlock(dynamic_cast<ast::Block *>(stmt));
       break;
     default:
       std::cout << "unimplemented" << std::endl;
@@ -232,23 +232,23 @@ void Printer::PrintStmt(Stmt *stmt) {
   }
 }
 
-void Printer::PrintExpr(Expr *expr) {
+void Printer::PrintExpr(ast::Expr *expr) {
   if (!expr) {
     Writeln("null");
     return;
   }
 
   switch (expr->ExprKind()) {
-    case Expr::Kind::IDENT:
-      PrintIdent(dynamic_cast<Ident *>(expr));
+    case ast::Expr::Kind::IDENT:
+      PrintIdent(dynamic_cast<ast::Ident *>(expr));
       break;
-    case Expr::Kind::LIT:
-      PrintLit(dynamic_cast<Lit *>(expr));
+    case ast::Expr::Kind::LIT:
+      PrintLit(dynamic_cast<ast::Lit *>(expr));
       break;
-    case Expr::Kind::BINARY:
+    case ast::Expr::Kind::BINARY:
       Down("BinaryExpr {");
       {
-        auto binary = dynamic_cast<BinaryExpr *>(expr);
+        auto binary = dynamic_cast<ast::BinaryExpr *>(expr);
         Write("Left: ");
         PrintExpr(binary->lhs.get());
         Writeln("Op: " + ToString(binary->op));
@@ -258,17 +258,17 @@ void Printer::PrintExpr(Expr *expr) {
       }
       Up("}");
       break;
-    case Expr::Kind::CALL:
+    case ast::Expr::Kind::CALL:
       Down("Call {");
       {
-        auto call = dynamic_cast<CallExpr *>(expr);
+        auto call = dynamic_cast<ast::CallExpr *>(expr);
         Write("Ident: ");
         PrintIdent(call->ident.get());
         Down("Args [");
         {
           for (int i = 0; i < call->args.size(); i++) {
             PrintIndex(i);
-            Expr *arg = call->args.at(i).get();
+            ast::Expr *arg = call->args.at(i).get();
             PrintExpr(arg);
           }
         }
@@ -276,11 +276,11 @@ void Printer::PrintExpr(Expr *expr) {
       }
       Up("}");
       break;
-    case Expr::Kind::UNARY:
+    case ast::Expr::Kind::UNARY:
       Down("Unary {");
       {
-        auto unary = dynamic_cast<UnaryExpr *>(expr);
-        std::string op = unary->unOp == UnOp::NEG ? "-" : "!";
+        auto unary = dynamic_cast<ast::UnaryExpr *>(expr);
+        std::string op = unary->unOp == ast::UnOp::NEG ? "-" : "!";
         Writeln("op: %s", op.c_str());
         PrintExpr(unary->expr.get());
         PrintPos(unary->GetPos());
@@ -290,47 +290,47 @@ void Printer::PrintExpr(Expr *expr) {
   }
 }
 
-void Printer::PrintLit(Lit *lit) {
+void Printer::PrintLit(ast::Lit *lit) {
   if (!lit) {
     Writeln("null");
     return;
   }
 
   switch (lit->LitKind()) {
-    case Lit::Kind::INT:
+    case ast::Lit::Kind::INT:
       Down("LitInt {");
       {
-        auto l = dynamic_cast<LitInt *>(lit);
+        auto l = dynamic_cast<ast::LitInt *>(lit);
         std::string s = tostring(l->ival);
         Writeln("num: " + s);
         PrintPos(lit->GetPos());
       }
       Up("}");
       break;
-    case Lit::Kind::FLOAT:
+    case ast::Lit::Kind::FLOAT:
       Down("LitFloat {");
       {
-        auto f = dynamic_cast<LitFloat *>(lit);
+        auto f = dynamic_cast<ast::LitFloat *>(lit);
         std::string s = tostring(f->fval);
         Writeln("num: " + s);
         PrintPos(lit->GetPos());
       }
       Up("}");
       break;
-    case Lit::Kind::BOOL:
+    case ast::Lit::Kind::BOOL:
       Down("LitBool {");
       {
-        auto l = dynamic_cast<LitBool *>(lit);
+        auto l = dynamic_cast<ast::LitBool *>(lit);
         std::string s = (l->bval ? "true" : "false");
         Writeln("literal: " + s);
         PrintPos(lit->GetPos());
       }
       Up("}");
       break;
-    case Lit::Kind::CHAR:
+    case ast::Lit::Kind::CHAR:
       Down("LitChar {");
       {
-        auto l = dynamic_cast<LitChar *>(lit);
+        auto l = dynamic_cast<ast::LitChar *>(lit);
         // FIXME
         std::string s{char(l->cval.scalar)};
         Writeln("literal: '" + s + "'");
@@ -338,10 +338,10 @@ void Printer::PrintLit(Lit *lit) {
       }
       Up("}");
       break;
-    case Lit::Kind::STR:
+    case ast::Lit::Kind::STR:
       Down("LitSTR {");
       {
-        auto l = dynamic_cast<LitStr *>(lit);
+        auto l = dynamic_cast<ast::LitStr *>(lit);
         Writeln("literal: \"" + l->sval + "\"");
         PrintPos(lit->GetPos());
       }

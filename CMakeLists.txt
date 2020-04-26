@@ -18,8 +18,8 @@ include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 llvm_map_components_to_libnames(llvm_libs core native)
 
-include_directories(felis)
+include_directories(src)
 
-add_subdirectory(felis)
+add_subdirectory(src)
 add_subdirectory(felisc)
 add_subdirectory(test)

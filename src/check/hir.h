@@ -122,10 +122,10 @@ struct Variable : public Value {
 struct Unary : public Expr {
   Expr::Kind ExprKind() { return Expr::Kind::UNARY; }
 
-  Unary(Pos pos, UnOp unOp, std::unique_ptr<Expr> exp)
+  Unary(Pos pos, ast::UnOp unOp, std::unique_ptr<Expr> exp)
       : Expr(pos), unOp(unOp), exp(std::move(exp)) {}
 
-  UnOp unOp;
+  ast::UnOp unOp;
   std::unique_ptr<Expr> exp;
 
   std::shared_ptr<Type> Ty() { return exp->Ty(); }
@@ -134,19 +134,19 @@ struct Unary : public Expr {
 struct Binary : public Expr {
   Expr::Kind ExprKind() { return Expr::Kind::BINARY; }
 
-  Binary(Pos pos, BinOp binOp, std::unique_ptr<Expr> lhs,
+  Binary(Pos pos, ast::BinOp binOp, std::unique_ptr<Expr> lhs,
          std::unique_ptr<Expr> rhs)
       : Expr(pos), binOp(binOp), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
-  BinOp binOp;
+  ast::BinOp binOp;
   std::unique_ptr<Expr> lhs;
   std::unique_ptr<Expr> rhs;
   std::shared_ptr<Type> Ty() {
     switch (binOp) {
-      case BinOp::GE:
-      case BinOp::GT:
-      case BinOp::LE:
-      case BinOp::LT:
+      case ast::BinOp::GE:
+      case ast::BinOp::GT:
+      case ast::BinOp::LE:
+      case ast::BinOp::LT:
         return std::make_shared<Type>(Type::Kind::BOOL);
       default:
         // TODO
