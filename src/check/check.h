@@ -26,6 +26,8 @@ class Checker {
   std::map<ast::Node*, std::shared_ptr<Decl>> node_decl_;
   std::shared_ptr<Decl> currentFunc_;
 
+  void DebugScope();
+
   void CheckFnDecl(std::unique_ptr<ast::FnDecl>&);
   void CheckStmt(std::unique_ptr<ast::Stmt>&);
   std::unique_ptr<hir::Constant> MakeLit(ast::Lit* lit);

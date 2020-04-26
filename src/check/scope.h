@@ -1,12 +1,14 @@
 #ifndef FELIS_CHECK_SCOPE_H_
 #define FELIS_CHECK_SCOPE_H_
 
+#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 
 #include "check/decl.h"
 #include "check/type.h"
+#include "string/string.h"
 
 namespace felis {
 
@@ -37,6 +39,12 @@ class Scope {
   std::shared_ptr<Scope> GetParent() { return parent_; }
 
   bool IsTop() { return parent_ == nullptr; }
+
+  void Debug() {
+    for (auto &it : declMap_) {
+      std::cout << it.first << ":" << ToString(it.second->kind) << std::endl;
+    }
+  }
 
  private:
   std::shared_ptr<Scope> parent_;

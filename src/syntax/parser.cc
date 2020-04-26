@@ -80,14 +80,13 @@ std::unique_ptr<ast::Extern> Parser::ParseExtern() {
   assert(ext->kind == TokenKind::KW_EXT);
   auto pos = ext->pos;
   auto proto = ParseFnProto();
-  return std::make_unique<ast::Extern>(nextId_++, pos, std::move(proto));
+  return std::make_unique<ast::Extern>(pos, std::move(proto));
 }
 
 std::unique_ptr<ast::FnDecl> Parser::ParseFnDecl() {
   auto proto = ParseFnProto();
   auto block = ParseBlock();
-  return std::make_unique<ast::FnDecl>(nextId_++, std::move(proto),
-                                       std::move(block));
+  return std::make_unique<ast::FnDecl>(std::move(proto), std::move(block));
 }
 
 std::unique_ptr<ast::FnProto> Parser::ParseFnProto() {

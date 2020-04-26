@@ -84,8 +84,10 @@ void Checker::CheckStmt(std::unique_ptr<ast::Stmt>& stmt) {
       auto exp = MakeExpr(declStmt->expr.get());
       auto decl = std::make_shared<Decl>(
           name, exp->Ty(), declStmt->isLet ? Decl::Kind::LET : Decl::Kind::VAR);
+      currentScope_->InsertDecl(name, decl);
       RecordNodeDecl(declStmt, decl);
       decl->Debug();
+      /* DebugScope(); */
 
     } break;
 
@@ -464,6 +466,19 @@ void Checker::CloseScope() {
 
 bool Checker::CanDecl(std::string name) {
   return currentScope_->FindDecl(name) == nullptr;
+}
+
+void Checker::DebugScope() {
+  std::cout << "----------------" << std::endl;
+  auto scope = currentScope_;
+  int i = 0;
+  while (scope) {
+    std::cout << "Scope " << i++ << (scope->IsTop() ? "(Top)" : "")
+              << std::endl;
+    scope->Debug();
+    scope = scope->GetParent();
+  }
+  std::cout << "----------------" << std::endl;
 }
 
 std::shared_ptr<Decl> Checker::LookupDecl(std::string name) {
