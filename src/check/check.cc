@@ -92,29 +92,27 @@ void Checker::CheckStmt(std::unique_ptr<ast::Stmt>& stmt) {
     } break;
 
     case ast::Stmt::Kind::ASSIGN: {
-      throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented assign");
-      /* auto assign = (AssignStmt*)stmt.get(); */
-      /* auto defVar = sm_.LookupVariable(assign->name->sval); */
-      /* if (!defVar) { */
-      /*   throw CompileError::CreatePosFmt(assign->GetPos(), "undeclared var
-       * %s", */
-      /*                                    *assign->name->sval.c_str()); */
-      /* } */
-      /* if (!defVar->IsMut()) { */
-      /*   throw CompileError::CreatePosFmt(assign->GetPos(), */
-      /*                                    "variable %s is mutable", */
-      /*                                    assign->name->sval.c_str()); */
-      /* } */
-      /* Ty ty; */
-      /* llvm::Value* value; */
-      /* Build(assign->expr.get(), value, ty); */
-      /* if (defVar->ty != ty) { */
-      /*   throw CompileError::CreatePosFmt(assign->expr->GetPos(), */
-      /*                                    "assigned expr type doesn't match");
-       */
-      /* } */
-
-      /* builder_.CreateStore(value, defVar->Value()); */
+      auto assignStmt = (ast::AssignStmt*)stmt.get();
+      auto name = assignStmt->name->sval;
+      auto decl = LookupDecl(name);
+      if (!decl) {
+        throw CompileError::CreatePosFmt(assignStmt->GetPos(),
+                                         "undeclared var %s", name.c_str());
+      }
+      if (decl->IsFunc()) {
+        throw CompileError::CreatePosFmt(
+            assignStmt->GetPos(), "%s is declared as function", name.c_str());
+      }
+      if (!decl->IsAssignable()) {
+        throw CompileError::CreatePosFmt(assignStmt->GetPos(),
+                                         "%s is declared as mutable variable",
+                                         name.c_str());
+      }
+      auto expr = MakeExpr(assignStmt->expr.get());
+      if (*decl->type != *expr->Ty()) {
+        throw CompileError::CreatePosFmt(assignStmt->GetPos(),
+                                         "assigned expr type doesn't match");
+      }
     } break;
 
     case ast::Stmt::Kind::IF: {

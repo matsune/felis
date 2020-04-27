@@ -28,7 +28,7 @@ struct Decl {
     switch (kind) {
       case Kind::EXT:
       case Kind::FN:
-      case Kind::VAR:
+      case Kind::LET:
         return false;
       default:
         return true;
