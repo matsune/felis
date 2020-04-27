@@ -50,123 +50,110 @@ void Checker::CheckFnDecl(std::unique_ptr<ast::FnDecl>& fnDecl) {
 
 void Checker::CheckStmt(std::unique_ptr<ast::Stmt>& stmt) {
   switch (stmt->StmtKind()) {
-    case ast::Stmt::Kind::EXPR: {
-      throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented expr");
-      auto expr = (ast::Expr*)stmt.get();
-    } break;
-
-    case ast::Stmt::Kind::RET: {
-      std::cout << "ret ";
-      auto retStmt = (ast::RetStmt*)stmt.get();
-      auto funcType = currentFunc_->AsFuncType();
-      if (retStmt->expr) {
-        auto expr = MakeExpr(retStmt->expr.get());
-        if (*expr->Ty() != *funcType->ret) TryExpTy(expr.get(), funcType->ret);
-        expr->Debug();
-      } else {
-        // empty return
-        if (!funcType->ret->IsVoid()) {
-          throw CompileError::CreatePosFmt(retStmt->GetPos(),
-                                           "func type is not void");
-        }
-        std::cout << " void" << std::endl;
-      }
-    } break;
-
-    case ast::Stmt::Kind::VAR_DECL: {
-      std::cout << "varDecl ";
-      auto declStmt = (ast::VarDeclStmt*)stmt.get();
-      std::string name = declStmt->name->sval;
-      if (!CanDecl(name)) {
-        throw CompileError::CreatePosFmt(declStmt->GetPos(),
-                                         "redeclared var %s", name.c_str());
-      }
-      auto exp = MakeExpr(declStmt->expr.get());
-      auto decl = std::make_shared<Decl>(
-          name, exp->Ty(), declStmt->isLet ? Decl::Kind::LET : Decl::Kind::VAR);
-      currentScope_->InsertDecl(name, decl);
-      RecordNodeDecl(declStmt, decl);
-      decl->Debug();
-      /* DebugScope(); */
-
-    } break;
-
-    case ast::Stmt::Kind::ASSIGN: {
-      auto assignStmt = (ast::AssignStmt*)stmt.get();
-      auto name = assignStmt->name->sval;
-      auto decl = LookupDecl(name);
-      if (!decl) {
-        throw CompileError::CreatePosFmt(assignStmt->GetPos(),
-                                         "undeclared var %s", name.c_str());
-      }
-      if (decl->IsFunc()) {
-        throw CompileError::CreatePosFmt(
-            assignStmt->GetPos(), "%s is declared as function", name.c_str());
-      }
-      if (!decl->IsAssignable()) {
-        throw CompileError::CreatePosFmt(assignStmt->GetPos(),
-                                         "%s is declared as mutable variable",
-                                         name.c_str());
-      }
-      auto expr = MakeExpr(assignStmt->expr.get());
-      if (*decl->type != *expr->Ty()) {
-        throw CompileError::CreatePosFmt(assignStmt->GetPos(),
-                                         "assigned expr type doesn't match");
-      }
-    } break;
-
-    case ast::Stmt::Kind::IF: {
-      throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented if");
-      /* auto ifStmt = (IfStmt*)stmt.get(); */
-      /* Ty condTy; */
-      /* llvm::Value* condValue; */
-      /* Build(ifStmt->cond.get(), condValue, condTy); */
-      /* if (condTy != Ty::BOOL) { */
-      /*   throw CompileError::CreatePosFmt(ifStmt->cond->GetPos(), */
-      /*                                    "non bool if cond"); */
-      /* } */
-      /* llvm::Value* cond = */
-      /*     builder_.CreateICmpNE(condValue,
-       * llvm::ConstantInt::getFalse(ctx_)); */
-
-      /* llvm::BasicBlock* thenBB = */
-      /*     llvm::BasicBlock::Create(ctx_, "then", currentFn_->func); */
-      /* llvm::BasicBlock* elseBB = */
-      /*     llvm::BasicBlock::Create(ctx_, "else", currentFn_->func); */
-      /* builder_.CreateCondBr(cond, thenBB, elseBB); */
-      /* builder_.SetInsertPoint(thenBB); */
-
-      /* sm_.Push(); */
-
-      /* Build(ifStmt->block.get()); */
-
-      /* sm_.Pop(); */
-
-      /* builder_.CreateBr(elseBB); */
-      /* builder_.SetInsertPoint(elseBB); */
-
-      /* if (ifStmt->els) { */
-      /*   if (ifStmt->els->StmtKind() == Stmt::Kind::IF) { */
-      /*     auto elsStmt = (IfStmt*)ifStmt->els.get(); */
-      /*     Build(ifStmt->els); */
-      /*   } else if (ifStmt->els->StmtKind() == Stmt::Kind::BLOCK) { */
-      /*     auto elsBlock = (Block*)ifStmt->els.get(); */
-      /*     sm_.Push(); */
-      /*     Build(elsBlock); */
-      /*     sm_.Pop(); */
-      /*   } */
-      /* } */
-    } break;
-    case ast::Stmt::Kind::BLOCK: {
-      throw CompileError::CreatePosFmt(stmt->GetPos(), "unimplemented block");
-      /* auto block = (Block*)stmt.get(); */
-      /* sm_.Push(); */
-
-      /* Build(block); */
-
-      /* sm_.Pop(); */
-    } break;
+    case ast::Stmt::Kind::EXPR:
+      // only type check
+      MakeExpr((ast::Expr*)stmt.get());
+      break;
+    case ast::Stmt::Kind::RET:
+      CheckRetStmt((ast::RetStmt*)stmt.get());
+      break;
+    case ast::Stmt::Kind::VAR_DECL:
+      CheckVarDeclStmt((ast::VarDeclStmt*)stmt.get());
+      break;
+    case ast::Stmt::Kind::ASSIGN:
+      CheckAssignStmt((ast::AssignStmt*)stmt.get());
+      break;
+    case ast::Stmt::Kind::IF:
+      CheckIfStmt((ast::IfStmt*)stmt.get());
+      break;
+    case ast::Stmt::Kind::BLOCK:
+      CheckBlock((ast::Block*)stmt.get());
+      break;
   }
+}
+
+void Checker::CheckRetStmt(ast::RetStmt* retStmt) {
+  auto funcType = currentFunc_->AsFuncType();
+  if (retStmt->expr) {
+    auto expr = MakeExpr(retStmt->expr.get());
+    if (*expr->Ty() != *funcType->ret) TryExpTy(expr.get(), funcType->ret);
+    expr->Debug();
+  } else {
+    // empty return
+    if (!funcType->ret->IsVoid()) {
+      throw CompileError::CreatePosFmt(retStmt->GetPos(),
+                                       "func type is not void");
+    }
+    std::cout << " void" << std::endl;
+  }
+}
+
+void Checker::CheckVarDeclStmt(ast::VarDeclStmt* declStmt) {
+  std::cout << "varDecl ";
+  std::string name = declStmt->name->sval;
+  if (!CanDecl(name)) {
+    throw CompileError::CreatePosFmt(declStmt->GetPos(), "redeclared var %s",
+                                     name.c_str());
+  }
+  auto exp = MakeExpr(declStmt->expr.get());
+  auto decl = std::make_shared<Decl>(
+      name, exp->Ty(), declStmt->isLet ? Decl::Kind::LET : Decl::Kind::VAR);
+  currentScope_->InsertDecl(name, decl);
+  RecordNodeDecl(declStmt, decl);
+  decl->Debug();
+  /* DebugScope(); */
+}
+
+void Checker::CheckAssignStmt(ast::AssignStmt* assignStmt) {
+  auto name = assignStmt->name->sval;
+  auto decl = LookupDecl(name);
+  if (!decl) {
+    throw CompileError::CreatePosFmt(assignStmt->GetPos(), "undeclared var %s",
+                                     name.c_str());
+  }
+  if (decl->IsFunc()) {
+    throw CompileError::CreatePosFmt(
+        assignStmt->GetPos(), "%s is declared as function", name.c_str());
+  }
+  if (!decl->IsAssignable()) {
+    throw CompileError::CreatePosFmt(assignStmt->GetPos(),
+                                     "%s is declared as mutable variable",
+                                     name.c_str());
+  }
+  auto expr = MakeExpr(assignStmt->expr.get());
+  if (*decl->type != *expr->Ty()) {
+    throw CompileError::CreatePosFmt(assignStmt->GetPos(),
+                                     "assigned expr type doesn't match");
+  }
+}
+
+void Checker::CheckIfStmt(ast::IfStmt* ifStmt) {
+  auto cond = ifStmt->cond.get();
+  auto condExpr = MakeExpr(cond);
+  if (!condExpr->Ty()->IsBool()) {
+    throw CompileError::CreatePosFmt(ifStmt->cond->GetPos(),
+                                     "non bool if cond");
+  }
+  auto block = ifStmt->block.get();
+  CheckBlock(block);
+
+  if (ifStmt->els) {
+    if (ifStmt->els->StmtKind() == ast::Stmt::Kind::IF) {
+      auto elsStmt = (ast::IfStmt*)ifStmt->els.get();
+      CheckIfStmt(elsStmt);
+    } else if (ifStmt->els->StmtKind() == ast::Stmt::Kind::BLOCK) {
+      auto elsBlock = (ast::Block*)ifStmt->els.get();
+      CheckBlock(elsBlock);
+    }
+  }
+}
+
+void Checker::CheckBlock(ast::Block* block) {
+  OpenScope();
+  for (auto& stmt : block->stmts) {
+    CheckStmt(stmt);
+  }
+  CloseScope();
 }
 
 std::unique_ptr<hir::Expr> Checker::MakeExpr(ast::Expr* expr) {
