@@ -7,18 +7,16 @@ namespace felis
 
 {
 
-using Pos2 = unsigned;
-
 struct Pos {
   uint16_t line, column;
 
-  Pos(int line = 1, int column = 1) : line(line), column(column) {}
+  Pos(uint16_t line = 1, uint16_t column = 1) : line(line), column(column) {}
 
-  void Lines(int ln = 1) {
+  void Lines(uint16_t ln = 1) {
     line += ln;
     column = 1;
   }
-  void Columns(int col = 1) { column += col; }
+  void Columns(uint16_t col = 1) { column += col; }
 };
 
 }  // namespace felis

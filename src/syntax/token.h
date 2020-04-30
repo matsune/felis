@@ -4,6 +4,7 @@
 #include <string>
 
 #include "syntax/pos.h"
+#include "syntax/rune.h"
 
 namespace felis {
 
@@ -61,13 +62,12 @@ struct Token {
 
   Kind kind;
   Pos pos;
-  Pos2 pos2;
   bool ws;
   bool nl;
   std::string val;
 
   Token(Kind kind = Kind::END)
-      : kind(kind), pos(Pos()), pos2(0), ws(false), nl(false), val("") {}
+      : kind(kind), pos(Pos()), ws(false), nl(false), val("") {}
 };
 
 }  // namespace felis

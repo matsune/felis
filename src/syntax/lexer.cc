@@ -25,10 +25,6 @@ inline int hexc(rune c) {
   return -1;
 }
 
-inline uint8_t get_tail(uint8_t byte, uint8_t width) {
-  return byte & (0xff >> (8 - width));
-}
-
 inline bool is_ident_head(rune c) {
   return is_alphabet(c) || c == '_' || c == 0x00A8 || c == 0x00AA ||
          c == 0x00AD || c == 0x00AF || (0x00B2 <= c && c <= 0x00B5) ||
@@ -64,37 +60,7 @@ inline bool is_ident_body(rune c) {
 
 }  // namespace
 
-rune Lexer::Scan() {
-  int16_t byte1 = in_.get();
-  if (in_.eof() || in_.fail()) {
-    return 0;
-  }
-  if (byte1 <= 0x7F) {
-    // 1 byte
-    return byte1;
-  } else if (byte1 >= 0xF0) {
-    // 4 bytes
-    uint8_t x = get_tail(byte1, 3);
-    uint8_t byte2 = in_.get(), byte3 = in_.get(), byte4 = in_.get();
-    uint8_t y = get_tail(byte2, 6);
-    uint8_t z = get_tail(byte3, 6);
-    uint8_t w = get_tail(byte4, 6);
-    return x << 18 | y << 12 | z << 6 | w;
-  } else if (byte1 >= 0xE0) {
-    // 3 bytes
-    uint8_t x = get_tail(byte1, 4);
-    uint8_t byte2 = in_.get(), byte3 = in_.get();
-    uint8_t y = get_tail(byte2, 6);
-    uint8_t z = get_tail(byte3, 6);
-    return x << 12 | y << 6 | z;
-  } else {
-    // 2 bytes
-    uint8_t x = get_tail(byte1, 5);
-    uint8_t byte2 = in_.get();
-    uint8_t y = get_tail(byte2, 6);
-    return x << 6 | y;
-  }
-}
+rune Lexer::Scan() { return consumeRune(in_); }
 
 rune Lexer::Bump() {
   rune tmp = peek_;

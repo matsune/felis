@@ -7,8 +7,10 @@ namespace felis {
 
 using rune = int32_t;
 
-int encoderune(const rune r, char res[4]);
-bool appendRune(std::string &str, const rune &r);
+int encodeRune(const rune, char[4]);
+rune consumeRune(std::basic_istream<char> &);
+int runeCount(const std::string &);
+bool appendRune(std::string &, const rune &);
 
 }  // namespace felis
 
