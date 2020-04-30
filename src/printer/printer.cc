@@ -159,7 +159,7 @@ void Printer::PrintIdent(ast::Ident *ident) {
 
   Down("Ident {");
   {
-    Writeln("Name: " + ident->sval);
+    Writeln("Name: " + ident->val);
     PrintPos(ident->GetPos());
   }
   Up("}");
@@ -300,9 +300,8 @@ void Printer::PrintLit(ast::Lit *lit) {
     case ast::Lit::Kind::INT:
       Down("LitInt {");
       {
-        auto l = dynamic_cast<ast::LitInt *>(lit);
-        std::string s = tostring(l->ival);
-        Writeln("num: " + s);
+        auto l = dynamic_cast<ast::Lit *>(lit);
+        Writeln("Int: " + l->val);
         PrintPos(lit->GetPos());
       }
       Up("}");
@@ -310,9 +309,8 @@ void Printer::PrintLit(ast::Lit *lit) {
     case ast::Lit::Kind::FLOAT:
       Down("LitFloat {");
       {
-        auto f = dynamic_cast<ast::LitFloat *>(lit);
-        std::string s = tostring(f->fval);
-        Writeln("num: " + s);
+        auto f = dynamic_cast<ast::Lit *>(lit);
+        Writeln("Float: " + f->val);
         PrintPos(lit->GetPos());
       }
       Up("}");
@@ -320,9 +318,8 @@ void Printer::PrintLit(ast::Lit *lit) {
     case ast::Lit::Kind::BOOL:
       Down("LitBool {");
       {
-        auto l = dynamic_cast<ast::LitBool *>(lit);
-        std::string s = (l->bval ? "true" : "false");
-        Writeln("literal: " + s);
+        auto l = dynamic_cast<ast::Lit *>(lit);
+        Writeln("Bool: " + l->val);
         PrintPos(lit->GetPos());
       }
       Up("}");
@@ -330,19 +327,17 @@ void Printer::PrintLit(ast::Lit *lit) {
     case ast::Lit::Kind::CHAR:
       Down("LitChar {");
       {
-        auto l = dynamic_cast<ast::LitChar *>(lit);
-        // FIXME
-        std::string s{char(l->cval.scalar)};
-        Writeln("literal: '" + s + "'");
+        auto l = dynamic_cast<ast::Lit *>(lit);
+        Writeln("Char: '" + l->val + "'");
         PrintPos(lit->GetPos());
       }
       Up("}");
       break;
-    case ast::Lit::Kind::STR:
+    case ast::Lit::Kind::STRING:
       Down("LitSTR {");
       {
-        auto l = dynamic_cast<ast::LitStr *>(lit);
-        Writeln("literal: \"" + l->sval + "\"");
+        auto l = dynamic_cast<ast::Lit *>(lit);
+        Writeln("literal: \"" + l->val + "\"");
         PrintPos(lit->GetPos());
       }
       Up("}");

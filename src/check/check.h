@@ -37,6 +37,8 @@ class Checker {
 
   std::unique_ptr<hir::Expr> MakeExpr(ast::Expr* expr);
   std::unique_ptr<hir::Constant> MakeLit(ast::Lit* lit);
+  int64_t ParseInt(std::string&);
+  double ParseFloat(std::string&);
   void TryExpTy(hir::Expr*, std::shared_ptr<Type>);
   void TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty);
   void CheckBinary(std::unique_ptr<hir::Expr>& lhs,

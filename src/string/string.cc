@@ -3,101 +3,82 @@
 
 namespace felis {
 
-std::string ToString(TokenKind kind) {
+std::string ToString(Token::Kind kind) {
   switch (kind) {
-    case TokenKind::END:
+    case Token::Kind::END:
       return "END";
-    case TokenKind::IDENT:
+    case Token::Kind::IDENT:
       return "IDENT";
-    case TokenKind::LIT_INT:
+    case Token::Kind::LIT_INT:
       return "LIT_INT";
-    case TokenKind::LIT_FLOAT:
+    case Token::Kind::LIT_FLOAT:
       return "LIT_FLOAT";
-    case TokenKind::LIT_BOOL:
+    case Token::Kind::LIT_BOOL:
       return "LIT_BOOL";
-    case TokenKind::LIT_CHAR:
+    case Token::Kind::LIT_CHAR:
       return "CHAR";
-    case TokenKind::LIT_STR:
+    case Token::Kind::LIT_STR:
       return "LIT_STR";
-    case TokenKind::PLUS:
+    case Token::Kind::PLUS:
       return "+";
-    case TokenKind::MINUS:
+    case Token::Kind::MINUS:
       return "-";
-    case TokenKind::STAR:
+    case Token::Kind::STAR:
       return "*";
-    case TokenKind::SLASH:
+    case Token::Kind::SLASH:
       return "/";
-    case TokenKind::PERCENT:
+    case Token::Kind::PERCENT:
       return "%";
-    case TokenKind::AND:
+    case Token::Kind::AND:
       return "&";
-    case TokenKind::OR:
+    case Token::Kind::OR:
       return "|";
-    case TokenKind::CARET:
+    case Token::Kind::CARET:
       return "^";
-    case TokenKind::SHL:
+    case Token::Kind::SHL:
       return "<<";
-    case TokenKind::SHR:
+    case Token::Kind::SHR:
       return ">>";
-    case TokenKind::ANDAND:
+    case Token::Kind::ANDAND:
       return "&&";
-    case TokenKind::OROR:
+    case Token::Kind::OROR:
       return "||";
-    case TokenKind::LT:
+    case Token::Kind::LT:
       return "<";
-    case TokenKind::LE:
+    case Token::Kind::LE:
       return "<=";
-    case TokenKind::GT:
+    case Token::Kind::GT:
       return ">";
-    case TokenKind::GE:
+    case Token::Kind::GE:
       return ">=";
-    case TokenKind::EQEQ:
+    case Token::Kind::EQEQ:
       return "==";
-    case TokenKind::NEQ:
+    case Token::Kind::NEQ:
       return "!=";
-    case TokenKind::NOT:
+    case Token::Kind::NOT:
       return "!";
-    case TokenKind::LPAREN:
+    case Token::Kind::LPAREN:
       return "(";
-    case TokenKind::RPAREN:
+    case Token::Kind::RPAREN:
       return ")";
-    case TokenKind::LBRACE:
+    case Token::Kind::LBRACE:
       return "{";
-    case TokenKind::RBRACE:
+    case Token::Kind::RBRACE:
       return "}";
-    case TokenKind::EQ:
+    case Token::Kind::EQ:
       return "=";
-    case TokenKind::SEMI:
+    case Token::Kind::SEMI:
       return ";";
-    case TokenKind::COLON:
+    case Token::Kind::COLON:
       return ":";
-    case TokenKind::COMMA:
+    case Token::Kind::COMMA:
       return ",";
-    case TokenKind::ARROW:
+    case Token::Kind::ARROW:
       return "->";
     default:
       return "unknown";
   }
 }
-
-/* std::string ToString(Ty ty) { */
-/*   switch (ty) { */
-/*     case Ty::UNKNOWN: */
-/*       return "unknown"; */
-/*     case Ty::VOID: */
-/*       return "void"; */
-/*     case Ty::BOOL: */
-/*       return "bool"; */
-/*     case Ty::INT: */
-/*       return "int"; */
-/*     case Ty::CHAR: */
-/*       return "char"; */
-/*     case Ty::FLOAT: */
-/*       return "float"; */
-/*     case Ty::STRING: */
-/*       return "string"; */
-/*   } */
-/* } */
 
 std::string ToString(ast::BinOp op) {
   switch (op) {

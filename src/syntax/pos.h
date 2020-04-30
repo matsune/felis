@@ -7,6 +7,8 @@ namespace felis
 
 {
 
+using Pos2 = unsigned;
+
 struct Pos {
   uint16_t line, column;
 

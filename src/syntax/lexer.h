@@ -8,6 +8,7 @@
 
 #include "error/error.h"
 #include "pos.h"
+#include "rune.h"
 #include "token.h"
 
 namespace felis {
@@ -24,16 +25,16 @@ class Lexer {
 
   rune Scan();
   rune Bump();
-  bool BumpIf(uint32_t);
-  bool BumpIf(std::function<bool(uint32_t)>);
-  rune EatChar();
-  char Escape();
+  bool BumpIf(char);
+  bool BumpIf(std::function<bool(rune)>);
+  void EatChar(std::string &);
+  rune Escape();
   void EatString(std::string &);
   void EatLineComment();
   bool EatBlockComment();
-  void EatIdent(Token *);
-  void EatNum(Token *);
-  void EatDigits(std::string &, std::function<bool(uint32_t)>);
+  void EatIdent(std::unique_ptr<Token> &);
+  void EatNum(std::unique_ptr<Token> &);
+  void EatDigits(std::string &, std::function<bool(rune)>);
 
   template <typename... Args>
   void Throw(const std::string &fmt, Args... args);

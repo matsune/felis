@@ -7,7 +7,6 @@
 
 #include "check/decl.h"
 #include "check/type.h"
-/* #include "ir/symtab.h" */
 #include "syntax/ast.h"
 #include "syntax/token.h"
 
@@ -21,8 +20,7 @@ std::string format(const std::string& fmt, Args... args) {
   return std::string(&buf[0], &buf[0] + len);
 }
 
-std::string ToString(TokenKind kind);
-/* std::string ToString(Ty ty); */
+std::string ToString(Token::Kind kind);
 std::string ToString(ast::BinOp op);
 std::string ToString(Decl::Kind);
 std::string ToString(Type*);

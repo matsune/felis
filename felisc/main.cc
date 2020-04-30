@@ -15,7 +15,7 @@ std::unique_ptr<felis::ast::File> ParseFile(std::ifstream &in) {
   bool isEnd(false);
   while (!isEnd) {
     auto token = lexer.Next();
-    isEnd = token->kind == felis::TokenKind::END;
+    isEnd = token->kind == felis::Token::Kind::END;
     parser.PushToken(std::move(token));
   }
   return parser.Parse();
@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
   felis::Checker checker;
   checker.SetupBuiltin();
   checker.Check(file);
+
   /* felis::Builder builder; */
   /* std::string err; */
   /* if (!builder.CreateTargetMachine(err)) { */

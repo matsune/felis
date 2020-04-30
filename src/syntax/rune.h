@@ -5,22 +5,10 @@
 
 namespace felis {
 
-struct rune {
-  uint32_t scalar;
+using rune = int32_t;
 
-  bool operator==(const int32_t &c) const { return int64_t(scalar) == c; }
-  bool operator!=(const int32_t &c) const { return int64_t(scalar) != c; }
-  bool operator==(const rune &r) const { return scalar == r.scalar; }
-
-  explicit rune(uint32_t scalar = 0) : scalar(scalar) {}
-
-  rune &operator=(char const &ch) {
-    scalar = ch;
-    return *this;
-  };
-  int len_utf8();
-  int encode_utf8(char[4]);
-};
+int encoderune(const rune r, char res[4]);
+bool appendRune(std::string &str, const rune &r);
 
 }  // namespace felis
 

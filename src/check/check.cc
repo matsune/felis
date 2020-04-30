@@ -39,8 +39,8 @@ void Checker::CheckFnDecl(std::unique_ptr<ast::FnDecl>& fnDecl) {
   for (auto& arg : fnDecl->proto->args) {
     // arg-name duplication is already checked in parser
     auto argDecl = std::make_shared<Decl>(
-        arg->name->sval, LookupType(arg->ty->sval), Decl::Kind::ARG);
-    currentScope_->InsertDecl(arg->name->sval, argDecl);
+        arg->name->val, LookupType(arg->ty->val), Decl::Kind::ARG);
+    currentScope_->InsertDecl(arg->name->val, argDecl);
   }
   for (auto& stmt : fnDecl->block->stmts) {
     CheckStmt(stmt);
@@ -90,7 +90,7 @@ void Checker::CheckRetStmt(ast::RetStmt* retStmt) {
 
 void Checker::CheckVarDeclStmt(ast::VarDeclStmt* declStmt) {
   std::cout << "varDecl ";
-  std::string name = declStmt->name->sval;
+  std::string name = declStmt->name->val;
   if (!CanDecl(name)) {
     throw CompileError::CreatePosFmt(declStmt->GetPos(), "redeclared var %s",
                                      name.c_str());
@@ -105,7 +105,7 @@ void Checker::CheckVarDeclStmt(ast::VarDeclStmt* declStmt) {
 }
 
 void Checker::CheckAssignStmt(ast::AssignStmt* assignStmt) {
-  auto name = assignStmt->name->sval;
+  auto name = assignStmt->name->val;
   auto decl = LookupDecl(name);
   if (!decl) {
     throw CompileError::CreatePosFmt(assignStmt->GetPos(), "undeclared var %s",
@@ -166,16 +166,16 @@ std::unique_ptr<hir::Expr> Checker::MakeExpr(ast::Expr* expr) {
     case ast::Expr::Kind::CALL: {
       auto callExpr = (ast::CallExpr*)expr;
 
-      auto decl = LookupDecl(callExpr->ident->sval);
+      auto decl = LookupDecl(callExpr->ident->val);
       if (decl == nullptr) {
         throw CompileError::CreatePosFmt(callExpr->GetPos(),
                                          "undefined function %s",
-                                         callExpr->ident->sval.c_str());
+                                         callExpr->ident->val.c_str());
       }
       if (!decl->IsFunc()) {
         throw CompileError::CreatePosFmt(callExpr->GetPos(),
                                          "%s is not declared as function",
-                                         callExpr->ident->sval.c_str());
+                                         callExpr->ident->val.c_str());
       }
       auto fnType = (FuncType*)decl->type.get();
       if (fnType->args.size() != callExpr->args.size()) {
@@ -196,15 +196,15 @@ std::unique_ptr<hir::Expr> Checker::MakeExpr(ast::Expr* expr) {
 
     case ast::Expr::Kind::IDENT: {
       auto ident = (ast::Ident*)expr;
-      auto decl = LookupDecl(ident->sval);
+      auto decl = LookupDecl(ident->val);
       if (decl == nullptr) {
         throw CompileError::CreatePosFmt(
-            ident->GetPos(), "undefined function %s", ident->sval.c_str());
+            ident->GetPos(), "undefined function %s", ident->val.c_str());
       }
       if (decl->IsFunc()) {
         throw CompileError::CreatePosFmt(ident->GetPos(),
                                          "%s is not declared as variable",
-                                         ident->sval.c_str());
+                                         ident->val.c_str());
       }
       auto value = std::make_unique<hir::Variable>(ident->GetPos());
       value->decl = decl;
@@ -291,8 +291,12 @@ void Checker::TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty) {
           return;
         case Type::I32: {
           auto rune = charConst->val;
+          if (rune > INT32_MAX) {
+            throw CompileError::CreatePosFmt(charConst->pos,
+                                             "rune overflows i32");
+          }
           delete charConst;
-          cons = new hir::IntConstant(rune.scalar, true);
+          cons = new hir::IntConstant(rune, true);
         } break;
         default:
           // TODO:
@@ -378,27 +382,36 @@ void Checker::TryExpTy(hir::Expr* expr, std::shared_ptr<Type> ty) {
 std::unique_ptr<hir::Constant> Checker::MakeLit(ast::Lit* lit) {
   switch (lit->LitKind()) {
     case ast::Lit::Kind::INT: {
-      auto litInt = (ast::LitInt*)lit;
-      return std::make_unique<hir::IntConstant>(lit->GetPos(), litInt->ival);
+      auto val = ParseInt(lit->val);
+      return std::make_unique<hir::IntConstant>(lit->GetPos(), val);
     } break;
     case ast::Lit::Kind::FLOAT: {
-      auto litFloat = (ast::LitFloat*)lit;
-      return std::make_unique<hir::FloatConstant>(lit->GetPos(),
-                                                  litFloat->fval);
+      auto val = ParseFloat(lit->val);
+      return std::make_unique<hir::FloatConstant>(lit->GetPos(), val);
     } break;
     case ast::Lit::Kind::BOOL: {
-      auto litBool = (ast::LitBool*)lit;
-      return std::make_unique<hir::BoolConstant>(lit->GetPos(), litBool->bval);
+      return std::make_unique<hir::BoolConstant>(lit->GetPos(),
+                                                 lit->val == "true");
     } break;
     case ast::Lit::Kind::CHAR: {
-      auto litChar = (ast::LitChar*)lit;
-      return std::make_unique<hir::CharConstant>(lit->GetPos(), litChar->cval);
+      // TODO:
+      throw CompileError::Create("unimplemented char");
+      /* return std::make_unique<hir::CharConstant>(lit->GetPos(), lit->val); */
     } break;
-    case ast::Lit::Kind::STR: {
-      auto litStr = (ast::LitStr*)lit;
-      return std::make_unique<hir::StringConstant>(lit->GetPos(), litStr->sval);
+    case ast::Lit::Kind::STRING: {
+      return std::make_unique<hir::StringConstant>(lit->GetPos(), lit->val);
     } break;
   }
+}
+
+int64_t Checker::ParseInt(std::string& val) {
+  // TODO: parse int
+  return 0;
+}
+
+double Checker::ParseFloat(std::string&) {
+  // TODO:parse float
+  return 0;
 }
 
 void Checker::RecordNodeDecl(ast::Node* node, std::shared_ptr<Decl> decl) {
@@ -407,36 +420,35 @@ void Checker::RecordNodeDecl(ast::Node* node, std::shared_ptr<Decl> decl) {
 
 std::shared_ptr<Decl> Checker::InsertFnDecl(
     bool isExt, const std::unique_ptr<ast::FnProto>& proto) {
-  if (!CanDecl(proto->name->sval)) {
+  if (!CanDecl(proto->name->val)) {
     throw CompileError::CreatePosFmt(proto->name->GetPos(),
                                      "redeclared function %s",
-                                     proto->name->sval.c_str());
+                                     proto->name->val.c_str());
   }
 
   std::vector<std::shared_ptr<Type>> args;
   for (auto& arg : proto->args) {
-    auto ty = LookupType(arg->ty->sval);
+    auto ty = LookupType(arg->ty->val);
     if (!ty) {
       throw CompileError::CreatePosFmt(arg->ty->GetPos(), "unknown arg type %s",
-                                       arg->ty->sval.c_str());
+                                       arg->ty->val.c_str());
     }
     args.push_back(ty);
   }
   std::shared_ptr<Type> retTy;
   if (proto->ret) {
-    retTy = LookupType(proto->ret->sval);
+    retTy = LookupType(proto->ret->val);
     if (!retTy) {
-      throw CompileError::CreatePosFmt(proto->ret->GetPos(),
-                                       "unknown ret type %s",
-                                       proto->ret->sval.c_str());
+      throw CompileError::CreatePosFmt(
+          proto->ret->GetPos(), "unknown ret type %s", proto->ret->val.c_str());
     }
   } else {
     retTy = std::make_shared<Type>(Type::Kind::VOID);
   }
   auto fnType = std::make_shared<FuncType>(std::move(args), std::move(retTy));
   Decl::Kind kind = isExt ? Decl::Kind::EXT : Decl::Kind::FN;
-  auto decl = std::make_shared<Decl>(proto->name->sval, fnType, kind);
-  currentScope_->InsertDecl(proto->name->sval, decl);
+  auto decl = std::make_shared<Decl>(proto->name->val, fnType, kind);
+  currentScope_->InsertDecl(proto->name->val, decl);
   return decl;
 }
 

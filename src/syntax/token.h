@@ -4,19 +4,8 @@
 #include <string>
 
 #include "syntax/pos.h"
-#include "syntax/rune.h"
 
 namespace felis {
-
-struct Tok {
-  union {
-    std::string sval;
-    uint64_t ival;
-    rune cval;
-    double fval;
-    bool bval;
-  };
-};
 
 struct Token {
   enum Kind {
@@ -72,30 +61,14 @@ struct Token {
 
   Kind kind;
   Pos pos;
+  Pos2 pos2;
   bool ws;
   bool nl;
-
-  std::string sval;
-  uint64_t ival;
-  rune cval;
-  double fval;
-  bool bval;
+  std::string val;
 
   Token(Kind kind = Kind::END)
-      : kind(kind),
-        pos(Pos()),
-        ws(false),
-        nl(false),
-        sval(""),
-        ival(0),
-        cval(rune(0)),
-        fval(0),
-        bval(false) {}
-
-  void debug();
+      : kind(kind), pos(Pos()), pos2(0), ws(false), nl(false), val("") {}
 };
-
-using TokenKind = Token::Kind;
 
 }  // namespace felis
 

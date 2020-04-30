@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "syntax/pos.h"
-#include "syntax/rune.h"
 
 namespace felis {
 
@@ -66,10 +65,10 @@ struct Expr : public Stmt {
 struct Ident : public Expr {
   Expr::Kind ExprKind() override { return Expr::Kind::IDENT; }
 
-  std::string sval;
+  std::string val;
   Pos pos;
 
-  explicit Ident(Pos pos, std::string sval = "") : pos(pos), sval(sval) {}
+  explicit Ident(Pos pos, std::string val) : pos(pos), val(val) {}
 
   Pos GetPos() override { return pos; }
 };
@@ -77,65 +76,19 @@ struct Ident : public Expr {
 struct Lit : public Expr {
   Expr::Kind ExprKind() override { return Expr::Kind::LIT; }
 
-  enum Kind { INT, FLOAT, BOOL, CHAR, STR };
-
-  virtual Kind LitKind() = 0;
-  virtual Pos GetPos() override = 0;
-};
-
-struct LitInt : public Lit {
-  Kind LitKind() override { return Kind::INT; }
+  enum Kind { INT, FLOAT, CHAR, BOOL, STRING };
 
   Pos pos;
-  uint64_t ival;
+  Kind kind;
 
-  explicit LitInt(Pos pos, uint64_t ival = 0) : pos(pos), ival(ival) {}
+  std::string val;
 
-  Pos GetPos() override { return pos; }
-};
-
-struct LitBool : public Lit {
-  Kind LitKind() override { return Kind::BOOL; }
-
-  Pos pos;
-  bool bval;
-
-  explicit LitBool(Pos pos, bool bval = false) : pos(pos), bval(bval) {}
+  explicit Lit(Pos pos, Kind kind, std::string val = "")
+      : pos(pos), kind(kind), val(val) {}
 
   Pos GetPos() override { return pos; }
-};
 
-struct LitFloat : public Lit {
-  Kind LitKind() override { return Kind::FLOAT; }
-
-  Pos pos;
-  double fval;
-
-  explicit LitFloat(Pos pos, double fval) : pos(pos), fval(fval) {}
-
-  Pos GetPos() override { return pos; }
-};
-
-struct LitStr : public Lit {
-  Kind LitKind() override { return Kind::STR; }
-
-  Pos pos;
-  std::string sval;
-
-  explicit LitStr(Pos pos, std::string sval) : pos(pos), sval(sval) {}
-
-  Pos GetPos() override { return pos; }
-};
-
-struct LitChar : public Lit {
-  Kind LitKind() override { return Kind::CHAR; }
-
-  Pos pos;
-  rune cval;
-
-  explicit LitChar(Pos pos, rune cval) : pos(pos), cval(cval) {}
-
-  Pos GetPos() override { return pos; }
+  Lit::Kind LitKind() { return kind; }
 };
 
 enum UnOp { NEG, NOT };

@@ -4,6 +4,7 @@
 #include "check/decl.h"
 #include "check/type.h"
 #include "syntax/ast.h"
+#include "syntax/rune.h"
 
 namespace felis {
 
@@ -38,9 +39,9 @@ struct Constant : public Value {
 };
 
 struct IntConstant : public Constant {
-  IntConstant(Pos pos, uint64_t val, bool is32 = false)
+  IntConstant(Pos pos, int64_t val, bool is32 = false)
       : Constant(pos), val(val), is32(is32){};
-  uint64_t val;
+  int64_t val;
   bool is32;
 
   Constant::Kind ConstantKind() { return Constant::Kind::INT; };

@@ -27,6 +27,11 @@ class CompileError : public std::exception {
     return CompileError(pos, format(fmt, args...));
   };
 
+  template <typename... Args>
+  static CompileError Create(const std::string& fmt, Args... args) {
+    return CompileError(format(fmt, args...));
+  };
+
   const char* what() const throw() { return msg_.c_str(); }
 
  protected:
