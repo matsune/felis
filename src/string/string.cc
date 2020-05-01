@@ -140,14 +140,21 @@ std::string ToString(Type *type) {
       return "void";
     case Type::Kind::I32:
       return "i32";
+    case Type::Kind::I64:
+      return "i64";
     case Type::Kind::F32:
       return "f32";
+    case Type::Kind::F64:
+      return "f64";
     case Type::Kind::BOOL:
       return "bool";
     case Type::Kind::CHAR:
       return "char";
     case Type::Kind::STRING:
       return "string";
+    default:
+      std::cout << "unreachable" << std::endl;
+      std::terminate();
   }
 }
 

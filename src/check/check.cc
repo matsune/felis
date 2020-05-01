@@ -81,8 +81,7 @@ void Checker::CheckRetStmt(ast::RetStmt* retStmt) {
   } else {
     // empty return
     if (!funcType->ret->IsVoid()) {
-      throw CompileError::CreatePosFmt(retStmt->GetPos(),
-                                       "func type is not void");
+      throw CompileError::CreatePos(retStmt->GetPos(), "func type is not void");
     }
     std::cout << " void" << std::endl;
   }
@@ -92,8 +91,8 @@ void Checker::CheckVarDeclStmt(ast::VarDeclStmt* declStmt) {
   std::cout << "varDecl ";
   std::string name = declStmt->name->val;
   if (!CanDecl(name)) {
-    throw CompileError::CreatePosFmt(declStmt->GetPos(), "redeclared var %s",
-                                     name.c_str());
+    throw CompileError::CreatePos(declStmt->GetPos(), "redeclared var %s",
+                                  name.c_str());
   }
   auto exp = MakeExpr(declStmt->expr.get());
   auto decl = std::make_shared<Decl>(
@@ -108,22 +107,22 @@ void Checker::CheckAssignStmt(ast::AssignStmt* assignStmt) {
   auto name = assignStmt->name->val;
   auto decl = LookupDecl(name);
   if (!decl) {
-    throw CompileError::CreatePosFmt(assignStmt->GetPos(), "undeclared var %s",
-                                     name.c_str());
+    throw CompileError::CreatePos(assignStmt->GetPos(), "undeclared var %s",
+                                  name.c_str());
   }
   if (decl->IsFunc()) {
-    throw CompileError::CreatePosFmt(
-        assignStmt->GetPos(), "%s is declared as function", name.c_str());
+    throw CompileError::CreatePos(assignStmt->GetPos(),
+                                  "%s is declared as function", name.c_str());
   }
   if (!decl->IsAssignable()) {
-    throw CompileError::CreatePosFmt(assignStmt->GetPos(),
-                                     "%s is declared as mutable variable",
-                                     name.c_str());
+    throw CompileError::CreatePos(assignStmt->GetPos(),
+                                  "%s is declared as mutable variable",
+                                  name.c_str());
   }
   auto expr = MakeExpr(assignStmt->expr.get());
   if (*decl->type != *expr->Ty()) {
-    throw CompileError::CreatePosFmt(assignStmt->GetPos(),
-                                     "assigned expr type doesn't match");
+    throw CompileError::CreatePos(assignStmt->GetPos(),
+                                  "assigned expr type doesn't match");
   }
 }
 
@@ -131,8 +130,7 @@ void Checker::CheckIfStmt(ast::IfStmt* ifStmt) {
   auto cond = ifStmt->cond.get();
   auto condExpr = MakeExpr(cond);
   if (!condExpr->Ty()->IsBool()) {
-    throw CompileError::CreatePosFmt(ifStmt->cond->GetPos(),
-                                     "non bool if cond");
+    throw CompileError::CreatePos(ifStmt->cond->GetPos(), "non bool if cond");
   }
   auto block = ifStmt->block.get();
   CheckBlock(block);
@@ -168,19 +166,19 @@ std::unique_ptr<hir::Expr> Checker::MakeExpr(ast::Expr* expr) {
 
       auto decl = LookupDecl(callExpr->ident->val);
       if (decl == nullptr) {
-        throw CompileError::CreatePosFmt(callExpr->GetPos(),
-                                         "undefined function %s",
-                                         callExpr->ident->val.c_str());
+        throw CompileError::CreatePos(callExpr->GetPos(),
+                                      "undefined function %s",
+                                      callExpr->ident->val.c_str());
       }
       if (!decl->IsFunc()) {
-        throw CompileError::CreatePosFmt(callExpr->GetPos(),
-                                         "%s is not declared as function",
-                                         callExpr->ident->val.c_str());
+        throw CompileError::CreatePos(callExpr->GetPos(),
+                                      "%s is not declared as function",
+                                      callExpr->ident->val.c_str());
       }
       auto fnType = (FuncType*)decl->type.get();
       if (fnType->args.size() != callExpr->args.size()) {
-        throw CompileError::CreatePosFmt(callExpr->GetPos(),
-                                         "args count doesn't match");
+        throw CompileError::CreatePos(callExpr->GetPos(),
+                                      "args count doesn't match");
       }
       auto call = std::make_unique<hir::Call>(callExpr->GetPos());
       call->decl = decl;
@@ -198,27 +196,34 @@ std::unique_ptr<hir::Expr> Checker::MakeExpr(ast::Expr* expr) {
       auto ident = (ast::Ident*)expr;
       auto decl = LookupDecl(ident->val);
       if (decl == nullptr) {
-        throw CompileError::CreatePosFmt(
-            ident->GetPos(), "undefined function %s", ident->val.c_str());
+        throw CompileError::CreatePos(ident->GetPos(), "undefined function %s",
+                                      ident->val.c_str());
       }
       if (decl->IsFunc()) {
-        throw CompileError::CreatePosFmt(ident->GetPos(),
-                                         "%s is not declared as variable",
-                                         ident->val.c_str());
+        throw CompileError::CreatePos(ident->GetPos(),
+                                      "%s is not declared as variable",
+                                      ident->val.c_str());
       }
       auto value = std::make_unique<hir::Variable>(ident->GetPos());
       value->decl = decl;
       return std::move(value);
     } break;
+
     case ast::Expr::Kind::UNARY: {
       auto unaryExpr = (ast::UnaryExpr*)expr;
       return std::make_unique<hir::Unary>(unaryExpr->GetPos(), unaryExpr->unOp,
                                           MakeExpr(unaryExpr->expr.get()));
     } break;
+
     case ast::Expr::Kind::BINARY: {
       auto binaryExpr = (ast::BinaryExpr*)expr;
       auto lhs = MakeExpr(binaryExpr->lhs.get());
       auto rhs = MakeExpr(binaryExpr->rhs.get());
+      if (lhs->IsConstant() && rhs->IsConstant()) {
+        auto lCons = (hir::Constant*)lhs.get();
+        auto rCons = (hir::Constant*)rhs.get();
+        return MakeConstBinary(lCons, rCons, binaryExpr->op);
+      }
       CheckBinary(lhs, rhs, binaryExpr->op);
       return std::make_unique<hir::Binary>(binaryExpr->GetPos(), binaryExpr->op,
                                            std::move(lhs), std::move(rhs));
@@ -231,7 +236,9 @@ std::unique_ptr<hir::Expr> Checker::MakeExpr(ast::Expr* expr) {
 bool IsAddOperandType(Type::Kind kind) {
   switch (kind) {
     case Type::Kind::I32:
+    case Type::Kind::I64:
     case Type::Kind::F32:
+    case Type::Kind::F64:
     case Type::Kind::CHAR:
       return true;
     default:
@@ -247,7 +254,140 @@ int NumPrior(std::shared_ptr<Type> ty) {
   } else if (ty->TypeKind() == Type::Kind::CHAR) {
     return 0;
   } else {
-    exit(1);
+    throw CompileError::Create("unreachable");
+  }
+}
+
+std::unique_ptr<hir::Constant> Checker::MakeConstBinary(hir::Constant* lhs,
+                                                        hir::Constant* rhs,
+                                                        ast::BinOp op) {
+  switch (lhs->ConstantKind()) {
+    case hir::Constant::Kind::INT: {
+      auto l = (hir::IntConstant*)lhs;
+      switch (rhs->ConstantKind()) {
+        case hir::Constant::Kind::INT: {
+          auto r = (hir::IntConstant*)rhs;
+          switch (op) {
+            case ast::BinOp::LT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val < r->val);
+            case ast::BinOp::LE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val <= r->val);
+            case ast::BinOp::GT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val > r->val);
+            case ast::BinOp::GE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val >= r->val);
+
+            case ast::BinOp::ADD:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val + r->val);
+            case ast::BinOp::SUB:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val - r->val);
+
+            case ast::BinOp::MUL:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val * r->val);
+            case ast::BinOp::DIV:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val / r->val);
+            case ast::BinOp::MOD:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val % r->val);
+          }
+        } break;
+
+        case hir::Constant::Kind::FLOAT: {
+          auto r = (hir::FloatConstant*)rhs;
+          throw CompileError::Create("unimplemented int float");
+        } break;
+        case hir::Constant::Kind::CHAR: {
+          auto r = (hir::CharConstant*)rhs;
+          throw CompileError::Create("unimplemented int char");
+        } break;
+        default:
+          throw CompileError::CreatePos(lhs->pos, "cannot binary");
+      }
+    } break;
+
+    case hir::Constant::Kind::FLOAT: {
+      auto l = (hir::FloatConstant*)lhs;
+      switch (rhs->ConstantKind()) {
+        case hir::Constant::Kind::INT: {
+          auto r = (hir::IntConstant*)rhs;
+          throw CompileError::Create("unimplemented float int");
+        } break;
+        case hir::Constant::Kind::FLOAT: {
+          auto r = (hir::FloatConstant*)rhs;
+          throw CompileError::Create("unimplemented float float");
+        } break;
+        case hir::Constant::Kind::CHAR: {
+          auto r = (hir::CharConstant*)rhs;
+          throw CompileError::Create("unimplemented float char");
+        } break;
+        default:
+          throw CompileError::CreatePos(lhs->pos, "cannot binary");
+      }
+    } break;
+
+    case hir::Constant::Kind::CHAR: {
+      auto lChr = (hir::CharConstant*)lhs;
+      switch (rhs->ConstantKind()) {
+        case hir::Constant::Kind::INT: {
+          auto rInt = (hir::IntConstant*)rhs;
+          throw CompileError::Create("unimplemented char int");
+        } break;
+        case hir::Constant::Kind::FLOAT: {
+          auto rFlt = (hir::FloatConstant*)rhs;
+          throw CompileError::Create("unimplemented char float");
+        } break;
+        case hir::Constant::Kind::CHAR: {
+          auto rChr = (hir::CharConstant*)rhs;
+          throw CompileError::Create("unimplemented char char");
+        } break;
+        default:
+          throw CompileError::CreatePos(lhs->pos, "cannot binary");
+      }
+    } break;
+
+    case hir::Constant::Kind::BOOL: {
+      auto l = (hir::BoolConstant*)lhs;
+      switch (rhs->ConstantKind()) {
+        case hir::Constant::Kind::BOOL: {
+          auto r = (hir::BoolConstant*)rhs;
+          throw CompileError::Create("unimplemented bool bool");
+        } break;
+        default:
+          throw CompileError::CreatePos(lhs->pos, "cannot binary");
+      }
+    } break;
+
+    case hir::Constant::Kind::STRING: {
+      auto lBl = (hir::BoolConstant*)lhs;
+      switch (rhs->ConstantKind()) {
+        case hir::Constant::Kind::STRING: {
+          throw CompileError::Create("unimplemented str str");
+        } break;
+        default:
+          throw CompileError::CreatePos(lhs->pos, "cannot binary");
+      }
+    } break;
+  }
+  return nullptr;
+}
+
+bool PossibleTypeBinOp(Type::Kind ty, ast::BinOp op) {
+  switch (ty) {
+    case Type::Kind::BOOL:
+    case Type::Kind::STRING:
+    case Type::Kind::FUNC:
+    case Type::Kind::VOID:
+      return false;
+    default:
+      return true;
   }
 }
 
@@ -255,29 +395,30 @@ void Checker::CheckBinary(std::unique_ptr<hir::Expr>& lhs,
                           std::unique_ptr<hir::Expr>& rhs, ast::BinOp op) {
   auto lhsTy = lhs->Ty();
   auto rhsTy = rhs->Ty();
+  if (!PossibleTypeBinOp(lhsTy->TypeKind(), op)) {
+    throw CompileError::CreatePos(lhs->pos, "cannot binary lhs type");
+  }
+  if (!PossibleTypeBinOp(rhsTy->TypeKind(), op)) {
+    throw CompileError::CreatePos(lhs->pos, "cannot binary rhs type");
+  }
+
+  if (*lhsTy == *rhsTy) return;
+
   switch (op) {
     case ast::BinOp::ADD: {
-      if (!IsAddOperandType(lhsTy->TypeKind())) {
-        throw CompileError::CreatePosFmt(lhs->pos, "cannot add lhs type");
-      }
-      if (!IsAddOperandType(rhsTy->TypeKind())) {
-        throw CompileError::CreatePosFmt(rhs->pos, "cannot add rhs type");
-      }
-      auto lhsTyPri = NumPrior(lhsTy);
-      auto rhsTyPri = NumPrior(rhsTy);
-      if (lhsTyPri == rhsTyPri) {
-        return;
-      } else if (lhsTyPri < rhsTyPri) {
-        // try cast lhs
+      // No possibility Constant + Constant because it should be treated in
+      // MakeConstBinary. If lhs is constant, rhs should not be constant so
+      // rhs is preferred.
+      bool isRightPrior = lhs->IsConstant();
+      if (isRightPrior) {
         TryExpTy(lhs.get(), rhsTy);
       } else {
-        // try cast rhs
         TryExpTy(rhs.get(), lhsTy);
       }
     } break;
     default:
       // TODO:
-      throw CompileError::CreatePosFmt(lhs->pos, "unimplemented check ibnary");
+      throw CompileError::CreatePos(lhs->pos, "unimplemented check ibnary");
   }
 }
 
@@ -289,55 +430,55 @@ void Checker::TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty) {
       switch (ty->TypeKind()) {
         case Type::CHAR:
           return;
-        case Type::I32: {
+        case Type::I32:
+        case Type::I64: {
           auto rune = charConst->val;
-          if (rune > INT32_MAX) {
-            throw CompileError::CreatePosFmt(charConst->pos,
-                                             "rune overflows i32");
-          }
+          auto pos = charConst->pos;
           delete charConst;
-          cons = new hir::IntConstant(rune, true);
+          cons = new hir::IntConstant(pos, rune);
+          return;
         } break;
         default:
           // TODO:
-          throw CompileError::CreatePosFmt(
+          throw CompileError::CreatePos(
               cons->pos, "unimplemented charConst implicit cast");
       }
     } break;
     case hir::Constant::Kind::INT: {
-      // int may be float
-      // and check overflow
       auto intConst = (hir::IntConstant*)cons;
       switch (ty->TypeKind()) {
         case Type::I32:
           if (intConst->is32) return;
 
-          if (intConst->val > INT32_MAX) {
-            throw CompileError::CreatePosFmt(cons->pos, "overflow int32");
-          }
+          if (intConst->val > INT32_MAX)
+            throw CompileError::CreatePos(cons->pos, "overflow int32");
+
           intConst->is32 = true;
+
+          return;
+        case Type::I64:
           return;
         case Type::F32:
           // TODO:
           /* double fval = double(intConst->val); */
-          throw CompileError::CreatePosFmt(
+          throw CompileError::CreatePos(
               cons->pos, "unimplemented floatConst implicit cast");
 
         default:
-          throw CompileError::CreatePosFmt(cons->pos, "can't cast");
+          throw CompileError::CreatePos(cons->pos, "can't cast");
       }
     } break;
     case hir::Constant::Kind::BOOL:
       if (!ty->IsBool())
-        throw CompileError::CreatePosFmt(cons->pos, "can't cast bool");
+        throw CompileError::CreatePos(cons->pos, "can't cast bool");
       break;
     case hir::Constant::Kind::FLOAT:
       if (!ty->IsF32())
-        throw CompileError::CreatePosFmt(cons->pos, "can't cast f32");
+        throw CompileError::CreatePos(cons->pos, "can't cast f32");
       break;
     case hir::Constant::Kind::STRING:
       if (!ty->IsString())
-        throw CompileError::CreatePosFmt(cons->pos, "can't cast string");
+        throw CompileError::CreatePos(cons->pos, "can't cast string");
       break;
   }
 }
@@ -352,8 +493,7 @@ void Checker::TryExpTy(hir::Expr* expr, std::shared_ptr<Type> ty) {
           // Variables can't be casted implicitly
           auto var = (hir::Variable*)value;
           if (*var->decl->type != *ty) {
-            throw CompileError::CreatePosFmt(expr->pos,
-                                             "unmatched variable type");
+            throw CompileError::CreatePos(expr->pos, "unmatched variable type");
           }
         } break;
         case hir::Value::Kind::CONSTANT: {
@@ -362,18 +502,19 @@ void Checker::TryExpTy(hir::Expr* expr, std::shared_ptr<Type> ty) {
           TryConstantTy(cons, ty);
         } break;
       }
-    }
+    } break;
+
     case hir::Expr::Kind::BINARY: {
       auto binary = (hir::Binary*)expr;
       if (*binary->Ty() == *ty) return;
       TryExpTy(binary->lhs.get(), ty);
       TryExpTy(binary->rhs.get(), ty);
       if (*binary->Ty() != *ty)
-        throw CompileError::CreatePosFmt(binary->pos, "unmatched binary type");
+        throw CompileError::CreatePos(binary->pos, "unmatched binary type");
     } break;
     default: {
       if (*expr->Ty() != *ty) {
-        throw CompileError::CreatePosFmt(expr->pos, "unmatched exp type");
+        throw CompileError::CreatePos(expr->pos, "unmatched exp type");
       }
     } break;
   }
@@ -381,12 +522,11 @@ void Checker::TryExpTy(hir::Expr* expr, std::shared_ptr<Type> ty) {
 
 std::unique_ptr<hir::Constant> Checker::MakeLit(ast::Lit* lit) {
   switch (lit->LitKind()) {
-    case ast::Lit::Kind::INT: {
-      auto val = ParseInt(lit->val);
-      return std::make_unique<hir::IntConstant>(lit->GetPos(), val);
-    } break;
+    case ast::Lit::Kind::INT:
+      return ParseInt(lit);
+
     case ast::Lit::Kind::FLOAT: {
-      auto val = ParseFloat(lit->val);
+      auto val = ParseFloat(lit);
       return std::make_unique<hir::FloatConstant>(lit->GetPos(), val);
     } break;
     case ast::Lit::Kind::BOOL: {
@@ -394,9 +534,9 @@ std::unique_ptr<hir::Constant> Checker::MakeLit(ast::Lit* lit) {
                                                  lit->val == "true");
     } break;
     case ast::Lit::Kind::CHAR: {
-      // TODO:
-      throw CompileError::Create("unimplemented char");
-      /* return std::make_unique<hir::CharConstant>(lit->GetPos(), lit->val); */
+      std::stringstream ss(lit->val);
+      rune r = consumeRune(ss);
+      return std::make_unique<hir::CharConstant>(lit->GetPos(), r);
     } break;
     case ast::Lit::Kind::STRING: {
       return std::make_unique<hir::StringConstant>(lit->GetPos(), lit->val);
@@ -404,13 +544,25 @@ std::unique_ptr<hir::Constant> Checker::MakeLit(ast::Lit* lit) {
   }
 }
 
-int64_t Checker::ParseInt(std::string& val) {
-  // TODO: parse int
-  return 0;
+std::unique_ptr<hir::IntConstant> Checker::ParseInt(ast::Lit* lit) {
+  try {
+    // TODO: parse int
+    long long n = stoll(lit->val);
+    if (n <= INT64_MAX) {
+      return std::make_unique<hir::IntConstant>(lit->GetPos(), n);
+    } else {
+      throw CompileError::CreatePos(lit->GetPos(), "overflow int64");
+    }
+  } catch (std::out_of_range e) {
+    throw CompileError::CreatePos(lit->GetPos(), "out of range");
+  } catch (std::invalid_argument e) {
+    throw CompileError::CreatePos(lit->GetPos(), "invalid or unimplemented");
+  }
 }
 
-double Checker::ParseFloat(std::string&) {
+double Checker::ParseFloat(ast::Lit* lit) {
   // TODO:parse float
+  throw CompileError::CreatePos(lit->GetPos(), "unimplemented parse float");
   return 0;
 }
 
@@ -421,17 +573,17 @@ void Checker::RecordNodeDecl(ast::Node* node, std::shared_ptr<Decl> decl) {
 std::shared_ptr<Decl> Checker::InsertFnDecl(
     bool isExt, const std::unique_ptr<ast::FnProto>& proto) {
   if (!CanDecl(proto->name->val)) {
-    throw CompileError::CreatePosFmt(proto->name->GetPos(),
-                                     "redeclared function %s",
-                                     proto->name->val.c_str());
+    throw CompileError::CreatePos(proto->name->GetPos(),
+                                  "redeclared function %s",
+                                  proto->name->val.c_str());
   }
 
   std::vector<std::shared_ptr<Type>> args;
   for (auto& arg : proto->args) {
     auto ty = LookupType(arg->ty->val);
     if (!ty) {
-      throw CompileError::CreatePosFmt(arg->ty->GetPos(), "unknown arg type %s",
-                                       arg->ty->val.c_str());
+      throw CompileError::CreatePos(arg->ty->GetPos(), "unknown arg type %s",
+                                    arg->ty->val.c_str());
     }
     args.push_back(ty);
   }
@@ -439,8 +591,8 @@ std::shared_ptr<Decl> Checker::InsertFnDecl(
   if (proto->ret) {
     retTy = LookupType(proto->ret->val);
     if (!retTy) {
-      throw CompileError::CreatePosFmt(
-          proto->ret->GetPos(), "unknown ret type %s", proto->ret->val.c_str());
+      throw CompileError::CreatePos(proto->ret->GetPos(), "unknown ret type %s",
+                                    proto->ret->val.c_str());
     }
   } else {
     retTy = std::make_shared<Type>(Type::Kind::VOID);

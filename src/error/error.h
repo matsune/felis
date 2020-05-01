@@ -22,8 +22,7 @@ class CompileError : public std::exception {
   };
 
   template <typename... Args>
-  static CompileError CreatePosFmt(Pos pos, const std::string& fmt,
-                                   Args... args) {
+  static CompileError CreatePos(Pos pos, const std::string& fmt, Args... args) {
     return CompileError(pos, format(fmt, args...));
   };
 

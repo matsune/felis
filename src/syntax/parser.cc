@@ -444,7 +444,7 @@ std::unique_ptr<ast::File> Parser::Parse() {
 
 template <typename... Args>
 void Parser::Throw(const std::string& fmt, Args... args) {
-  throw CompileError::CreatePosFmt(Peek()->pos, fmt, args...);
+  throw CompileError::CreatePos(Peek()->pos, fmt, args...);
 }
 
 }  // namespace felis

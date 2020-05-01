@@ -18,6 +18,8 @@ struct Expr {
   Pos pos;
 
   void Debug();
+
+  bool IsConstant();
 };
 
 struct Value : public Expr {
@@ -27,6 +29,8 @@ struct Value : public Expr {
 
   virtual Kind ValueKind() = 0;
   Value(Pos pos) : Expr(pos){};
+
+  bool IsConstant() { return ValueKind() == Kind::CONSTANT; }
 };
 
 struct Constant : public Value {
@@ -39,31 +43,25 @@ struct Constant : public Value {
 };
 
 struct IntConstant : public Constant {
-  IntConstant(Pos pos, int64_t val, bool is32 = false)
-      : Constant(pos), val(val), is32(is32){};
+  IntConstant(Pos pos, int64_t val)
+      : Constant(pos), val(val), is32(val <= INT32_MAX){};
   int64_t val;
   bool is32;
 
   Constant::Kind ConstantKind() { return Constant::Kind::INT; };
 
   std::shared_ptr<Type> Ty() {
-    // TODO: I64
-    return std::make_shared<Type>(Type::Kind::I32);
+    return std::make_shared<Type>(is32 ? Type::Kind::I32 : Type::Kind::I64);
   }
 };
 
 struct FloatConstant : public Constant {
-  FloatConstant(Pos pos, double val, bool is32 = false)
-      : Constant(pos), val(val), is32(is32){};
+  FloatConstant(Pos pos, double val) : Constant(pos), val(val){};
   double val;
-  bool is32;
 
   Constant::Kind ConstantKind() { return Constant::Kind::FLOAT; };
 
-  std::shared_ptr<Type> Ty() {
-    // TODO: F64
-    return std::make_shared<Type>(Type::Kind::F32);
-  }
+  std::shared_ptr<Type> Ty() { return std::make_shared<Type>(Type::Kind::F64); }
 };
 
 struct CharConstant : public Constant {

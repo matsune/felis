@@ -63,6 +63,11 @@ inline bool is_ident_body(rune c) {
 rune Lexer::Scan() { return consumeRune(in_); }
 
 rune Lexer::Bump() {
+  if (peek_ == '\n') {
+    pos_.Lines();
+  } else {
+    pos_.Columns();
+  }
   rune tmp = peek_;
   peek_ = Scan();
   return tmp;
@@ -366,30 +371,41 @@ void Lexer::EatNum(std::unique_ptr<Token> &tok) {
   tok->kind = Token::Kind::LIT_INT;
   auto first = Bump();
   appendRune(tok->val, first);
-  bool isDecimal = false;
+  bool canExponent = true;
   if (first == '0') {
     if (BumpIf('b')) {
+      // TODO:
+      Throw("unimplemented binary literal");
+
       // binary
+      canExponent = false;
       EatDigits(tok->val, is_bitc);
     } else if (BumpIf('o')) {
+      // TODO:
+      Throw("unimplemented octal literal");
+
       // octal
+      canExponent = false;
       EatDigits(tok->val, is_octalc);
     } else if (BumpIf('x')) {
+      // TODO:
+      Throw("unimplemented hex literal");
+
       // hex
+      canExponent = false;
       EatDigits(tok->val, is_hexc);
     } else if (is_decimalc(peek_) || peek_ == '_') {
-      isDecimal = true;
       while (true) {
         if (is_decimalc(peek_)) {
           appendRune(tok->val, Bump());
-        } else if (peek_ == '_') {
+        } else if (peek_ == '_') {  // skip
           Bump();
         } else {
           break;
         }
       }
     } else if (peek_ == '.' || peek_ == 'e' || peek_ == 'E') {
-      isDecimal = true;
+      // through
     } else {
       // just 0
       return;
@@ -407,12 +423,16 @@ void Lexer::EatNum(std::unique_ptr<Token> &tok) {
   }
 
   if (peek_ == '.' || peek_ == 'e' || peek_ == 'E') {
+    bool isDot = peek_ == '.';
+    if (!isDot) {  // TODO:
+      Throw("unimplemented float literal");
+    }
+
     // only decimal has fractional part
-    if (!isDecimal) {
+    if (!canExponent) {
       Throw("'%c' exponent requires decimal mantissa\n", peek_);
     }
     tok->kind = Token::Kind::LIT_FLOAT;
-    bool isDot = peek_ == '.';
     appendRune(tok->val, Bump());
     if (!isDot && peek_ == '-') {
       appendRune(tok->val, Bump());
@@ -460,7 +480,7 @@ bool Lexer::EatBlockComment() {
 
 template <typename... Args>
 void Lexer::Throw(const std::string &fmt, Args... args) {
-  throw CompileError::CreatePosFmt(pos_, fmt, args...);
+  throw CompileError::CreatePos(pos_, fmt, args...);
 }
 
 }  // namespace felis

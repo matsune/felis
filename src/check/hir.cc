@@ -4,6 +4,15 @@ namespace felis {
 
 namespace hir {
 
+bool Expr::IsConstant() {
+  if (ExprKind() == Kind::VALUE) {
+    auto value = (Value*)this;
+    return value->IsConstant();
+  } else {
+    return false;
+  }
+}
+
 void Expr::Debug() {
   std::cout << "EXP " << pos.line << ":" << pos.column << ": ";
   switch (ExprKind()) {
