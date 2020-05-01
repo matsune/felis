@@ -233,31 +233,6 @@ std::unique_ptr<hir::Expr> Checker::MakeExpr(ast::Expr* expr) {
   }
 }
 
-bool IsAddOperandType(Type::Kind kind) {
-  switch (kind) {
-    case Type::Kind::I32:
-    case Type::Kind::I64:
-    case Type::Kind::F32:
-    case Type::Kind::F64:
-    case Type::Kind::CHAR:
-      return true;
-    default:
-      return false;
-  }
-}
-
-int NumPrior(std::shared_ptr<Type> ty) {
-  if (ty->TypeKind() == Type::Kind::F32) {
-    return 2;
-  } else if (ty->TypeKind() == Type::Kind::I32) {
-    return 1;
-  } else if (ty->TypeKind() == Type::Kind::CHAR) {
-    return 0;
-  } else {
-    throw CompileError::Create("unreachable");
-  }
-}
-
 std::unique_ptr<hir::Constant> Checker::MakeConstBinary(hir::Constant* lhs,
                                                         hir::Constant* rhs,
                                                         ast::BinOp op) {
@@ -380,11 +355,13 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(hir::Constant* lhs,
 }
 
 bool PossibleTypeBinOp(Type::Kind ty, ast::BinOp op) {
+  // TODO
   switch (ty) {
-    case Type::Kind::BOOL:
     case Type::Kind::STRING:
     case Type::Kind::FUNC:
     case Type::Kind::VOID:
+      return false;
+    case Type::Kind::BOOL:
       return false;
     default:
       return true;
