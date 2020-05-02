@@ -211,8 +211,13 @@ std::unique_ptr<hir::Expr> Checker::MakeExpr(ast::Expr* expr) {
 
     case ast::Expr::Kind::UNARY: {
       auto unaryExpr = (ast::UnaryExpr*)expr;
+      auto e = MakeExpr(unaryExpr->expr.get());
+      if (e->IsConstant()) {
+        MakeConstUnary((hir::Constant*)e.get(), unaryExpr->unOp);
+        return std::move(e);
+      }
       return std::make_unique<hir::Unary>(unaryExpr->GetPos(), unaryExpr->unOp,
-                                          MakeExpr(unaryExpr->expr.get()));
+                                          std::move(e));
     } break;
 
     case ast::Expr::Kind::BINARY: {
@@ -230,6 +235,30 @@ std::unique_ptr<hir::Expr> Checker::MakeExpr(ast::Expr* expr) {
     } break;
     default:
       return nullptr;
+  }
+}
+
+void Checker::MakeConstUnary(hir::Constant* cons, ast::UnOp op) {
+  switch (op) {
+    case ast::UnOp::NOT:
+      if (cons->Ty()->IsBool()) {
+        auto b = (hir::BoolConstant*)cons;
+        b->val = !b->val;
+      } else {
+        throw CompileError::CreatePos(cons->pos, "non bool type");
+      }
+    case ast::UnOp::NEG:
+      if (cons->Ty()->IsNumeric()) {
+        if (cons->Ty()->IsI32() || cons->Ty()->IsI64()) {
+          auto b = (hir::IntConstant*)cons;
+          b->val = -b->val;
+        } else {
+          auto b = (hir::FloatConstant*)cons;
+          b->val = -b->val;
+        }
+      } else {
+        throw CompileError::CreatePos(cons->pos, "non numeric type");
+      }
   }
 }
 
@@ -676,15 +705,14 @@ void Checker::TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty) {
         } break;
 
         default:
-          // TODO:
-          throw CompileError::CreatePos(
-              cons->pos, "unimplemented charConst implicit cast");
+          throw CompileError::CreatePos(cons->pos, "cannot cast char literal");
       }
     } break;
+
     case hir::Constant::Kind::INT: {
       auto intConst = (hir::IntConstant*)cons;
       switch (ty->TypeKind()) {
-        case Type::CHAR:
+        case Type::CHAR: {
           if (intConst->is32) {
             auto val = intConst->val;
             auto pos = intConst->pos;
@@ -694,18 +722,20 @@ void Checker::TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty) {
           }
 
           throw CompileError::CreatePos(cons->pos, "overflow char");
+        } break;
 
-        case Type::I32:
+        case Type::I32: {
           if (intConst->is32) return;
 
           if (intConst->val > INT32_MAX)
             throw CompileError::CreatePos(cons->pos, "overflow int32");
 
           intConst->is32 = true;
+        } break;
 
-          return;
         case Type::I64:
-          return;
+          break;
+
         case Type::F32: {
           if (intConst->is32) {
             auto val = intConst->val;
@@ -730,18 +760,21 @@ void Checker::TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty) {
           throw CompileError::CreatePos(cons->pos, "can't cast");
       }
     } break;
-    case hir::Constant::Kind::BOOL:
+
+    case hir::Constant::Kind::BOOL: {
       if (!ty->IsBool())
         throw CompileError::CreatePos(cons->pos, "can't cast bool");
-      break;
-    case hir::Constant::Kind::FLOAT:
+    } break;
+
+    case hir::Constant::Kind::FLOAT: {
       if (!ty->IsF32())
         throw CompileError::CreatePos(cons->pos, "can't cast f32");
-      break;
-    case hir::Constant::Kind::STRING:
+    } break;
+
+    case hir::Constant::Kind::STRING: {
       if (!ty->IsString())
         throw CompileError::CreatePos(cons->pos, "can't cast string");
-      break;
+    } break;
   }
 }
 

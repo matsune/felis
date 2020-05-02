@@ -40,6 +40,7 @@ class Checker {
 
   std::unique_ptr<hir::Constant> MakeConstBinary(hir::Constant*, hir::Constant*,
                                                  ast::BinOp);
+  void MakeConstUnary(hir::Constant*, ast::UnOp);
 
   std::unique_ptr<hir::IntConstant> ParseInt(ast::Lit*);
   double ParseFloat(ast::Lit*);
