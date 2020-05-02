@@ -26,9 +26,26 @@ struct Type {
   Type(Type::Kind kind) : kind_(kind){};
   Type::Kind TypeKind() { return kind_; };
   bool IsBool() { return kind_ == Type::Kind::BOOL; }
+  bool IsI32() { return kind_ == Type::Kind::I32; }
+  bool IsI64() { return kind_ == Type::Kind::I64; }
   bool IsF32() { return kind_ == Type::Kind::F32; }
+  bool IsF64() { return kind_ == Type::Kind::F64; }
+  bool IsChar() { return kind_ == Type::Kind::CHAR; }
   bool IsString() { return kind_ == Type::Kind::STRING; }
   bool IsVoid() { return kind_ == Type::Kind::VOID; }
+
+  bool IsNumeric() {
+    switch (kind_) {
+      case Kind::I32:
+      case Kind::I64:
+      case Kind::F32:
+      case Kind::F64:
+      case Kind::CHAR:
+        return true;
+      default:
+        return false;
+    }
+  }
 
   friend bool operator==(const Type& lhs, const Type& rhs) {
     return lhs.kind_ == rhs.kind_;

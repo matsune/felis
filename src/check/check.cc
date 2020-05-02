@@ -240,7 +240,7 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(hir::Constant* lhs,
     case hir::Constant::Kind::INT: {
       auto l = (hir::IntConstant*)lhs;
       switch (rhs->ConstantKind()) {
-        case hir::Constant::Kind::INT: {
+        case hir::Constant::Kind::INT: {  // int int
           auto r = (hir::IntConstant*)rhs;
           switch (op) {
             case ast::BinOp::LT:
@@ -275,13 +275,74 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(hir::Constant* lhs,
           }
         } break;
 
-        case hir::Constant::Kind::FLOAT: {
+        case hir::Constant::Kind::FLOAT: {  // int float
           auto r = (hir::FloatConstant*)rhs;
-          throw CompileError::Create("unimplemented int float");
+          switch (op) {
+            case ast::BinOp::LT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val < r->val);
+            case ast::BinOp::LE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val <= r->val);
+            case ast::BinOp::GT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val > r->val);
+            case ast::BinOp::GE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val >= r->val);
+
+            case ast::BinOp::ADD:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val + r->val);
+            case ast::BinOp::SUB:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val - r->val);
+
+            case ast::BinOp::MUL:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val * r->val);
+            case ast::BinOp::DIV:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val / r->val);
+            case ast::BinOp::MOD:
+              throw CompileError::CreatePos(
+                  r->pos, "operator \% not defined on untyped float");
+          }
         } break;
-        case hir::Constant::Kind::CHAR: {
+
+        case hir::Constant::Kind::CHAR: {  // int char
           auto r = (hir::CharConstant*)rhs;
-          throw CompileError::Create("unimplemented int char");
+          switch (op) {
+            case ast::BinOp::LT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val < r->val);
+            case ast::BinOp::LE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val <= r->val);
+            case ast::BinOp::GT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val > r->val);
+            case ast::BinOp::GE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val >= r->val);
+
+            case ast::BinOp::ADD:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val + r->val);
+            case ast::BinOp::SUB:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val - r->val);
+
+            case ast::BinOp::MUL:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val * r->val);
+            case ast::BinOp::DIV:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val / r->val);
+            case ast::BinOp::MOD:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val % r->val);
+          }
         } break;
         default:
           throw CompileError::CreatePos(lhs->pos, "cannot binary");
@@ -291,17 +352,108 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(hir::Constant* lhs,
     case hir::Constant::Kind::FLOAT: {
       auto l = (hir::FloatConstant*)lhs;
       switch (rhs->ConstantKind()) {
-        case hir::Constant::Kind::INT: {
+        case hir::Constant::Kind::INT: {  // float int
           auto r = (hir::IntConstant*)rhs;
-          throw CompileError::Create("unimplemented float int");
+          switch (op) {
+            case ast::BinOp::LT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val < r->val);
+            case ast::BinOp::LE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val <= r->val);
+            case ast::BinOp::GT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val > r->val);
+            case ast::BinOp::GE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val >= r->val);
+
+            case ast::BinOp::ADD:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val + r->val);
+            case ast::BinOp::SUB:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val - r->val);
+
+            case ast::BinOp::MUL:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val * r->val);
+            case ast::BinOp::DIV:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val / r->val);
+            case ast::BinOp::MOD:
+              throw CompileError::CreatePos(
+                  l->pos, "operator \% not defined on untyped float");
+          }
         } break;
-        case hir::Constant::Kind::FLOAT: {
+        case hir::Constant::Kind::FLOAT: {  // float float
           auto r = (hir::FloatConstant*)rhs;
-          throw CompileError::Create("unimplemented float float");
+          switch (op) {
+            case ast::BinOp::LT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val < r->val);
+            case ast::BinOp::LE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val <= r->val);
+            case ast::BinOp::GT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val > r->val);
+            case ast::BinOp::GE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val >= r->val);
+
+            case ast::BinOp::ADD:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val + r->val);
+            case ast::BinOp::SUB:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val - r->val);
+
+            case ast::BinOp::MUL:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val * r->val);
+            case ast::BinOp::DIV:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val / r->val);
+            case ast::BinOp::MOD:
+              throw CompileError::CreatePos(
+                  l->pos, "operator \% not defined on untyped float");
+          }
         } break;
-        case hir::Constant::Kind::CHAR: {
+
+        case hir::Constant::Kind::CHAR: {  // float char
           auto r = (hir::CharConstant*)rhs;
-          throw CompileError::Create("unimplemented float char");
+          switch (op) {
+            case ast::BinOp::LT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val < r->val);
+            case ast::BinOp::LE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val <= r->val);
+            case ast::BinOp::GT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val > r->val);
+            case ast::BinOp::GE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val >= r->val);
+
+            case ast::BinOp::ADD:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val + r->val);
+            case ast::BinOp::SUB:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val - r->val);
+
+            case ast::BinOp::MUL:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val * r->val);
+            case ast::BinOp::DIV:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val / r->val);
+            case ast::BinOp::MOD:
+              throw CompileError::CreatePos(
+                  l->pos, "operator \% not defined on untyped float");
+          }
         } break;
         default:
           throw CompileError::CreatePos(lhs->pos, "cannot binary");
@@ -309,19 +461,109 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(hir::Constant* lhs,
     } break;
 
     case hir::Constant::Kind::CHAR: {
-      auto lChr = (hir::CharConstant*)lhs;
+      auto l = (hir::CharConstant*)lhs;
       switch (rhs->ConstantKind()) {
-        case hir::Constant::Kind::INT: {
-          auto rInt = (hir::IntConstant*)rhs;
-          throw CompileError::Create("unimplemented char int");
+        case hir::Constant::Kind::INT: {  // char int
+          auto r = (hir::IntConstant*)rhs;
+          switch (op) {
+            case ast::BinOp::LT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val < r->val);
+            case ast::BinOp::LE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val <= r->val);
+            case ast::BinOp::GT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val > r->val);
+            case ast::BinOp::GE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val >= r->val);
+
+            case ast::BinOp::ADD:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val + r->val);
+            case ast::BinOp::SUB:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val - r->val);
+
+            case ast::BinOp::MUL:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val * r->val);
+            case ast::BinOp::DIV:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val / r->val);
+            case ast::BinOp::MOD:
+              return std::make_unique<hir::IntConstant>(lhs->pos,
+                                                        l->val % r->val);
+          }
         } break;
-        case hir::Constant::Kind::FLOAT: {
-          auto rFlt = (hir::FloatConstant*)rhs;
-          throw CompileError::Create("unimplemented char float");
+        case hir::Constant::Kind::FLOAT: {  // char float
+          auto r = (hir::FloatConstant*)rhs;
+          switch (op) {
+            case ast::BinOp::LT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val < r->val);
+            case ast::BinOp::LE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val <= r->val);
+            case ast::BinOp::GT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val > r->val);
+            case ast::BinOp::GE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val >= r->val);
+
+            case ast::BinOp::ADD:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val + r->val);
+            case ast::BinOp::SUB:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val - r->val);
+
+            case ast::BinOp::MUL:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val * r->val);
+            case ast::BinOp::DIV:
+              return std::make_unique<hir::FloatConstant>(lhs->pos,
+                                                          l->val / r->val);
+            case ast::BinOp::MOD:
+              throw CompileError::CreatePos(
+                  r->pos, "operator \% not defined on untyped float");
+          }
         } break;
-        case hir::Constant::Kind::CHAR: {
-          auto rChr = (hir::CharConstant*)rhs;
-          throw CompileError::Create("unimplemented char char");
+        case hir::Constant::Kind::CHAR: {  // char char
+          auto r = (hir::CharConstant*)rhs;
+          switch (op) {
+            case ast::BinOp::LT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val < r->val);
+            case ast::BinOp::LE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val <= r->val);
+            case ast::BinOp::GT:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val > r->val);
+            case ast::BinOp::GE:
+              return std::make_unique<hir::BoolConstant>(lhs->pos,
+                                                         l->val >= r->val);
+
+            case ast::BinOp::ADD:
+              return std::make_unique<hir::CharConstant>(lhs->pos,
+                                                         l->val + r->val);
+            case ast::BinOp::SUB:
+              return std::make_unique<hir::CharConstant>(lhs->pos,
+                                                         l->val - r->val);
+
+            case ast::BinOp::MUL:
+              return std::make_unique<hir::CharConstant>(lhs->pos,
+                                                         l->val * r->val);
+            case ast::BinOp::DIV:
+              return std::make_unique<hir::CharConstant>(lhs->pos,
+                                                         l->val / r->val);
+            case ast::BinOp::MOD:
+              return std::make_unique<hir::CharConstant>(lhs->pos,
+                                                         l->val % r->val);
+          }
         } break;
         default:
           throw CompileError::CreatePos(lhs->pos, "cannot binary");
@@ -329,73 +571,81 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(hir::Constant* lhs,
     } break;
 
     case hir::Constant::Kind::BOOL: {
-      auto l = (hir::BoolConstant*)lhs;
-      switch (rhs->ConstantKind()) {
-        case hir::Constant::Kind::BOOL: {
-          auto r = (hir::BoolConstant*)rhs;
-          throw CompileError::Create("unimplemented bool bool");
-        } break;
-        default:
-          throw CompileError::CreatePos(lhs->pos, "cannot binary");
-      }
+      /* auto l = (hir::BoolConstant*)lhs; */
+      /* switch (rhs->ConstantKind()) { */
+      /*   case hir::Constant::Kind::BOOL: { */
+      /*     auto r = (hir::BoolConstant*)rhs; */
+      /*     throw CompileError::Create("unimplemented bool bool"); */
+      /*   } break; */
+      /*   default: */
+      throw CompileError::CreatePos(lhs->pos, "cannot binary");
+      /* } */
     } break;
 
     case hir::Constant::Kind::STRING: {
-      auto lBl = (hir::BoolConstant*)lhs;
-      switch (rhs->ConstantKind()) {
-        case hir::Constant::Kind::STRING: {
-          throw CompileError::Create("unimplemented str str");
-        } break;
-        default:
-          throw CompileError::CreatePos(lhs->pos, "cannot binary");
-      }
+      /* auto lBl = (hir::BoolConstant*)lhs; */
+      /* switch (rhs->ConstantKind()) { */
+      /*   case hir::Constant::Kind::STRING: { */
+      /*     throw CompileError::Create("unimplemented str str"); */
+      /*   } break; */
+      /*   default: */
+      throw CompileError::CreatePos(lhs->pos, "cannot binary");
+      /* } */
     } break;
   }
   return nullptr;
-}
-
-bool PossibleTypeBinOp(Type::Kind ty, ast::BinOp op) {
-  // TODO
-  switch (ty) {
-    case Type::Kind::STRING:
-    case Type::Kind::FUNC:
-    case Type::Kind::VOID:
-      return false;
-    case Type::Kind::BOOL:
-      return false;
-    default:
-      return true;
-  }
 }
 
 void Checker::CheckBinary(std::unique_ptr<hir::Expr>& lhs,
                           std::unique_ptr<hir::Expr>& rhs, ast::BinOp op) {
   auto lhsTy = lhs->Ty();
   auto rhsTy = rhs->Ty();
-  if (!PossibleTypeBinOp(lhsTy->TypeKind(), op)) {
-    throw CompileError::CreatePos(lhs->pos, "cannot binary lhs type");
+
+  if (!lhsTy->IsNumeric()) {
+    throw CompileError::CreatePos(lhs->pos, "lhs is not numeric type");
   }
-  if (!PossibleTypeBinOp(rhsTy->TypeKind(), op)) {
-    throw CompileError::CreatePos(lhs->pos, "cannot binary rhs type");
+  if (!rhsTy->IsNumeric()) {
+    throw CompileError::CreatePos(rhs->pos, "rhs is not numeric type");
   }
 
   if (*lhsTy == *rhsTy) return;
 
   switch (op) {
-    case ast::BinOp::ADD: {
-      // No possibility Constant + Constant because it should be treated in
-      // MakeConstBinary. If lhs is constant, rhs should not be constant so
-      // rhs is preferred.
-      bool isRightPrior = lhs->IsConstant();
-      if (isRightPrior) {
-        TryExpTy(lhs.get(), rhsTy);
-      } else {
-        TryExpTy(rhs.get(), lhsTy);
-      }
-    } break;
-    default:
-      // TODO:
-      throw CompileError::CreatePos(lhs->pos, "unimplemented check ibnary");
+    case ast::BinOp::LT:
+      break;
+    case ast::BinOp::LE:
+      break;
+    case ast::BinOp::GT:
+      break;
+    case ast::BinOp::GE:
+      break;
+
+    case ast::BinOp::ADD:
+      break;
+    case ast::BinOp::SUB:
+      break;
+    case ast::BinOp::MUL:
+      break;
+    case ast::BinOp::DIV:
+      break;
+    case ast::BinOp::MOD:
+      if (!lhsTy->IsI32() && !lhsTy->IsI64() && !lhsTy->IsChar())
+        throw CompileError::CreatePos(
+            lhs->pos, "operator \% not defined on untyped float");
+      if (!rhsTy->IsI32() && !rhsTy->IsI64() && !rhsTy->IsChar())
+        throw CompileError::CreatePos(
+            rhs->pos, "operator \% not defined on untyped float");
+      break;
+  }
+
+  // No possibility Constant + Constant because it should be treated in
+  // MakeConstBinary. If lhs is constant, rhs should not be constant so
+  // rhs is preferred.
+  bool isRightPrior = lhs->IsConstant();
+  if (isRightPrior) {
+    TryExpTy(lhs.get(), rhsTy);
+  } else {
+    TryExpTy(rhs.get(), lhsTy);
   }
 }
 
@@ -415,6 +665,16 @@ void Checker::TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty) {
           cons = new hir::IntConstant(pos, rune);
           return;
         } break;
+
+        case Type::F32:
+        case Type::F64: {
+          auto rune = charConst->val;
+          auto pos = charConst->pos;
+          delete charConst;
+          cons = new hir::FloatConstant(pos, rune);
+          return;
+        } break;
+
         default:
           // TODO:
           throw CompileError::CreatePos(
@@ -424,6 +684,17 @@ void Checker::TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty) {
     case hir::Constant::Kind::INT: {
       auto intConst = (hir::IntConstant*)cons;
       switch (ty->TypeKind()) {
+        case Type::CHAR:
+          if (intConst->is32) {
+            auto val = intConst->val;
+            auto pos = intConst->pos;
+            delete intConst;
+            cons = new hir::CharConstant(pos, val);
+            return;
+          }
+
+          throw CompileError::CreatePos(cons->pos, "overflow char");
+
         case Type::I32:
           if (intConst->is32) return;
 
@@ -435,11 +706,25 @@ void Checker::TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty) {
           return;
         case Type::I64:
           return;
-        case Type::F32:
-          // TODO:
-          /* double fval = double(intConst->val); */
-          throw CompileError::CreatePos(
-              cons->pos, "unimplemented floatConst implicit cast");
+        case Type::F32: {
+          if (intConst->is32) {
+            auto val = intConst->val;
+            auto pos = intConst->pos;
+            delete intConst;
+            cons = new hir::FloatConstant(pos, val);
+            return;
+          }
+
+          throw CompileError::CreatePos(cons->pos, "overflow f32");
+        } break;
+
+        case Type::F64: {
+          auto rune = intConst->val;
+          auto pos = intConst->pos;
+          delete intConst;
+          cons = new hir::FloatConstant(pos, rune);
+          return;
+        } break;
 
         default:
           throw CompileError::CreatePos(cons->pos, "can't cast");
@@ -495,7 +780,7 @@ void Checker::TryExpTy(hir::Expr* expr, std::shared_ptr<Type> ty) {
       }
     } break;
   }
-}  // namespace felis
+}
 
 std::unique_ptr<hir::Constant> Checker::MakeLit(ast::Lit* lit) {
   switch (lit->LitKind()) {
