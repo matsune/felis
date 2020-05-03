@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
 
   felis::Checker checker;
   checker.SetupBuiltin();
-  checker.Check(file);
+  std::unique_ptr<felis::hir::File> hir = checker.Check(std::move(file));
 
   /* felis::Builder builder; */
   /* std::string err; */

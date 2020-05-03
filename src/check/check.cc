@@ -15,26 +15,29 @@ void Checker::SetupBuiltin() {
   currentScope_->InsertType("char", std::make_shared<Type>(Type::Kind::CHAR));
 }
 
-void Checker::Check(std::unique_ptr<ast::File>& file) {
+std::unique_ptr<hir::File> Checker::Check(std::unique_ptr<ast::File> file) {
+  auto hirFile = std::make_unique<hir::File>();
   for (auto& ext : file->externs) {
     auto decl = InsertFnDecl(true, ext->proto);
-    RecordNodeDecl(ext.get(), decl);
+    hirFile->externs.emplace_back(new hir::Extern(decl));
   }
   for (auto& fn : file->fnDecls) {
     auto decl = InsertFnDecl(false, fn->proto);
-    RecordNodeDecl(fn.get(), decl);
+    hirFile->fnDecls.emplace_back(new hir::FnDecl(decl));
   }
 
-  for (auto& fn : file->fnDecls) {
-    CheckFnDecl(fn);
+  for (int i = 0; i < file->fnDecls.size(); i++) {
+    auto decl = hirFile->fnDecls[i]->decl;
+    decl->Debug();
+    currentFunc_ = decl;
+    auto& fn = file->fnDecls[i];
+    hirFile->fnDecls[i]->stmts = CheckFnDecl(fn);
   }
+  return std::move(hirFile);
 }
 
-void Checker::CheckFnDecl(std::unique_ptr<ast::FnDecl>& fnDecl) {
-  auto decl = node_decl_[fnDecl.get()];
-  decl->Debug();
-  currentFunc_ = decl;
-
+std::vector<std::unique_ptr<hir::Stmt>> Checker::CheckFnDecl(
+    std::unique_ptr<ast::FnDecl>& fnDecl) {
   OpenScope();
   for (auto& arg : fnDecl->proto->args) {
     // arg-name duplication is already checked in parser
@@ -42,52 +45,52 @@ void Checker::CheckFnDecl(std::unique_ptr<ast::FnDecl>& fnDecl) {
         arg->name->val, LookupType(arg->ty->val), Decl::Kind::ARG);
     currentScope_->InsertDecl(arg->name->val, argDecl);
   }
+  std::vector<std::unique_ptr<hir::Stmt>> stmts;
   for (auto& stmt : fnDecl->block->stmts) {
-    CheckStmt(stmt);
+    stmts.push_back(std::move(CheckStmt(stmt)));
   }
   CloseScope();
+  return stmts;
 }
 
-void Checker::CheckStmt(std::unique_ptr<ast::Stmt>& stmt) {
+std::unique_ptr<hir::Stmt> Checker::CheckStmt(
+    std::unique_ptr<ast::Stmt>& stmt) {
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR:
       // only type check
-      MakeExpr((ast::Expr*)stmt.get());
-      break;
+      return MakeExpr((ast::Expr*)stmt.get());
     case ast::Stmt::Kind::RET:
-      CheckRetStmt((ast::RetStmt*)stmt.get());
-      break;
+      return CheckRetStmt((ast::RetStmt*)stmt.get());
     case ast::Stmt::Kind::VAR_DECL:
-      CheckVarDeclStmt((ast::VarDeclStmt*)stmt.get());
-      break;
+      return CheckVarDeclStmt((ast::VarDeclStmt*)stmt.get());
     case ast::Stmt::Kind::ASSIGN:
-      CheckAssignStmt((ast::AssignStmt*)stmt.get());
-      break;
+      return CheckAssignStmt((ast::AssignStmt*)stmt.get());
     case ast::Stmt::Kind::IF:
-      CheckIfStmt((ast::IfStmt*)stmt.get());
-      break;
+      return CheckIfStmt((ast::IfStmt*)stmt.get());
     case ast::Stmt::Kind::BLOCK:
-      CheckBlock((ast::Block*)stmt.get());
-      break;
+      return CheckBlock((ast::Block*)stmt.get());
   }
 }
 
-void Checker::CheckRetStmt(ast::RetStmt* retStmt) {
+std::unique_ptr<hir::RetStmt> Checker::CheckRetStmt(ast::RetStmt* retStmt) {
   auto funcType = currentFunc_->AsFuncType();
   if (retStmt->expr) {
     auto expr = MakeExpr(retStmt->expr.get());
     if (*expr->Ty() != *funcType->ret) TryExpTy(expr.get(), funcType->ret);
     expr->Debug();
+    return std::make_unique<hir::RetStmt>(std::move(expr));
   } else {
     // empty return
     if (!funcType->ret->IsVoid()) {
       throw CompileError::CreatePos(retStmt->GetPos(), "func type is not void");
     }
     std::cout << " void" << std::endl;
+    return std::make_unique<hir::RetStmt>();
   }
 }
 
-void Checker::CheckVarDeclStmt(ast::VarDeclStmt* declStmt) {
+std::unique_ptr<hir::VarDeclStmt> Checker::CheckVarDeclStmt(
+    ast::VarDeclStmt* declStmt) {
   std::cout << "varDecl ";
   std::string name = declStmt->name->val;
   if (!CanDecl(name)) {
@@ -98,12 +101,13 @@ void Checker::CheckVarDeclStmt(ast::VarDeclStmt* declStmt) {
   auto decl = std::make_shared<Decl>(
       name, exp->Ty(), declStmt->isLet ? Decl::Kind::LET : Decl::Kind::VAR);
   currentScope_->InsertDecl(name, decl);
-  RecordNodeDecl(declStmt, decl);
   decl->Debug();
   /* DebugScope(); */
+  return std::make_unique<hir::VarDeclStmt>(decl, std::move(exp));
 }
 
-void Checker::CheckAssignStmt(ast::AssignStmt* assignStmt) {
+std::unique_ptr<hir::AssignStmt> Checker::CheckAssignStmt(
+    ast::AssignStmt* assignStmt) {
   auto name = assignStmt->name->val;
   auto decl = LookupDecl(name);
   if (!decl) {
@@ -124,34 +128,43 @@ void Checker::CheckAssignStmt(ast::AssignStmt* assignStmt) {
     throw CompileError::CreatePos(assignStmt->GetPos(),
                                   "assigned expr type doesn't match");
   }
+  return std::make_unique<hir::AssignStmt>(decl, std::move(expr));
 }
 
-void Checker::CheckIfStmt(ast::IfStmt* ifStmt) {
+std::unique_ptr<hir::IfStmt> Checker::CheckIfStmt(ast::IfStmt* ifStmt) {
   auto cond = ifStmt->cond.get();
   auto condExpr = MakeExpr(cond);
   if (!condExpr->Ty()->IsBool()) {
     throw CompileError::CreatePos(ifStmt->cond->GetPos(), "non bool if cond");
   }
   auto block = ifStmt->block.get();
-  CheckBlock(block);
+  auto blockStmt = CheckBlock(block);
 
   if (ifStmt->els) {
     if (ifStmt->els->StmtKind() == ast::Stmt::Kind::IF) {
       auto elsStmt = (ast::IfStmt*)ifStmt->els.get();
-      CheckIfStmt(elsStmt);
+      auto els = CheckIfStmt(elsStmt);
+      return std::make_unique<hir::IfStmt>(
+          std::move(condExpr), std::move(blockStmt), std::move(els));
     } else if (ifStmt->els->StmtKind() == ast::Stmt::Kind::BLOCK) {
       auto elsBlock = (ast::Block*)ifStmt->els.get();
-      CheckBlock(elsBlock);
+      auto els = CheckBlock(elsBlock);
+      return std::make_unique<hir::IfStmt>(
+          std::move(condExpr), std::move(blockStmt), std::move(els));
     }
   }
+  return std::make_unique<hir::IfStmt>(std::move(condExpr),
+                                       std::move(blockStmt));
 }
 
-void Checker::CheckBlock(ast::Block* block) {
+std::unique_ptr<hir::Block> Checker::CheckBlock(ast::Block* block) {
   OpenScope();
+  auto b = std::make_unique<hir::Block>();
   for (auto& stmt : block->stmts) {
-    CheckStmt(stmt);
+    b->stmts.push_back(CheckStmt(stmt));
   }
   CloseScope();
+  return std::move(b);
 }
 
 std::unique_ptr<hir::Expr> Checker::MakeExpr(ast::Expr* expr) {
@@ -859,10 +872,6 @@ double Checker::ParseFloat(ast::Lit* lit) {
   // TODO:parse float
   throw CompileError::CreatePos(lit->GetPos(), "unimplemented parse float");
   return 0;
-}
-
-void Checker::RecordNodeDecl(ast::Node* node, std::shared_ptr<Decl> decl) {
-  node_decl_[node] = decl;
 }
 
 std::shared_ptr<Decl> Checker::InsertFnDecl(

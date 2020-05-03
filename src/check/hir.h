@@ -10,7 +10,15 @@ namespace felis {
 
 namespace hir {
 
-struct Expr {
+struct Stmt {
+  enum Kind { EXPR, RET, VAR_DECL, ASSIGN, IF, BLOCK };
+
+  virtual Kind StmtKind() = 0;
+};
+
+struct Expr : public Stmt {
+  Stmt::Kind StmtKind() override { return Stmt::Kind::EXPR; }
+
   enum Kind { BINARY, VALUE, CALL, UNARY };
   virtual Kind ExprKind() = 0;
   virtual std::shared_ptr<Type> Ty() = 0;
@@ -105,7 +113,7 @@ struct Call : public Expr {
   std::vector<std::unique_ptr<Expr>> argExprs;
 
   std::shared_ptr<Type> Ty() {
-    auto fnType = (FuncType*)decl->type.get();
+    auto fnType = (FuncType *)decl->type.get();
     return fnType->ret;
   }
 };
@@ -152,6 +160,70 @@ struct Binary : public Expr {
         return lhs->Ty();
     }
   }
+};
+
+struct Block : public Stmt {
+  Kind StmtKind() override { return Stmt::Kind::BLOCK; }
+
+  std::vector<std::unique_ptr<Stmt>> stmts;
+};
+
+struct RetStmt : public Stmt {
+  Kind StmtKind() override { return Stmt::Kind::RET; }
+
+  RetStmt(std::unique_ptr<Expr> &&expr = nullptr) : expr(std::move(expr)) {}
+
+  std::unique_ptr<Expr> expr;
+};
+
+struct VarDeclStmt : public Stmt {
+  Kind StmtKind() override { return Stmt::Kind::VAR_DECL; }
+
+  std::shared_ptr<Decl> decl;
+  std::unique_ptr<Expr> expr;
+
+  VarDeclStmt(std::shared_ptr<Decl> decl, std::unique_ptr<Expr> &&expr)
+      : decl(decl), expr(std::move(expr)) {}
+};
+
+struct AssignStmt : public Stmt {
+  Kind StmtKind() override { return Stmt::Kind::ASSIGN; }
+
+  std::shared_ptr<Decl> decl;
+  std::unique_ptr<Expr> expr;
+
+  AssignStmt(std::shared_ptr<Decl> decl, std::unique_ptr<Expr> expr)
+      : decl(decl), expr(std::move(expr)) {}
+};
+
+struct IfStmt : public Stmt {
+  Kind StmtKind() override { return Stmt::Kind::IF; }
+
+  std::unique_ptr<Expr> cond;
+  std::unique_ptr<Block> block;
+  std::unique_ptr<Stmt> els;  // block or if
+
+  IfStmt(std::unique_ptr<Expr> cond, std::unique_ptr<Block> block,
+         std::unique_ptr<Stmt> els = nullptr)
+      : cond(std::move(cond)), block(std::move(block)), els(std::move(els)) {}
+};
+
+struct FnDecl {
+  std::shared_ptr<Decl> decl;
+  std::vector<std::unique_ptr<Stmt>> stmts;
+
+  explicit FnDecl(std::shared_ptr<Decl> decl) : decl(decl) {}
+};
+
+struct Extern {
+  std::shared_ptr<Decl> decl;
+
+  explicit Extern(std::shared_ptr<Decl> decl) : decl(decl) {}
+};
+
+struct File {
+  std::vector<std::unique_ptr<Extern>> externs;
+  std::vector<std::unique_ptr<FnDecl>> fnDecls;
 };
 
 }  // namespace hir

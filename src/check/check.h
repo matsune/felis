@@ -1,7 +1,6 @@
 #ifndef FELIS_CHECK_CHECK_H_
 #define FELIS_CHECK_CHECK_H_
 
-#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -19,21 +18,21 @@ class Checker {
  public:
   Checker() : currentScope_(std::make_shared<Scope>(nullptr)){};
   void SetupBuiltin();
-  void Check(std::unique_ptr<ast::File>&);
+  std::unique_ptr<hir::File> Check(std::unique_ptr<ast::File>);
 
  private:
   std::shared_ptr<Scope> currentScope_;
-  std::map<ast::Node*, std::shared_ptr<Decl>> node_decl_;
   std::shared_ptr<Decl> currentFunc_;
 
-  void CheckFnDecl(std::unique_ptr<ast::FnDecl>&);
+  std::vector<std::unique_ptr<hir::Stmt>> CheckFnDecl(
+      std::unique_ptr<ast::FnDecl>&);
 
-  void CheckStmt(std::unique_ptr<ast::Stmt>&);
-  void CheckRetStmt(ast::RetStmt*);
-  void CheckVarDeclStmt(ast::VarDeclStmt*);
-  void CheckAssignStmt(ast::AssignStmt*);
-  void CheckIfStmt(ast::IfStmt*);
-  void CheckBlock(ast::Block*);
+  std::unique_ptr<hir::Stmt> CheckStmt(std::unique_ptr<ast::Stmt>&);
+  std::unique_ptr<hir::RetStmt> CheckRetStmt(ast::RetStmt*);
+  std::unique_ptr<hir::VarDeclStmt> CheckVarDeclStmt(ast::VarDeclStmt*);
+  std::unique_ptr<hir::AssignStmt> CheckAssignStmt(ast::AssignStmt*);
+  std::unique_ptr<hir::IfStmt> CheckIfStmt(ast::IfStmt*);
+  std::unique_ptr<hir::Block> CheckBlock(ast::Block*);
 
   std::unique_ptr<hir::Expr> MakeExpr(ast::Expr* expr);
   std::unique_ptr<hir::Constant> MakeLit(ast::Lit* lit);
@@ -49,7 +48,6 @@ class Checker {
   void CheckBinary(std::unique_ptr<hir::Expr>& lhs,
                    std::unique_ptr<hir::Expr>& rhs, ast::BinOp op);
 
-  void RecordNodeDecl(ast::Node*, std::shared_ptr<Decl>);
   std::shared_ptr<Decl> InsertFnDecl(
       bool isExt, const std::unique_ptr<ast::FnProto>& proto);
   void OpenScope();
