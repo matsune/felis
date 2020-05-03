@@ -25,7 +25,7 @@ class Checker {
   std::shared_ptr<Decl> currentFunc_;
 
   std::vector<std::unique_ptr<hir::Stmt>> CheckFnDecl(
-      std::unique_ptr<ast::FnDecl>&);
+      std::unique_ptr<ast::FnDecl>&, std::unique_ptr<hir::FnDecl>&);
 
   std::unique_ptr<hir::Stmt> CheckStmt(std::unique_ptr<ast::Stmt>&);
   std::unique_ptr<hir::RetStmt> CheckRetStmt(ast::RetStmt*);

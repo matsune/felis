@@ -1,5 +1,5 @@
-#ifndef FELIS_IR_BUILDER_H_
-#define FELIS_IR_BUILDER_H_
+#ifndef FELIS_BUILDER_BUILDER_H_
+#define FELIS_BUILDER_BUILDER_H_
 
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
@@ -11,9 +11,8 @@
 #include <memory>
 #include <string>
 
+#include "check/hir.h"
 #include "error/error.h"
-#include "symtab.h"
-#include "syntax/ast.h"
 
 namespace felis {
 
@@ -21,7 +20,7 @@ class Builder {
  public:
   Builder() : module_("felis", ctx_), builder_(ctx_){};
   bool CreateTargetMachine(std::string &err);
-  void Build(std::unique_ptr<File>);
+  void Build(std::unique_ptr<hir::File>);
   void EmitLLVMIR(std::string filename);
   void EmitLLVMBC(std::string filename);
   void EmitASM(std::string filename);
@@ -32,22 +31,26 @@ class Builder {
   llvm::Module module_;
   llvm::IRBuilder<> builder_;
   std::unique_ptr<llvm::TargetMachine> machine_;
-  SymTabManager sm_;
-  std::shared_ptr<DefFn> currentFn_;
 
-  llvm::Type *getLLVMTyFromTy(Ty ty);
+  std::map<std::shared_ptr<Decl>, llvm::Value *> declMap_;
+  llvm::Type *GetLLVMTyFromTy(std::shared_ptr<Type>);
 
-  std::shared_ptr<DefFn> InsertDefFn(bool isExt,
-                                     const std::unique_ptr<FnProto> &);
+  llvm::Function *BuildFnProto(std::shared_ptr<Decl>);
 
-  void Build(std::unique_ptr<FnProto> &, std::shared_ptr<DefFn>);
-  void Build(std::unique_ptr<FnDecl> &, std::shared_ptr<DefFn>);
-  void Build(Block *);
-  void Build(std::unique_ptr<Stmt> &);
-  void Build(Expr *expr, llvm::Value *&value, Ty &ty);
+  void BuildStmt(std::unique_ptr<hir::Stmt> &);
+  void BuildRetStmt(hir::RetStmt *);
+  void BuildVarDeclStmt(hir::VarDeclStmt *);
+  void BuildAssignStmt(hir::AssignStmt *);
+  void BuildIfStmt(hir::IfStmt *);
+  void BuildBlock(hir::Block *);
+
+  llvm::Value *BuildExpr(hir::Expr *);
+  llvm::Constant *BuildConstant(hir::Constant *);
+  llvm::Value *BuildBinary(hir::Binary *);
+
   void EmitCodeGen(std::string, llvm::TargetMachine::CodeGenFileType);
 };
 
 }  // namespace felis
 
-#endif  // FELIS_IR_BUILDER_H_
+#endif  // FELIS_BUILDER_BUILDER_H_

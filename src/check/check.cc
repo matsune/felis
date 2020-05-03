@@ -27,23 +27,25 @@ std::unique_ptr<hir::File> Checker::Check(std::unique_ptr<ast::File> file) {
   }
 
   for (int i = 0; i < file->fnDecls.size(); i++) {
-    auto decl = hirFile->fnDecls[i]->decl;
-    decl->Debug();
-    currentFunc_ = decl;
+    /* auto decl = hirFile->fnDecls[i]->decl; */
+    /* decl->Debug(); */
     auto& fn = file->fnDecls[i];
-    hirFile->fnDecls[i]->stmts = CheckFnDecl(fn);
+    hirFile->fnDecls[i]->stmts = CheckFnDecl(fn, hirFile->fnDecls[i]);
   }
   return std::move(hirFile);
 }
 
 std::vector<std::unique_ptr<hir::Stmt>> Checker::CheckFnDecl(
-    std::unique_ptr<ast::FnDecl>& fnDecl) {
+    std::unique_ptr<ast::FnDecl>& fnDecl,
+    std::unique_ptr<hir::FnDecl>& hirDecl) {
+  currentFunc_ = hirDecl->decl;
   OpenScope();
   for (auto& arg : fnDecl->proto->args) {
     // arg-name duplication is already checked in parser
     auto argDecl = std::make_shared<Decl>(
         arg->name->val, LookupType(arg->ty->val), Decl::Kind::ARG);
     currentScope_->InsertDecl(arg->name->val, argDecl);
+    hirDecl->args.push_back(argDecl);
   }
   std::vector<std::unique_ptr<hir::Stmt>> stmts;
   for (auto& stmt : fnDecl->block->stmts) {
@@ -57,7 +59,6 @@ std::unique_ptr<hir::Stmt> Checker::CheckStmt(
     std::unique_ptr<ast::Stmt>& stmt) {
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR:
-      // only type check
       return MakeExpr((ast::Expr*)stmt.get());
     case ast::Stmt::Kind::RET:
       return CheckRetStmt((ast::RetStmt*)stmt.get());
@@ -199,8 +200,13 @@ std::unique_ptr<hir::Expr> Checker::MakeExpr(ast::Expr* expr) {
         auto& arg = callExpr->args[i];
         auto exp = MakeExpr(arg.get());
         auto ty = fnType->args[i];
+        std::cout << "arg " << i << "adr:" << exp.get()
+                  << "ExprKind() = " << exp->ExprKind() << " ty "
+                  << ToString(ty.get()) << std::endl;
         TryExpTy(exp.get(), ty);
-        call->argExprs.push_back(std::move(exp));
+        std::cout << "arg " << i << "adr:" << exp.get()
+                  << "ExprKind() = " << exp->ExprKind() << std::endl;
+        call->args.push_back(std::move(exp));
       }
       return std::move(call);
     } break;
@@ -705,6 +711,7 @@ void Checker::TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty) {
           auto pos = charConst->pos;
           delete charConst;
           cons = new hir::IntConstant(pos, rune);
+          std::cout << "ExprKind = " << cons << std::endl;
           return;
         } break;
 

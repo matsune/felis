@@ -110,7 +110,7 @@ struct Call : public Expr {
 
   Call(Pos pos) : Expr(pos) {}
   std::shared_ptr<Decl> decl;
-  std::vector<std::unique_ptr<Expr>> argExprs;
+  std::vector<std::unique_ptr<Expr>> args;
 
   std::shared_ptr<Type> Ty() {
     auto fnType = (FuncType *)decl->type.get();
@@ -210,6 +210,7 @@ struct IfStmt : public Stmt {
 
 struct FnDecl {
   std::shared_ptr<Decl> decl;
+  std::vector<std::shared_ptr<Decl>> args;
   std::vector<std::unique_ptr<Stmt>> stmts;
 
   explicit FnDecl(std::shared_ptr<Decl> decl) : decl(decl) {}
