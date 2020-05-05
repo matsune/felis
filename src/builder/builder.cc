@@ -62,7 +62,7 @@ llvm::Type* Builder::GetLLVMTyFromTy(std::shared_ptr<Type> ty) {
       auto funcType = (FuncType*)ty.get();
       std::vector<llvm::Type*> args;
       for (auto& arg : funcType->args) {
-        args.push_back(GetLLVMTyFromTy(arg));
+        args.push_back(GetLLVMTyFromTy(arg)->getPointerTo());
       }
       return llvm::FunctionType::get(GetLLVMTyFromTy(funcType->ret), args,
                                      false);
@@ -137,7 +137,12 @@ void Builder::BuildStmt(std::unique_ptr<hir::Stmt> stmt) {
 void Builder::BuildRetStmt(std::unique_ptr<hir::RetStmt> stmt) {
   if (stmt->expr) {
     auto value = BuildExpr(std::move(stmt->expr));
-    builder_.CreateRet(value);
+    if (value->getType()->isPointerTy()) {
+      auto load = builder_.CreateLoad(currentFunc_->getReturnType(), value);
+      builder_.CreateRet(load);
+    } else {
+      builder_.CreateRet(value);
+    }
   } else {
     builder_.CreateRetVoid();
   }
@@ -147,7 +152,7 @@ void Builder::BuildVarDeclStmt(std::unique_ptr<hir::VarDeclStmt> stmt) {
   auto decl = stmt->decl;
   auto value = BuildExpr(std::move(stmt->expr));
   auto ty = GetLLVMTyFromTy(decl->type);
-  llvm::AllocaInst* alloca = builder_.CreateAlloca(ty, nullptr);
+  llvm::AllocaInst* alloca = builder_.CreateAlloca(ty, nullptr, decl->name);
   builder_.CreateStore(value, alloca);
   declMap_[decl] = alloca;
 }
@@ -244,9 +249,10 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
       switch (value->ValueKind()) {
         case hir::Value::Kind::VARIABLE: {
           auto var = (hir::Variable*)value;
-          auto alloc = declMap_[var->decl];
-          return builder_.CreateLoad(GetLLVMTyFromTy(expr->Ty()), alloc,
-                                     var->decl->name);
+          auto alloca = (llvm::AllocaInst*)declMap_[var->decl];
+          return builder_.CreateLoad(alloca->getType()->getElementType(),
+                                     alloca);
+
         } break;
         case hir::Value::Kind::CONSTANT:
           return BuildConstant(
@@ -260,11 +266,17 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
       while (!call->args.empty()) {
         auto arg = std::move(call->args.front());
         call->args.pop_front();
-        argValues[i] = BuildExpr(std::move(arg));
+        auto expr = BuildExpr(std::move(arg));
+        if (!expr->getType()->isPointerTy()) {
+          auto alloca = builder_.CreateAlloca(expr->getType());
+          builder_.CreateStore(expr, alloca);
+          expr = alloca;
+        }
+        argValues[i] = expr;
         i++;
       }
-      auto fnType = declMap_[call->decl];
-      return llvm::CallInst::Create(fnType, argValues, call->decl->name);
+      auto fnType = (llvm::Function*)declMap_[call->decl];
+      return builder_.CreateCall(fnType, argValues, call->decl->name);
     } break;
     case hir::Expr::Kind::UNARY: {
       /* auto unary = (hir::Unary*)expr; */
