@@ -1,6 +1,7 @@
 #ifndef FELIS_SYNTAX_AST_H_
 #define FELIS_SYNTAX_AST_H_
 
+#include <deque>
 #include <memory>
 #include <string>
 #include <vector>
@@ -27,9 +28,8 @@ enum BinOp {
 
 struct Node {
   enum Kind { EXTERN, FN_DECL, FN_PROTO, FN_ARG, STMT };
-  virtual ~Node() = default;
-
   virtual Kind NodeKind() = 0;
+
   virtual Pos GetPos() = 0;
 };
 
@@ -37,184 +37,198 @@ struct Stmt : public Node {
   Node::Kind NodeKind() override { return Node::Kind::STMT; }
 
   enum Kind { EXPR, RET, VAR_DECL, ASSIGN, IF, BLOCK };
-
-  virtual Kind StmtKind() = 0;
-  virtual Pos GetPos() override = 0;
+  virtual Stmt::Kind StmtKind() = 0;
 };
 
 struct Block : public Stmt {
-  Kind StmtKind() override { return Stmt::Kind::BLOCK; }
+  Block(Pos pos) : pos(pos){};
 
   Pos pos;
-  std::vector<std::unique_ptr<Stmt>> stmts;
-
-  explicit Block(Pos pos) : pos(pos){};
+  std::deque<std::unique_ptr<Stmt>> stmts;
 
   Pos GetPos() override { return pos; }
+
+  Stmt::Kind StmtKind() override { return Stmt::Kind::BLOCK; }
 };
 
 struct Expr : public Stmt {
-  Stmt::Kind StmtKind() override { return Stmt::Kind::EXPR; }
-
   enum Kind { IDENT, BINARY, LIT, CALL, UNARY };
+  virtual Expr::Kind ExprKind() = 0;
 
-  virtual Kind ExprKind() = 0;
-  virtual Pos GetPos() override = 0;
+  Stmt::Kind StmtKind() override { return Stmt::Kind::EXPR; }
 };
 
 struct Ident : public Expr {
-  Expr::Kind ExprKind() override { return Expr::Kind::IDENT; }
+  Ident(Pos pos, std::string val) : pos(pos), val(val) {}
 
-  std::string val;
   Pos pos;
-
-  explicit Ident(Pos pos, std::string val) : pos(pos), val(val) {}
+  std::string val;
 
   Pos GetPos() override { return pos; }
+
+  Expr::Kind ExprKind() override { return Expr::Kind::IDENT; }
 };
 
 struct Lit : public Expr {
-  Expr::Kind ExprKind() override { return Expr::Kind::LIT; }
-
   enum Kind { INT, FLOAT, CHAR, BOOL, STRING };
+  Lit::Kind LitKind() { return kind; }
+
+  Lit(Pos pos, Lit::Kind kind, std::string val = "")
+      : pos(pos), kind(kind), val(val) {}
 
   Pos pos;
-  Kind kind;
-
+  Lit::Kind kind;
   std::string val;
-
-  explicit Lit(Pos pos, Kind kind, std::string val = "")
-      : pos(pos), kind(kind), val(val) {}
 
   Pos GetPos() override { return pos; }
 
-  Lit::Kind LitKind() { return kind; }
+  Expr::Kind ExprKind() override { return Expr::Kind::LIT; }
 };
 
 enum UnOp { NEG, NOT };
 
 struct BinaryExpr : public Expr {
-  Expr::Kind ExprKind() override { return Expr::Kind::BINARY; }
+  BinaryExpr(std::unique_ptr<Expr> lhs, BinOp op, std::unique_ptr<Expr> rhs)
+      : lhs(std::move(lhs)), rhs(std::move(rhs)), op(op) {}
 
   std::unique_ptr<Expr> lhs;
   std::unique_ptr<Expr> rhs;
   BinOp op;
 
-  BinaryExpr(Expr* lhs, BinOp op, Expr* rhs)
-      : lhs(std::unique_ptr<Expr>(lhs)),
-        rhs(std::unique_ptr<Expr>(rhs)),
-        op(op) {}
+  Pos GetPos() override {
+    if (!lhs) {
+      std::cerr << "lhs is already moved" << std::endl;
+      std::exit(1);
+    }
+    return lhs->GetPos();
+  }
 
-  Pos GetPos() override { return lhs->GetPos(); }
+  Expr::Kind ExprKind() override { return Expr::Kind::BINARY; }
 };
 
 struct CallExpr : public Expr {
-  Expr::Kind ExprKind() override { return Expr::Kind::CALL; }
-
-  std::unique_ptr<Ident> ident;
-  std::vector<std::unique_ptr<Expr>> args;
-
-  CallExpr(std::unique_ptr<Ident> ident,
-           std::vector<std::unique_ptr<Expr>> args)
+  CallExpr(std::unique_ptr<Ident> ident, std::deque<std::unique_ptr<Expr>> args)
       : ident(std::move(ident)), args(std::move(args)) {}
 
-  Pos GetPos() override { return ident->pos; }
+  std::unique_ptr<Ident> ident;
+  std::deque<std::unique_ptr<Expr>> args;
+
+  Pos GetPos() override {
+    if (!ident) {
+      std::cerr << "ident is already moved" << std::endl;
+      std::exit(1);
+    }
+    return ident->pos;
+  }
+
+  Expr::Kind ExprKind() override { return Expr::Kind::CALL; }
 };
 
 struct UnaryExpr : public Expr {
-  Expr::Kind ExprKind() override { return Expr::Kind::UNARY; }
+  UnaryExpr(Pos pos, UnOp unOp, std::unique_ptr<Expr> expr)
+      : pos(pos), unOp(unOp), expr(std::move(expr)) {}
 
   Pos pos;
   UnOp unOp;
   std::unique_ptr<Expr> expr;
 
-  UnaryExpr(Pos pos, UnOp unOp, Expr* expr)
-      : pos(pos), unOp(unOp), expr(std::unique_ptr<Expr>(expr)) {}
-
   Pos GetPos() override { return pos; }
+
+  Expr::Kind ExprKind() override { return Expr::Kind::UNARY; }
 };
 
 struct RetStmt : public Stmt {
-  Kind StmtKind() override { return Stmt::Kind::RET; }
+  RetStmt(Pos pos, std::unique_ptr<Expr> expr = nullptr)
+      : pos(pos), expr(std::move(expr)) {}
 
   Pos pos;
   std::unique_ptr<Expr> expr;
 
-  explicit RetStmt(Pos pos, Expr* expr = nullptr)
-      : pos(pos), expr(std::unique_ptr<Expr>(expr)) {}
-
   Pos GetPos() override { return pos; }
+
+  Stmt::Kind StmtKind() override { return Stmt::Kind::RET; }
 };
 
 struct VarDeclStmt : public Stmt {
-  Kind StmtKind() override { return Stmt::Kind::VAR_DECL; }
+  VarDeclStmt(Pos pos, bool isLet, std::unique_ptr<Ident> name,
+              std::unique_ptr<Expr> expr)
+      : pos(pos), isLet(isLet), name(std::move(name)), expr(std::move(expr)) {}
 
+  Pos pos;
   bool isLet;
   std::unique_ptr<Ident> name;
   std::unique_ptr<Expr> expr;
-  Pos pos;
-
-  VarDeclStmt(Pos pos, bool isLet, std::unique_ptr<Ident> name, Expr* expr)
-      : pos(pos),
-        isLet(isLet),
-        name(std::move(name)),
-        expr(std::unique_ptr<Expr>(expr)) {}
 
   Pos GetPos() override { return pos; }
+
+  Stmt::Kind StmtKind() override { return Stmt::Kind::VAR_DECL; }
 };
 
 struct AssignStmt : public Stmt {
-  Kind StmtKind() override { return Stmt::Kind::ASSIGN; }
+  AssignStmt(std::unique_ptr<Ident> name, std::unique_ptr<Expr> expr)
+      : name(std::move(name)), expr(std::move(expr)) {}
 
   std::unique_ptr<Ident> name;
   std::unique_ptr<Expr> expr;
 
-  AssignStmt(std::unique_ptr<Ident> name, Expr* expr)
-      : name(std::move(name)), expr(std::unique_ptr<Expr>(expr)) {}
+  Pos GetPos() override {
+    if (!name) {
+      std::cerr << "name is already moved" << std::endl;
+      std::exit(1);
+    }
+    return name->pos;
+  }
 
-  Pos GetPos() override { return name->pos; }
+  Stmt::Kind StmtKind() override { return Stmt::Kind::ASSIGN; }
 };
 
 struct IfStmt : public Stmt {
-  Kind StmtKind() override { return Stmt::Kind::IF; }
-
-  std::unique_ptr<Expr> cond;
-  std::unique_ptr<Block> block;
-  std::unique_ptr<Stmt> els;  // block or if
-  Pos pos;
-
-  IfStmt(Pos pos, Expr* cond, std::unique_ptr<Block> block,
+  IfStmt(Pos pos, std::unique_ptr<Expr> cond, std::unique_ptr<Block> block,
          std::unique_ptr<Stmt> els = nullptr)
       : pos(pos),
-        cond(std::unique_ptr<Expr>(cond)),
+        cond(std::move(cond)),
         block(std::move(block)),
         els(std::move(els)) {}
 
+  Pos pos;
+  std::unique_ptr<Expr> cond;
+  std::unique_ptr<Block> block;
+  std::unique_ptr<Stmt> els;  // block or if
+
   Pos GetPos() override { return pos; }
+
+  Stmt::Kind StmtKind() override { return Stmt::Kind::IF; }
 };
 
 struct FnArg : public Node {
-  Kind NodeKind() override { return Kind::FN_ARG; }
+  FnArg(std::unique_ptr<Ident> ty, std::unique_ptr<Ident> name = nullptr)
+      : ty(std::move(ty)), name(std::move(name)) {}
 
   std::unique_ptr<Ident> ty;
   std::unique_ptr<Ident> name;
 
-  bool withName() { return name != nullptr; }
+  bool WithName() { return name != nullptr; }
 
-  FnArg(std::unique_ptr<Ident> ty, std::unique_ptr<Ident> name = nullptr)
-      : ty(std::move(ty)), name(std::move(name)) {}
+  Pos GetPos() override {
+    if (WithName()) {
+      if (!name) {
+        std::cerr << "name is already moved" << std::endl;
+        std::exit(1);
+      }
+      return name->pos;
+    } else {
+      if (!ty) {
+        std::cerr << "ty is already moved" << std::endl;
+        std::exit(1);
+      }
+      return ty->pos;
+    }
+  }
 
-  Pos GetPos() override { return withName() ? name->pos : ty->pos; }
+  Node::Kind NodeKind() override { return Kind::FN_ARG; }
 };
 
 struct FnProto : public Node {
-  Kind NodeKind() override { return Kind::FN_PROTO; }
-
-  std::unique_ptr<Ident> name;
-  std::vector<std::unique_ptr<FnArg>> args;
-  std::unique_ptr<Ident> ret;
-  Pos pos;
-
   FnProto(Pos pos, std::unique_ptr<Ident> name,
           std::vector<std::unique_ptr<FnArg>> args,
           std::unique_ptr<Ident> ret = nullptr)
@@ -223,35 +237,49 @@ struct FnProto : public Node {
         args(std::move(args)),
         ret(std::move(ret)) {}
 
+  Pos pos;
+  std::unique_ptr<Ident> name;
+  std::vector<std::unique_ptr<FnArg>> args;
+  std::unique_ptr<Ident> ret;
+
   Pos GetPos() override { return pos; }
+
+  Node::Kind NodeKind() override { return Kind::FN_PROTO; }
 };
 
 struct FnDecl : public Node {
-  Kind NodeKind() override { return Kind::FN_DECL; }
+  FnDecl(std::unique_ptr<FnProto> proto, std::unique_ptr<Block> block)
+      : proto(std::move(proto)), block(std::move(block)) {}
 
   std::unique_ptr<FnProto> proto;
   std::unique_ptr<Block> block;
 
-  explicit FnDecl(std::unique_ptr<FnProto> proto, std::unique_ptr<Block> block)
-      : proto(std::move(proto)), block(std::move(block)) {}
+  Pos GetPos() override {
+    if (!proto) {
+      std::cerr << "proto is already moved" << std::endl;
+      std::exit(1);
+    }
+    return proto->pos;
+  }
 
-  Pos GetPos() override { return proto->pos; }
+  Node::Kind NodeKind() override { return Kind::FN_DECL; }
 };
 
 struct Extern : public Node {
-  Kind NodeKind() override { return Kind::EXTERN; }
-  std::unique_ptr<FnProto> proto;
-  Pos pos;
-
-  explicit Extern(Pos pos, std::unique_ptr<FnProto> proto)
+  Extern(Pos pos, std::unique_ptr<FnProto> proto)
       : pos(pos), proto(std::move(proto)) {}
 
+  Pos pos;
+  std::unique_ptr<FnProto> proto;
+
   Pos GetPos() override { return pos; }
+
+  Node::Kind NodeKind() override { return Kind::EXTERN; }
 };
 
 struct File {
   std::vector<std::unique_ptr<Extern>> externs;
-  std::vector<std::unique_ptr<FnDecl>> fnDecls;
+  std::deque<std::unique_ptr<FnDecl>> fnDecls;
 };
 
 }  // namespace ast

@@ -24,32 +24,37 @@ class Checker {
   std::shared_ptr<Scope> currentScope_;
   std::shared_ptr<Decl> currentFunc_;
 
-  std::vector<std::unique_ptr<hir::Stmt>> CheckFnDecl(
-      std::unique_ptr<ast::FnDecl>&, std::unique_ptr<hir::FnDecl>&);
+  std::unique_ptr<hir::Block> CheckFnDecl(std::unique_ptr<ast::FnDecl>,
+                                          std::unique_ptr<hir::FnDecl> &);
 
-  std::unique_ptr<hir::Stmt> CheckStmt(std::unique_ptr<ast::Stmt>&);
-  std::unique_ptr<hir::RetStmt> CheckRetStmt(ast::RetStmt*);
-  std::unique_ptr<hir::VarDeclStmt> CheckVarDeclStmt(ast::VarDeclStmt*);
-  std::unique_ptr<hir::AssignStmt> CheckAssignStmt(ast::AssignStmt*);
-  std::unique_ptr<hir::IfStmt> CheckIfStmt(ast::IfStmt*);
-  std::unique_ptr<hir::Block> CheckBlock(ast::Block*);
+  std::unique_ptr<hir::Stmt> CheckStmt(std::unique_ptr<ast::Stmt>);
+  std::unique_ptr<hir::RetStmt> CheckRetStmt(std::unique_ptr<ast::RetStmt>);
+  std::unique_ptr<hir::VarDeclStmt> CheckVarDeclStmt(
+      std::unique_ptr<ast::VarDeclStmt>);
+  std::unique_ptr<hir::AssignStmt> CheckAssignStmt(
+      std::unique_ptr<ast::AssignStmt>);
+  std::unique_ptr<hir::IfStmt> CheckIfStmt(std::unique_ptr<ast::IfStmt>);
+  std::unique_ptr<hir::Block> CheckBlock(std::unique_ptr<ast::Block>);
 
-  std::unique_ptr<hir::Expr> MakeExpr(ast::Expr* expr);
-  std::unique_ptr<hir::Constant> MakeLit(ast::Lit* lit);
+  std::unique_ptr<hir::Expr> MakeExpr(std::unique_ptr<ast::Expr> expr);
+  std::unique_ptr<hir::Constant> MakeLit(std::unique_ptr<ast::Lit> lit);
 
-  std::unique_ptr<hir::Constant> MakeConstBinary(hir::Constant*, hir::Constant*,
+  std::unique_ptr<hir::Constant> MakeConstBinary(std::unique_ptr<hir::Constant>,
+                                                 std::unique_ptr<hir::Constant>,
                                                  ast::BinOp);
-  void MakeConstUnary(hir::Constant*, ast::UnOp);
+  std::unique_ptr<hir::Constant> MakeConstUnary(std::unique_ptr<hir::Constant>,
+                                                ast::UnOp);
 
-  std::unique_ptr<hir::IntConstant> ParseInt(ast::Lit*);
-  double ParseFloat(ast::Lit*);
-  void TryExpTy(hir::Expr*, std::shared_ptr<Type>);
-  void TryConstantTy(hir::Constant* cons, std::shared_ptr<Type> ty);
-  void CheckBinary(std::unique_ptr<hir::Expr>& lhs,
-                   std::unique_ptr<hir::Expr>& rhs, ast::BinOp op);
+  std::unique_ptr<hir::IntConstant> ParseInt(std::unique_ptr<ast::Lit>);
+  double ParseFloat(std::unique_ptr<ast::Lit>);
+  std::unique_ptr<hir::Expr> TryExprTy(std::unique_ptr<hir::Expr>,
+                                       std::shared_ptr<Type>);
+  std::unique_ptr<hir::Expr> TryConstantTy(std::unique_ptr<hir::Constant>,
+                                           std::shared_ptr<Type>);
+  std::unique_ptr<hir::Binary> CheckBinary(std::unique_ptr<hir::Binary>);
 
   std::shared_ptr<Decl> InsertFnDecl(
-      bool isExt, const std::unique_ptr<ast::FnProto>& proto);
+      bool isExt, const std::unique_ptr<ast::FnProto> &proto);
   void OpenScope();
   void CloseScope();
   bool CanDecl(std::string name);

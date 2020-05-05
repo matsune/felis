@@ -134,7 +134,7 @@ std::vector<std::unique_ptr<ast::FnArg>> Parser::ParseFnArgs() {
   }
 
   auto arg = ParseFnArg();
-  bool hasName = arg->withName();
+  bool hasName = arg->WithName();
   std::map<std::string, bool> nameMap;
   if (hasName) {
     nameMap[arg->name->val] = true;
@@ -145,7 +145,7 @@ std::vector<std::unique_ptr<ast::FnArg>> Parser::ParseFnArgs() {
     Bump();
 
     arg = ParseFnArg();
-    if (hasName != arg->withName()) {
+    if (hasName != arg->WithName()) {
       Throw("mixed name in func args");
     }
     if (hasName) {
@@ -189,7 +189,7 @@ std::unique_ptr<ast::FnArg> Parser::ParseFnArg() {
   }
 }
 
-ast::Expr* Parser::ParseExpr(uint8_t prec) {
+std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
   std::unique_ptr<ast::UnOp> unOp;
   Pos pos;
   if (Peek()->kind == Token::Kind::MINUS) {
@@ -204,59 +204,45 @@ ast::Expr* Parser::ParseExpr(uint8_t prec) {
     Throw("expected primary expr");
   }
 
-  ast::Expr* lhs = ParsePrimary();
+  auto lhs = ParsePrimary();
 
   if (Peek()->kind == Token::Kind::LPAREN) {
     if (lhs->ExprKind() != ast::Expr::Kind::IDENT) {
-      delete lhs;
       Throw("cannot call non function");
     }
     if (Peek()->kind != Token::Kind::LPAREN) {
-      delete lhs;
       Throw("expected %s", ToString(Token::Kind::LPAREN).c_str());
     }
     Bump();
 
-    std::vector<std::unique_ptr<ast::Expr>> args;
+    std::deque<std::unique_ptr<ast::Expr>> args;
     if (Peek()->kind == Token::Kind::RPAREN) {
       Bump();
     } else {
-      try {
-        auto first = ParseExpr();
-        args.emplace_back(first);
-      } catch (const CompileError& e) {
-        delete lhs;
-        throw e;
-      }
+      args.push_back(ParseExpr());
 
       if (Peek()->kind == Token::Kind::RPAREN) {
-        return new ast::CallExpr(
-            std::unique_ptr<ast::Ident>(dynamic_cast<ast::Ident*>(lhs)),
+        return std::make_unique<ast::CallExpr>(
+            std::unique_ptr<ast::Ident>((ast::Ident*)lhs.release()),
             std::move(args));
       }
 
       while (Peek()->kind != Token::Kind::RPAREN) {
         if (Peek()->kind != Token::Kind::COMMA) {
-          delete lhs;
           Throw("expected %s", ToString(Token::Kind::COMMA).c_str());
         }
         Bump();
 
-        try {
-          ast::Expr* arg = ParseExpr();
-          args.emplace_back(arg);
-        } catch (const CompileError& e) {
-          delete lhs;
-          throw e;
-        }
+        args.push_back(ParseExpr());
       }
       Bump();
     }
-    lhs = new ast::CallExpr(std::unique_ptr<ast::Ident>((ast::Ident*)lhs),
-                            std::move(args));
+    lhs = std::make_unique<ast::CallExpr>(
+        std::unique_ptr<ast::Ident>((ast::Ident*)lhs.release()),
+        std::move(args));
   }
   if (unOp) {
-    return new ast::UnaryExpr(pos, *unOp, lhs);
+    return std::make_unique<ast::UnaryExpr>(pos, *unOp, std::move(lhs));
   }
 
   if (Peek()->nl) {
@@ -273,35 +259,29 @@ ast::Expr* Parser::ParseExpr(uint8_t prec) {
     }
 
     Bump();
-    try {
-      ast::Expr* rhs = ParseExpr(binOp);
-      lhs = new ast::BinaryExpr(lhs, binOp, rhs);
-    } catch (const CompileError& e) {
-      delete lhs;
-      throw e;
-    }
+    lhs = std::make_unique<ast::BinaryExpr>(std::move(lhs), binOp,
+                                            ParseExpr(binOp));
   }
 }  // namespace felis
 
-ast::Expr* Parser::ParsePrimary() {
+std::unique_ptr<ast::Expr> Parser::ParsePrimary() {
   auto token = Bump();
   Pos pos = token->pos;
   if (token->kind == Token::Kind::IDENT) {
-    return new ast::Ident(pos, token->val);
+    return std::make_unique<ast::Ident>(pos, token->val);
   } else if (token->kind == Token::Kind::LIT_INT) {
-    return new ast::Lit(pos, ast::Lit::Kind::INT, token->val);
+    return std::make_unique<ast::Lit>(pos, ast::Lit::Kind::INT, token->val);
   } else if (token->kind == Token::Kind::LIT_FLOAT) {
-    return new ast::Lit(pos, ast::Lit::Kind::FLOAT, token->val);
+    return std::make_unique<ast::Lit>(pos, ast::Lit::Kind::FLOAT, token->val);
   } else if (token->kind == Token::Kind::LIT_BOOL) {
-    return new ast::Lit(pos, ast::Lit::Kind::BOOL, token->val);
+    return std::make_unique<ast::Lit>(pos, ast::Lit::Kind::BOOL, token->val);
   } else if (token->kind == Token::Kind::LIT_CHAR) {
-    return new ast::Lit(pos, ast::Lit::Kind::CHAR, token->val);
+    return std::make_unique<ast::Lit>(pos, ast::Lit::Kind::CHAR, token->val);
   } else if (token->kind == Token::Kind::LIT_STR) {
-    return new ast::Lit(pos, ast::Lit::Kind::STRING, token->val);
+    return std::make_unique<ast::Lit>(pos, ast::Lit::Kind::STRING, token->val);
   } else if (token->kind == Token::Kind::LPAREN) {
     auto expr = ParseExpr();
     if (Peek()->kind != Token::Kind::RPAREN) {
-      delete expr;
       Throw("expected %s", ToString(Token::Kind::RPAREN).c_str());
     }
     Bump();
@@ -322,8 +302,7 @@ std::unique_ptr<ast::Stmt> Parser::ParseStmt() {
     if (Peek()->nl) {
       return std::make_unique<ast::RetStmt>(pos);
     }
-    auto expr = ParseExpr();
-    return std::make_unique<ast::RetStmt>(pos, expr);
+    return std::make_unique<ast::RetStmt>(pos, ParseExpr());
 
   } else if (Peek()->kind == Token::Kind::KW_LET ||
              Peek()->kind == Token::Kind::KW_VAR) {
@@ -342,9 +321,8 @@ std::unique_ptr<ast::Stmt> Parser::ParseStmt() {
     }
     Bump();
 
-    auto expr = ParseExpr();
     return std::make_unique<ast::VarDeclStmt>(pos, isLet, std::move(name),
-                                              expr);
+                                              ParseExpr());
   } else if (Peek()->kind == Token::Kind::KW_IF) {
     return ParseIfStmt();
   } else if (Peek()->kind == Token::Kind::IDENT) {
@@ -353,12 +331,10 @@ std::unique_ptr<ast::Stmt> Parser::ParseStmt() {
       auto bump = Bump();
       auto name = std::make_unique<ast::Ident>(bump->pos, bump->val);
       Bump();
-      auto expr = ParseExpr();
-      return std::make_unique<ast::AssignStmt>(std::move(name), expr);
+      return std::make_unique<ast::AssignStmt>(std::move(name), ParseExpr());
     }
   }
-  auto expr = ParseExpr();
-  return std::unique_ptr<ast::Expr>(expr);
+  return ParseExpr();
 }
 
 std::unique_ptr<ast::IfStmt> Parser::ParseIfStmt() {
@@ -368,25 +344,21 @@ std::unique_ptr<ast::IfStmt> Parser::ParseIfStmt() {
   Pos pos = Bump()->pos;
 
   auto cond = ParseExpr();
-  try {
-    auto block = ParseBlock();
-    if (Peek()->kind != Token::Kind::KW_ELSE) {
-      return std::make_unique<ast::IfStmt>(pos, cond, std::move(block));
-    }
-    Bump();
+  auto block = ParseBlock();
+  if (Peek()->kind != Token::Kind::KW_ELSE) {
+    return std::make_unique<ast::IfStmt>(pos, std::move(cond),
+                                         std::move(block));
+  }
+  Bump();
 
-    if (Peek()->kind == Token::Kind::KW_IF) {
-      auto els = ParseIfStmt();
-      return std::make_unique<ast::IfStmt>(pos, cond, std::move(block),
-                                           std::move(els));
-    } else {
-      auto els = ParseBlock();
-      return std::make_unique<ast::IfStmt>(pos, cond, std::move(block),
-                                           std::move(els));
-    }
-  } catch (const CompileError& e) {
-    delete cond;
-    throw e;
+  if (Peek()->kind == Token::Kind::KW_IF) {
+    auto els = ParseIfStmt();
+    return std::make_unique<ast::IfStmt>(pos, std::move(cond), std::move(block),
+                                         std::move(els));
+  } else {
+    auto els = ParseBlock();
+    return std::make_unique<ast::IfStmt>(pos, std::move(cond), std::move(block),
+                                         std::move(els));
   }
 }
 

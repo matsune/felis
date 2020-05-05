@@ -268,8 +268,8 @@ void Printer::PrintExpr(ast::Expr *expr) {
         {
           for (int i = 0; i < call->args.size(); i++) {
             PrintIndex(i);
-            ast::Expr *arg = call->args.at(i).get();
-            PrintExpr(arg);
+            auto &arg = call->args.at(i);
+            PrintExpr(arg.get());
           }
         }
         Up("]");

@@ -31,22 +31,23 @@ class Builder {
   llvm::Module module_;
   llvm::IRBuilder<> builder_;
   std::unique_ptr<llvm::TargetMachine> machine_;
+  llvm::Function *currentFunc_;
 
   std::map<std::shared_ptr<Decl>, llvm::Value *> declMap_;
   llvm::Type *GetLLVMTyFromTy(std::shared_ptr<Type>);
 
   llvm::Function *BuildFnProto(std::shared_ptr<Decl>);
 
-  void BuildStmt(std::unique_ptr<hir::Stmt> &);
-  void BuildRetStmt(hir::RetStmt *);
-  void BuildVarDeclStmt(hir::VarDeclStmt *);
-  void BuildAssignStmt(hir::AssignStmt *);
-  void BuildIfStmt(hir::IfStmt *);
-  void BuildBlock(hir::Block *);
+  void BuildStmt(std::unique_ptr<hir::Stmt>);
+  void BuildRetStmt(std::unique_ptr<hir::RetStmt>);
+  void BuildVarDeclStmt(std::unique_ptr<hir::VarDeclStmt>);
+  void BuildAssignStmt(std::unique_ptr<hir::AssignStmt>);
+  void BuildIfStmt(std::unique_ptr<hir::IfStmt>);
+  void BuildBlock(std::unique_ptr<hir::Block>);
 
-  llvm::Value *BuildExpr(hir::Expr *);
-  llvm::Constant *BuildConstant(hir::Constant *);
-  llvm::Value *BuildBinary(hir::Binary *);
+  llvm::Value *BuildExpr(std::unique_ptr<hir::Expr>);
+  llvm::Constant *BuildConstant(std::unique_ptr<hir::Constant>);
+  llvm::Value *BuildBinary(std::unique_ptr<hir::Binary>);
 
   void EmitCodeGen(std::string, llvm::TargetMachine::CodeGenFileType);
 };
