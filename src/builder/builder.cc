@@ -62,7 +62,7 @@ llvm::Type* Builder::GetLLVMTyFromTy(std::shared_ptr<Type> ty) {
       auto funcType = (FuncType*)ty.get();
       std::vector<llvm::Type*> args;
       for (auto& arg : funcType->args) {
-        args.push_back(GetLLVMTyFromTy(arg)->getPointerTo());
+        args.push_back(GetLLVMTyFromTy(arg));
       }
       return llvm::FunctionType::get(GetLLVMTyFromTy(funcType->ret), args,
                                      false);
@@ -80,16 +80,7 @@ void Builder::Build(std::unique_ptr<hir::File> file) {
     declMap_[ext->decl] = BuildFnProto(ext->decl);
   }
   for (auto& fnDecl : file->fnDecls) {
-    auto func = BuildFnProto(fnDecl->decl);
-    auto it = func->arg_begin();
-    for (int i = 0; i < fnDecl->args.size(); i++) {
-      std::shared_ptr<Decl> arg = fnDecl->args.at(i);
-      auto name = arg->name;
-      it->setName(name);
-      declMap_[arg] = it;
-      it++;
-    }
-    declMap_[fnDecl->decl] = func;
+    declMap_[fnDecl->decl] = BuildFnProto(fnDecl->decl);
   }
 
   while (!file->fnDecls.empty()) {
@@ -99,6 +90,17 @@ void Builder::Build(std::unique_ptr<hir::File> file) {
     currentFunc_ = func;
     auto bb = llvm::BasicBlock::Create(ctx_, "", func);
     builder_.SetInsertPoint(bb);
+
+    auto it = func->arg_begin();
+    while (!fnDecl->args.empty()) {
+      auto arg = std::move(fnDecl->args.front());
+      fnDecl->args.pop_front();
+      llvm::AllocaInst* alloca =
+          builder_.CreateAlloca(it->getType(), nullptr, arg->name);
+      builder_.CreateStore(it, alloca);
+      declMap_[arg] = alloca;
+      it++;
+    }
 
     BuildBlock(std::move(fnDecl->block));
   }
@@ -137,12 +139,7 @@ void Builder::BuildStmt(std::unique_ptr<hir::Stmt> stmt) {
 void Builder::BuildRetStmt(std::unique_ptr<hir::RetStmt> stmt) {
   if (stmt->expr) {
     auto value = BuildExpr(std::move(stmt->expr));
-    if (value->getType()->isPointerTy()) {
-      auto load = builder_.CreateLoad(currentFunc_->getReturnType(), value);
-      builder_.CreateRet(load);
-    } else {
-      builder_.CreateRet(value);
-    }
+    builder_.CreateRet(value);
   } else {
     builder_.CreateRetVoid();
   }
@@ -248,10 +245,9 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
       auto value = (hir::Value*)expr.get();
       switch (value->ValueKind()) {
         case hir::Value::Kind::VARIABLE: {
-          auto var = (hir::Variable*)value;
-          auto alloca = (llvm::AllocaInst*)declMap_[var->decl];
-          return builder_.CreateLoad(alloca->getType()->getElementType(),
-                                     alloca);
+          auto variable = (hir::Variable*)value;
+          auto var = declMap_[variable->decl];
+          return builder_.CreateLoad(var);
 
         } break;
         case hir::Value::Kind::CONSTANT:
@@ -267,11 +263,6 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
         auto arg = std::move(call->args.front());
         call->args.pop_front();
         auto expr = BuildExpr(std::move(arg));
-        if (!expr->getType()->isPointerTy()) {
-          auto alloca = builder_.CreateAlloca(expr->getType());
-          builder_.CreateStore(expr, alloca);
-          expr = alloca;
-        }
         argValues[i] = expr;
         i++;
       }

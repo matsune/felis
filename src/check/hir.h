@@ -229,7 +229,7 @@ struct FnDecl {
   FnDecl(std::shared_ptr<Decl> decl) : decl(decl) {}
 
   std::shared_ptr<Decl> decl;
-  std::vector<std::shared_ptr<Decl>> args;
+  std::deque<std::shared_ptr<Decl>> args;
   std::unique_ptr<Block> block;
 };
 
