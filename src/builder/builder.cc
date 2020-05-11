@@ -331,7 +331,9 @@ void Builder::EmitCodeGen(std::string filename,
     throw std::runtime_error(errCode.message());
   }
   llvm::legacy::PassManager pass;
-  machine_->addPassesToEmitFile(pass, out, nullptr, ft);
+  if (machine_->addPassesToEmitFile(pass, out, nullptr, ft)) {
+    throw std::runtime_error("TargetMachine can't emit a file of this type");
+  }
   pass.run(module_);
   out.flush();
 }

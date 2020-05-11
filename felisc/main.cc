@@ -40,6 +40,7 @@ std::string getHostCPUFeatures() {
 
 std::unique_ptr<llvm::TargetMachine> CreateTargetMachine(std::string &err) {
   if (llvm::InitializeNativeTarget()) return nullptr;
+  if (llvm::InitializeNativeTargetAsmPrinter()) return nullptr;
 
   std::string triple = llvm::sys::getDefaultTargetTriple();
   std::string cpu = llvm::sys::getHostCPUName();
@@ -49,10 +50,9 @@ std::unique_ptr<llvm::TargetMachine> CreateTargetMachine(std::string &err) {
     return nullptr;
   }
 
-  llvm::Reloc::Model rm;
   llvm::TargetOptions opt;
   return std::unique_ptr<llvm::TargetMachine>(
-      target->createTargetMachine(triple, cpu, features, opt, rm));
+      target->createTargetMachine(triple, cpu, features, opt, llvm::None));
 }
 
 int main(int argc, char *argv[]) {
@@ -104,8 +104,16 @@ int main(int argc, char *argv[]) {
     if (opts->emits & EmitType::ASM) {
       builder.EmitASM(opts->outputName(EmitType::ASM));
     }
+    bool hasObj = false;
+    std::string objPath = opts->outputName(EmitType::OBJ);
     if (opts->emits & EmitType::OBJ) {
-      builder.EmitOBJ(opts->outputName(EmitType::OBJ));
+      builder.EmitOBJ(objPath);
+      hasObj = true;
+    }
+    if (opts->emits & EmitType::LINK) {
+      std::string out = opts->outputName(EmitType::LINK);
+      std::string s = "gcc " + objPath + " -o " + out;
+      system(s.c_str());
     }
   } catch (std::runtime_error err) {
     std::cerr << err.what() << std::endl;
