@@ -222,6 +222,7 @@ std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
       args.push_back(ParseExpr());
 
       if (Peek()->kind == Token::Kind::RPAREN) {
+        Bump();
         return std::make_unique<ast::CallExpr>(
             std::unique_ptr<ast::Ident>((ast::Ident*)lhs.release()),
             std::move(args));

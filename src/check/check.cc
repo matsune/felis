@@ -18,6 +18,8 @@ void Checker::SetupBuiltin() {
   currentScope_->InsertType("f64", std::make_shared<Type>(Type::Kind::F64));
   currentScope_->InsertType("bool", std::make_shared<Type>(Type::Kind::BOOL));
   currentScope_->InsertType("char", std::make_shared<Type>(Type::Kind::CHAR));
+  currentScope_->InsertType("string",
+                            std::make_shared<Type>(Type::Kind::STRING));
 }
 
 std::unique_ptr<hir::File> Checker::Check(std::unique_ptr<ast::File> file) {
