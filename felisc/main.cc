@@ -1,3 +1,8 @@
+#include <llvm/ADT/StringMap.h>
+#include <llvm/MC/SubtargetFeature.h>
+#include <llvm/Support/TargetRegistry.h>
+#include <llvm/Support/TargetSelect.h>
+
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -6,7 +11,8 @@
 #include "builder/builder.h"
 #include "check/check.h"
 #include "error/error.h"
-#include "printer/printer.h"
+#include "printer/ast_printer.h"
+#include "printer/hir_printer.h"
 #include "syntax/lexer.h"
 #include "syntax/parser.h"
 
@@ -20,6 +26,33 @@ std::unique_ptr<felis::ast::File> ParseFile(std::ifstream &in) {
     parser.PushToken(std::move(token));
   }
   return parser.Parse();
+}
+
+std::string getHostCPUFeatures() {
+  llvm::SubtargetFeatures Features;
+  llvm::StringMap<bool> HostFeatures;
+
+  if (llvm::sys::getHostCPUFeatures(HostFeatures))
+    for (auto &F : HostFeatures) Features.AddFeature(F.first(), F.second);
+
+  return Features.getString();
+}
+
+std::unique_ptr<llvm::TargetMachine> CreateTargetMachine(std::string &err) {
+  if (llvm::InitializeNativeTarget()) return nullptr;
+
+  std::string triple = llvm::sys::getDefaultTargetTriple();
+  std::string cpu = llvm::sys::getHostCPUName();
+  std::string features = getHostCPUFeatures();
+  const llvm::Target *target = llvm::TargetRegistry::lookupTarget(triple, err);
+  if (!target) {
+    return nullptr;
+  }
+
+  llvm::Reloc::Model rm;
+  llvm::TargetOptions opt;
+  return std::unique_ptr<llvm::TargetMachine>(
+      target->createTargetMachine(triple, cpu, features, opt, rm));
 }
 
 int main(int argc, char *argv[]) {
@@ -41,18 +74,21 @@ int main(int argc, char *argv[]) {
   }
   in.close();
 
-  if (opts->printAst) felis::Printer().Print(file);
+  if (opts->printAst) felis::AstPrinter().Print(file);
 
   felis::Checker checker;
   checker.SetupBuiltin();
   std::unique_ptr<felis::hir::File> hir = checker.Check(std::move(file));
 
-  felis::Builder builder;
+  felis::HirPrinter().Print(hir);
+
   std::string err;
-  if (!builder.CreateTargetMachine(err)) {
+  auto machine = CreateTargetMachine(err);
+  if (!machine) {
     std::cerr << opts->filename << ":" << err << std::endl;
     return 1;
   }
+  felis::Builder builder("felis", opts->filename, std::move(machine));
   try {
     builder.Build(std::move(hir));
   } catch (const felis::CompileError &e) {

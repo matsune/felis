@@ -1,4 +1,4 @@
-#include "printer.h"
+#include "printer/ast_printer.h"
 
 #include <sstream>
 
@@ -17,7 +17,7 @@ static std::string tostring(const T &t) {
 
 }  // namespace
 
-void Printer::Print(const std::unique_ptr<ast::File> &file) {
+void AstPrinter::Print(const std::unique_ptr<ast::File> &file) {
   WriteLineNum();
   for (int i = 0; i < file->externs.size(); i++) {
     PrintIndex(i);
@@ -30,48 +30,9 @@ void Printer::Print(const std::unique_ptr<ast::File> &file) {
   printf("\n");
 }
 
-void Printer::WriteLineNum() { printf("%4d ", line_); }
+void AstPrinter::PrintIndex(int idx) { Write("[%d] ", idx); }
 
-void Printer::Indent() {
-  for (int i = 0; i < depth_; i++) {
-    std::cout << ". ";
-  }
-}
-
-template <typename... Args>
-void Printer::Write(const std::string format, Args const &... args) {
-  if (after_nl_) {
-    Indent();
-  }
-  printf(format.c_str(), args...);
-  after_nl_ = false;
-}
-
-template <typename... Args>
-void Printer::Writeln(const std::string format, Args const &... args) {
-  if (after_nl_) {
-    Indent();
-  }
-  printf(format.c_str(), args...);
-  std::cout << std::endl;
-  line_++;
-  WriteLineNum();
-  after_nl_ = true;
-}
-
-void Printer::Down(std::string s) {
-  Writeln(s);
-  depth_++;
-}
-
-void Printer::Up(std::string s) {
-  depth_--;
-  Writeln(s);
-}
-
-void Printer::PrintIndex(int idx) { Write("[%d] ", idx); }
-
-void Printer::PrintExtern(ast::Extern *ext) {
+void AstPrinter::PrintExtern(ast::Extern *ext) {
   if (!ext) {
     Writeln("null");
     return;
@@ -85,7 +46,7 @@ void Printer::PrintExtern(ast::Extern *ext) {
   Up("}");
 }
 
-void Printer::PrintFnDecl(ast::FnDecl *fn) {
+void AstPrinter::PrintFnDecl(ast::FnDecl *fn) {
   if (!fn) {
     Writeln("null");
     return;
@@ -100,7 +61,7 @@ void Printer::PrintFnDecl(ast::FnDecl *fn) {
   Up("}");
 }
 
-void Printer::PrintProto(ast::FnProto *proto) {
+void AstPrinter::PrintProto(ast::FnProto *proto) {
   if (!proto) {
     Writeln("null");
     return;
@@ -117,7 +78,7 @@ void Printer::PrintProto(ast::FnProto *proto) {
   Up("]");
 }
 
-void Printer::PrintFnArg(ast::FnArg *arg) {
+void AstPrinter::PrintFnArg(ast::FnArg *arg) {
   if (!arg) {
     Writeln("null");
     return;
@@ -134,7 +95,7 @@ void Printer::PrintFnArg(ast::FnArg *arg) {
   Up("}");
 }
 
-void Printer::PrintBlock(ast::Block *block) {
+void AstPrinter::PrintBlock(ast::Block *block) {
   if (!block) {
     Writeln("null");
     return;
@@ -151,7 +112,7 @@ void Printer::PrintBlock(ast::Block *block) {
   Up("}");
 }
 
-void Printer::PrintIdent(ast::Ident *ident) {
+void AstPrinter::PrintIdent(ast::Ident *ident) {
   if (!ident) {
     Writeln("null");
     return;
@@ -165,7 +126,7 @@ void Printer::PrintIdent(ast::Ident *ident) {
   Up("}");
 }
 
-void Printer::PrintStmt(ast::Stmt *stmt) {
+void AstPrinter::PrintStmt(ast::Stmt *stmt) {
   if (!stmt) {
     Writeln("null");
     return;
@@ -232,7 +193,7 @@ void Printer::PrintStmt(ast::Stmt *stmt) {
   }
 }
 
-void Printer::PrintExpr(ast::Expr *expr) {
+void AstPrinter::PrintExpr(ast::Expr *expr) {
   if (!expr) {
     Writeln("null");
     return;
@@ -290,7 +251,7 @@ void Printer::PrintExpr(ast::Expr *expr) {
   }
 }
 
-void Printer::PrintLit(ast::Lit *lit) {
+void AstPrinter::PrintLit(ast::Lit *lit) {
   if (!lit) {
     Writeln("null");
     return;
@@ -343,10 +304,6 @@ void Printer::PrintLit(ast::Lit *lit) {
       Up("}");
       break;
   }
-}
-
-void Printer::PrintPos(Pos pos) {
-  Writeln("Pos: line %d, col %d", pos.line, pos.column);
 }
 
 }  // namespace felis

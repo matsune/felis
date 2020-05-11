@@ -1,45 +1,12 @@
 #include "builder.h"
 
-#include <llvm/ADT/StringMap.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
-#include <llvm/IR/Function.h>
 #include <llvm/IR/LegacyPassManager.h>
-#include <llvm/MC/SubtargetFeature.h>
-#include <llvm/Support/Host.h>
-#include <llvm/Support/TargetRegistry.h>
-#include <llvm/Support/TargetSelect.h>
 
+#include "macro.h"
 #include "ptr.h"
 
 namespace felis {
-
-std::string getHostCPUFeatures() {
-  llvm::SubtargetFeatures Features;
-  llvm::StringMap<bool> HostFeatures;
-
-  if (llvm::sys::getHostCPUFeatures(HostFeatures))
-    for (auto& F : HostFeatures) Features.AddFeature(F.first(), F.second);
-
-  return Features.getString();
-}
-
-bool Builder::CreateTargetMachine(std::string& err) {
-  if (llvm::InitializeNativeTarget()) return false;
-
-  std::string triple = llvm::sys::getDefaultTargetTriple();
-  std::string cpu = llvm::sys::getHostCPUName();
-  std::string features = getHostCPUFeatures();
-  const llvm::Target* target = llvm::TargetRegistry::lookupTarget(triple, err);
-  if (!target) {
-    return false;
-  }
-
-  llvm::Reloc::Model rm;
-  llvm::TargetOptions opt;
-  machine_ = std::unique_ptr<llvm::TargetMachine>(
-      target->createTargetMachine(triple, cpu, features, opt, rm));
-  return true;
-}
 
 llvm::Type* Builder::GetLLVMTyFromTy(std::shared_ptr<Type> ty) {
   switch (ty->TypeKind()) {
@@ -56,8 +23,7 @@ llvm::Type* Builder::GetLLVMTyFromTy(std::shared_ptr<Type> ty) {
     case Type::Kind::F64:
       return llvm::Type::getDoubleTy(ctx_);
     case Type::Kind::STRING:
-      std::cerr << "unimplemented string" << std::endl;
-      exit(1);
+      return llvm::Type::getInt8PtrTy(ctx_);
     case Type::Kind::FUNC: {
       auto funcType = (FuncType*)ty.get();
       std::vector<llvm::Type*> args;
@@ -70,8 +36,7 @@ llvm::Type* Builder::GetLLVMTyFromTy(std::shared_ptr<Type> ty) {
     case Type::Kind::VOID:
       return llvm::Type::getVoidTy(ctx_);
     default:
-      std::cerr << "unimplemented ty" << std::endl;
-      exit(1);
+      UNREACHABLE
   }
 }
 
@@ -162,13 +127,11 @@ void Builder::BuildAssignStmt(std::unique_ptr<hir::AssignStmt> stmt) {
 
 void Builder::BuildIfStmt(std::unique_ptr<hir::IfStmt> ifStmt) {
   auto condVal = BuildExpr(std::move(ifStmt->cond));
-  llvm::Value* cond =
-      builder_.CreateICmpNE(condVal, llvm::ConstantInt::getFalse(ctx_));
   llvm::BasicBlock* thenBB =
       llvm::BasicBlock::Create(ctx_, "then", currentFunc_);
   llvm::BasicBlock* elseBB =
       llvm::BasicBlock::Create(ctx_, "else", currentFunc_);
-  builder_.CreateCondBr(cond, thenBB, elseBB);
+  builder_.CreateCondBr(condVal, thenBB, elseBB);
   builder_.SetInsertPoint(thenBB);
 
   BuildBlock(std::move(ifStmt->block));
@@ -186,7 +149,9 @@ void Builder::BuildIfStmt(std::unique_ptr<hir::IfStmt> ifStmt) {
 }
 
 void Builder::BuildBlock(std::unique_ptr<hir::Block> block) {
+  int i = 0;
   while (!block->stmts.empty()) {
+    std::cout << "Stmt " << i++ << std::endl;
     auto stmt = std::move(block->stmts.front());
     block->stmts.pop_front();
     BuildStmt(std::move(stmt));
@@ -195,45 +160,76 @@ void Builder::BuildBlock(std::unique_ptr<hir::Block> block) {
 
 llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
   auto ty = binary->Ty();
+  bool isF = binary->lhs->Ty()->IsFloat();
   auto lVal = BuildExpr(std::move(binary->lhs));
   auto rVal = BuildExpr(std::move(binary->rhs));
-  llvm::Instruction::BinaryOps op;
   switch (binary->binOp) {
-    case ast::BinOp::LT:
-      /* op = llvm::Instruction::BinaryOps::Add; */
-      break;
-    case ast::BinOp::LE:
-      /* op = llvm::Instruction::BinaryOps::Add; */
-      break;
-    case ast::BinOp::GT:
-      /* op = llvm::Instruction::BinaryOps::Add; */
-      break;
-    case ast::BinOp::GE:
-      /* op = llvm::Instruction::BinaryOps::Add; */
-      break;
-    case ast::BinOp::ADD:
-      op = ty->IsFloat() ? llvm::Instruction::BinaryOps::FAdd
-                         : llvm::Instruction::BinaryOps::Add;
-      break;
-    case ast::BinOp::SUB:
-      op = ty->IsFloat() ? llvm::Instruction::BinaryOps::FSub
-                         : llvm::Instruction::BinaryOps::Sub;
-      break;
-    case ast::BinOp::MUL:
-      op = ty->IsFloat() ? llvm::Instruction::BinaryOps::FMul
-                         : llvm::Instruction::BinaryOps::Mul;
-      break;
-    case ast::BinOp::DIV:
-      op = ty->IsFloat() ? llvm::Instruction::BinaryOps::FDiv
-                         : llvm::Instruction::BinaryOps::SDiv;
-      break;
-    case ast::BinOp::MOD:
-      op = ty->IsFloat() ? llvm::Instruction::BinaryOps::FRem
-                         : llvm::Instruction::BinaryOps::SRem;
-      break;
-  }
+    case ast::BinOp::LT: {
+      if (isF) {
+        std::cout << "<<<<<<<<<<<<<<<" << std::endl;
+        return builder_.CreateFCmpOLT(lVal, rVal);
+      } else {
+        return builder_.CreateICmpSLT(lVal, rVal);
+      }
+    }
+    case ast::BinOp::LE: {
+      if (isF) {
+        return builder_.CreateFCmpOLE(lVal, rVal);
+      } else {
+        return builder_.CreateICmpSLE(lVal, rVal);
+      }
+    }
 
-  return builder_.CreateBinOp(op, lVal, rVal);
+    case ast::BinOp::GT: {
+      if (isF) {
+        return builder_.CreateFCmpOGT(lVal, rVal);
+      } else {
+        return builder_.CreateICmpSGT(lVal, rVal);
+      }
+    }
+    case ast::BinOp::GE: {
+      if (isF) {
+        return builder_.CreateFCmpOGE(lVal, rVal);
+      } else {
+        return builder_.CreateICmpSGE(lVal, rVal);
+      }
+    }
+    case ast::BinOp::ADD: {
+      if (isF) {
+        return builder_.CreateFAdd(lVal, rVal);
+      } else {
+        return builder_.CreateAdd(lVal, rVal);
+      }
+    }
+    case ast::BinOp::SUB: {
+      if (isF) {
+        return builder_.CreateFSub(lVal, rVal);
+      } else {
+        return builder_.CreateSub(lVal, rVal);
+      }
+    }
+    case ast::BinOp::MUL: {
+      if (isF) {
+        return builder_.CreateFMul(lVal, rVal);
+      } else {
+        return builder_.CreateMul(lVal, rVal);
+      }
+    }
+    case ast::BinOp::DIV: {
+      if (isF) {
+        return builder_.CreateFDiv(lVal, rVal);
+      } else {
+        return builder_.CreateSDiv(lVal, rVal);
+      }
+    }
+    case ast::BinOp::MOD: {
+      if (isF) {
+        return builder_.CreateFRem(lVal, rVal);
+      } else {
+        return builder_.CreateSRem(lVal, rVal);
+      }
+    }
+  }
 }
 
 llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
@@ -247,7 +243,7 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
         case hir::Value::Kind::VARIABLE: {
           auto variable = (hir::Variable*)value;
           auto var = declMap_[variable->decl];
-          return builder_.CreateLoad(var);
+          return builder_.CreateLoad(GetLLVMTyFromTy(variable->Ty()), var);
 
         } break;
         case hir::Value::Kind::CONSTANT:
@@ -273,8 +269,7 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
       /* auto unary = (hir::Unary*)expr; */
     } break;
   }
-  std::cerr << "unimplemented expr" << std::endl;
-  exit(1);
+  UNREACHABLE
 }
 
 llvm::Constant* Builder::BuildConstant(
@@ -304,12 +299,10 @@ llvm::Constant* Builder::BuildConstant(
     case hir::Constant::Kind::STRING: {
       auto v =
           unique_cast<hir::Constant, hir::StringConstant>(std::move(constant));
+      return builder_.CreateGlobalStringPtr(v->val);
     } break;
   };
-  // TODO:
-  std::cerr << "unimplemented constant" << std::endl;
-  exit(1);
-  return nullptr;
+  UNREACHABLE
 }
 
 void Builder::EmitLLVMIR(std::string filename) {
@@ -338,7 +331,6 @@ void Builder::EmitCodeGen(std::string filename,
     throw std::runtime_error(errCode.message());
   }
   llvm::legacy::PassManager pass;
-  module_.setDataLayout(machine_->createDataLayout());
   machine_->addPassesToEmitFile(pass, out, nullptr, ft);
   pass.run(module_);
   out.flush();

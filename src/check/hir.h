@@ -65,12 +65,14 @@ struct IntConstant : public Constant {
 };
 
 struct FloatConstant : public Constant {
-  FloatConstant(Pos pos, double val) : Constant(pos), val(val){};
+  FloatConstant(Pos pos, double val, bool is32)
+      : Constant(pos), val(val), is32(is32){};
 
   double val;
+  bool is32;
 
   std::shared_ptr<Type> Ty() override {
-    return std::make_shared<Type>(Type::Kind::F64);
+    return std::make_shared<Type>(is32 ? Type::Kind::F32 : Type::Kind::F64);
   }
 
   Constant::Kind ConstantKind() override { return Constant::Kind::FLOAT; };
@@ -139,13 +141,13 @@ struct Variable : public Value {
 };
 
 struct Unary : public Expr {
-  Unary(Pos pos, ast::UnOp unOp, std::unique_ptr<Expr> exp)
-      : Expr(pos), unOp(unOp), exp(std::move(exp)) {}
+  Unary(Pos pos, ast::UnOp unOp, std::unique_ptr<Expr> expr)
+      : Expr(pos), unOp(unOp), expr(std::move(expr)) {}
 
   ast::UnOp unOp;
-  std::unique_ptr<Expr> exp;
+  std::unique_ptr<Expr> expr;
 
-  std::shared_ptr<Type> Ty() override { return exp->Ty(); }
+  std::shared_ptr<Type> Ty() override { return expr->Ty(); }
 
   Expr::Kind ExprKind() override { return Expr::Kind::UNARY; }
 

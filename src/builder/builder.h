@@ -18,8 +18,14 @@ namespace felis {
 
 class Builder {
  public:
-  Builder() : module_("felis", ctx_), builder_(ctx_){};
-  bool CreateTargetMachine(std::string &err);
+  Builder(std::string moduleName, std::string fileName,
+          std::unique_ptr<llvm::TargetMachine> machine)
+      : module_(moduleName, ctx_),
+        builder_(ctx_),
+        machine_(std::move(machine)) {
+    module_.setSourceFileName(fileName);
+    module_.setDataLayout(machine_->createDataLayout());
+  };
   void Build(std::unique_ptr<hir::File>);
   void EmitLLVMIR(std::string filename);
   void EmitLLVMBC(std::string filename);
