@@ -104,13 +104,16 @@ int main(int argc, char *argv[]) {
     if (opts->emits & EmitType::ASM) {
       builder.EmitASM(opts->outputName(EmitType::ASM));
     }
+    bool emitObj = opts->emits & EmitType::OBJ;
+    bool emitLink = opts->emits & EmitType::LINK;
+
     bool hasObj = false;
     std::string objPath = opts->outputName(EmitType::OBJ);
-    if (opts->emits & EmitType::OBJ) {
+    if (emitObj || emitLink) {
       builder.EmitOBJ(objPath);
       hasObj = true;
     }
-    if (opts->emits & EmitType::LINK) {
+    if (emitLink) {
       std::string out = opts->outputName(EmitType::LINK);
       std::string s = "gcc " + objPath + " -o " + out;
       system(s.c_str());
