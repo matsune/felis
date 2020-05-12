@@ -2,75 +2,7 @@
 #include <memory>
 #include <string>
 
-enum EmitType {
-  LINK = (1u << 0),
-  LLVM_IR = (1u << 1),
-  LLVM_BC = (1u << 2),
-  ASM = (1u << 3),
-  OBJ = (1u << 4),
-};
-
-using Emits = uint8_t;
-
-std::string fileBase(std::string path) {
-  if (path == "") {
-    return ".";
-  }
-  while (!path.empty() && (path[path.size() - 1] == '/')) {
-    path = path.substr(0, path.size() - 1);
-  }
-  path = path.substr(path.rfind("/") + 1);
-  if (path == "") {
-    return "/";
-  }
-  return path;
-}
-
-std::string fileStem(std::string path) {
-  path = fileBase(path);
-  return path.substr(0, path.rfind("."));
-}
-
-std::string extOfEmit(EmitType emit) {
-  switch (emit) {
-    case EmitType::LLVM_IR:
-      return ".ll";
-    case EmitType::LLVM_BC:
-      return ".bc";
-    case EmitType::ASM:
-      return ".s";
-    case EmitType::OBJ:
-      return ".o";
-    case EmitType::LINK:
-      return "";
-  }
-}
-
-struct Opts {
-  Opts(std::string filename, std::string output, bool printAst, Emits emits,
-       bool isMultiEmits)
-      : filename(filename),
-        output(output),
-        printAst(printAst),
-        emits(emits),
-        isMultiEmits(isMultiEmits){};
-  std::string filename;
-  std::string output;
-  bool printAst;
-  Emits emits;
-  bool isMultiEmits;
-
-  std::string outputName(EmitType emit) {
-    if (output.empty()) {
-      return fileStem(filename) + extOfEmit(emit);
-    }
-    if (isMultiEmits) {
-      return fileStem(output) + extOfEmit(emit);
-    } else {
-      return output;
-    }
-  }
-};
+#include "opts.h"
 
 std::unique_ptr<Opts> ParseArgs(int argc, char *argv[]) {
   cxxopts::Options options("felisc");
@@ -114,17 +46,8 @@ std::unique_ptr<Opts> ParseArgs(int argc, char *argv[]) {
     }
   }
 
-  bool isMultiEmits = emits.size() > 1;
-  bool hasOut = result.count("out") > 0;
-  if (isMultiEmits && hasOut) {
-    std::cerr
-        << "due to multiple output types requested, the explicitly specified "
-           "output file name will be adapted for each output type"
-        << std::endl;
-  }
-
   return std::make_unique<Opts>(input.as<std::string>(),
                                 result["out"].as<std::string>(),
-                                result["ast"].as<bool>(), emit, isMultiEmits);
+                                result["ast"].as<bool>(), emit);
 }
 

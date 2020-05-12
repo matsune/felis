@@ -55,12 +55,11 @@ std::unique_ptr<llvm::TargetMachine> CreateTargetMachine(std::string &err) {
       target->createTargetMachine(triple, cpu, features, opt, llvm::None));
 }
 
-int main(int argc, char *argv[]) {
-  auto opts = ParseArgs(argc, argv);
+int run(std::unique_ptr<Opts> opts) {
   std::ifstream in;
-  in.open(opts->filename);
+  in.open(opts->Filename());
   if (!in.is_open()) {
-    std::cerr << "felisc: failed to open " << opts->filename << std::endl;
+    std::cerr << "felisc: failed to open " << opts->Filename() << std::endl;
     return 1;
   }
 
@@ -68,13 +67,13 @@ int main(int argc, char *argv[]) {
   try {
     file = ParseFile(in);
   } catch (const felis::CompileError &e) {
-    std::cerr << opts->filename << ":" << e.what() << std::endl;
+    std::cerr << opts->Filename() << ":" << e.what() << std::endl;
     in.close();
     return 1;
   }
   in.close();
 
-  if (opts->printAst) felis::AstPrinter().Print(file);
+  if (opts->IsPrintAst()) felis::AstPrinter().Print(file);
 
   felis::Checker checker;
   checker.SetupBuiltin();
@@ -85,36 +84,37 @@ int main(int argc, char *argv[]) {
   std::string err;
   auto machine = CreateTargetMachine(err);
   if (!machine) {
-    std::cerr << opts->filename << ":" << err << std::endl;
+    std::cerr << opts->Filename() << ":" << err << std::endl;
     return 1;
   }
-  felis::Builder builder("felis", opts->filename, std::move(machine));
+  felis::Builder builder("felis", opts->Filename(), std::move(machine));
   try {
     builder.Build(std::move(hir));
   } catch (const felis::CompileError &e) {
-    std::cerr << opts->filename << ":" << e.what() << std::endl;
+    std::cerr << opts->Filename() << ":" << e.what() << std::endl;
+    return 1;
   }
   try {
-    if (opts->emits & EmitType::LLVM_IR) {
-      builder.EmitLLVMIR(opts->outputName(EmitType::LLVM_IR));
+    if (opts->IsEmit(EmitType::LLVM_IR)) {
+      builder.EmitLLVMIR(opts->OutputName(EmitType::LLVM_IR));
     }
-    if (opts->emits & EmitType::LLVM_BC) {
-      builder.EmitLLVMBC(opts->outputName(EmitType::LLVM_BC));
+    if (opts->IsEmit(EmitType::LLVM_BC)) {
+      builder.EmitLLVMBC(opts->OutputName(EmitType::LLVM_BC));
     }
-    if (opts->emits & EmitType::ASM) {
-      builder.EmitASM(opts->outputName(EmitType::ASM));
+    if (opts->IsEmit(EmitType::ASM)) {
+      builder.EmitASM(opts->OutputName(EmitType::ASM));
     }
-    bool emitObj = opts->emits & EmitType::OBJ;
-    bool emitLink = opts->emits & EmitType::LINK;
+    bool emitObj = opts->IsEmit(EmitType::OBJ);
+    bool emitLink = opts->IsEmit(EmitType::LINK);
 
     bool hasObj = false;
-    std::string objPath = opts->outputName(EmitType::OBJ);
+    std::string objPath = opts->OutputName(EmitType::OBJ);
     if (emitObj || emitLink) {
       builder.EmitOBJ(objPath);
       hasObj = true;
     }
     if (emitLink) {
-      std::string out = opts->outputName(EmitType::LINK);
+      std::string out = opts->OutputName(EmitType::LINK);
       std::string s = "gcc " + objPath + " -o " + out;
       system(s.c_str());
     }
@@ -122,4 +122,11 @@ int main(int argc, char *argv[]) {
     std::cerr << err.what() << std::endl;
     return 1;
   }
+
+  return 0;
+}
+
+int main(int argc, char *argv[]) {
+  auto opts = ParseArgs(argc, argv);
+  return run(std::move(opts));
 }
