@@ -23,6 +23,7 @@ void Checker::SetupBuiltin() {
 }
 
 std::unique_ptr<hir::File> Checker::Check(std::unique_ptr<ast::File> file) {
+  std::cout << "[CHECK AST]" << std::endl;
   auto hirFile = std::make_unique<hir::File>();
   for (auto& ext : file->externs) {
     auto decl = InsertFnDecl(true, ext->proto);
@@ -56,15 +57,19 @@ std::unique_ptr<hir::Block> Checker::CheckFnDecl(
     currentScope_->InsertDecl(arg->name->val, argDecl);
     hirDecl->args.push_back(argDecl);
   }
-  int i = 0;
-  auto block = std::make_unique<hir::Block>();
-  while (!fnDecl->block->stmts.empty()) {
-    std::cout << "stmt " << i++ << std::endl;
-    auto stmt = std::move(fnDecl->block->stmts.front());
-    fnDecl->block->stmts.pop_front();
-    block->stmts.push_back(CheckStmt(std::move(stmt)));
-  }
+  auto block = CheckBlock(std::move(fnDecl->block), true);
   CloseScope();
+
+  if (!block->IsTerminating()) {
+    if (currentFunc_->AsFuncType()->ret->IsVoid()) {
+      block->stmts.push_back(std::make_unique<hir::RetStmt>());
+
+    } else {
+      throw CompileError::Create("func %s is not terminated",
+                                 hirDecl->decl->name.c_str());
+    }
+  }
+
   return std::move(block);
 }
 
@@ -170,15 +175,27 @@ std::unique_ptr<hir::IfStmt> Checker::CheckIfStmt(
 }
 
 std::unique_ptr<hir::Block> Checker::CheckBlock(
-    std::unique_ptr<ast::Block> block) {
-  OpenScope();
+    std::unique_ptr<ast::Block> block, bool isFnBody) {
+  if (!isFnBody) OpenScope();
+
   auto b = std::make_unique<hir::Block>();
   while (!block->stmts.empty()) {
-    auto stmt = std::move(block->stmts.front());
+    auto stmtAst = std::move(block->stmts.front());
     block->stmts.pop_front();
-    b->stmts.push_back(CheckStmt(std::move(stmt)));
+
+    bool isLast = block->stmts.empty();
+    auto stmt = CheckStmt(std::move(stmtAst));
+    bool isTerminating = stmt->IsTerminating();
+
+    if (isTerminating && !isLast) {
+      auto& nextStmt = block->stmts.front();
+      throw CompileError::CreatePos(nextStmt->GetPos(), "unreachable code");
+    }
+
+    b->stmts.push_back(std::move(stmt));
   }
-  CloseScope();
+
+  if (!isFnBody) CloseScope();
   return std::move(b);
 }
 
@@ -257,9 +274,7 @@ std::unique_ptr<hir::Expr> Checker::MakeExpr(std::unique_ptr<ast::Expr> expr) {
       auto binary = unique_cast<ast::Expr, ast::BinaryExpr>(std::move(expr));
       auto pos = binary->GetPos();
       auto lhs = MakeExpr(std::move(binary->lhs));
-      std::cout << "lhs" << lhs.get() << std::endl;
       auto rhs = MakeExpr(std::move(binary->rhs));
-      std::cout << "rhs" << rhs.get() << std::endl;
       if (lhs->IsConstant() && rhs->IsConstant()) {
         return MakeConstBinary(
             unique_cast<hir::Expr, hir::Constant>(std::move(lhs)),
@@ -721,10 +736,8 @@ std::unique_ptr<hir::Binary> Checker::CheckBinary(
   // rhs is preferred.
   bool isRightPrior = binary->lhs->IsConstant();
   if (isRightPrior) {
-    std::cout << "isright" << std::endl;
     binary->lhs = TryExprTy(std::move(binary->lhs), rhsTy);
   } else {
-    std::cout << "isleft" << std::endl;
     binary->rhs = TryExprTy(std::move(binary->rhs), lhsTy);
   }
   return std::move(binary);

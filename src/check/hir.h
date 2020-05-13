@@ -13,6 +13,9 @@ namespace hir {
 struct Stmt {
   enum Kind { EXPR, RET, VAR_DECL, ASSIGN, IF, BLOCK };
   virtual Kind StmtKind() = 0;
+  virtual bool IsTerminating() { return false; }
+
+  bool IsRet() { return StmtKind() == Kind::RET; }
 };
 
 struct Expr : public Stmt {
@@ -121,7 +124,7 @@ struct Call : public Expr {
   std::deque<std::unique_ptr<Expr>> args;
 
   std::shared_ptr<Type> Ty() override {
-    auto fnType = (FuncType *)decl->type.get();
+    auto fnType = (FuncType*)decl->type.get();
     return fnType->ret;
   }
 
@@ -185,10 +188,16 @@ struct Block : public Stmt {
   std::deque<std::unique_ptr<Stmt>> stmts;
 
   Kind StmtKind() override { return Stmt::Kind::BLOCK; }
+
+  bool IsTerminating() override {
+    if (stmts.empty()) return false;
+    return stmts.back()->IsTerminating();
+  }
 };
 
 struct RetStmt : public Stmt {
   RetStmt(std::unique_ptr<Expr> expr = nullptr) : expr(std::move(expr)) {}
+  bool IsTerminating() override { return true; }
 
   std::unique_ptr<Expr> expr;
 
@@ -225,6 +234,11 @@ struct IfStmt : public Stmt {
   std::unique_ptr<Stmt> els;  // block or if
 
   Kind StmtKind() override { return Stmt::Kind::IF; }
+
+  bool IsTerminating() override {
+    if (els == nullptr) return false;
+    return block->IsTerminating() && els->IsTerminating();
+  }
 };
 
 struct FnDecl {

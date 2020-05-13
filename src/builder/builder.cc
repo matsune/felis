@@ -2,6 +2,7 @@
 
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/Verifier.h>
 
 #include "macro.h"
 #include "ptr.h"
@@ -41,6 +42,7 @@ llvm::Type* Builder::GetLLVMTyFromTy(std::shared_ptr<Type> ty) {
 }
 
 void Builder::Build(std::unique_ptr<hir::File> file) {
+  std::cout << "[Build HIR]" << std::endl;
   for (auto& ext : file->externs) {
     declMap_[ext->decl] = BuildFnProto(ext->decl);
   }
@@ -67,7 +69,13 @@ void Builder::Build(std::unique_ptr<hir::File> file) {
       it++;
     }
 
-    BuildBlock(std::move(fnDecl->block));
+    BuildBlock(std::move(fnDecl->block), nullptr);
+
+    std::string str;
+    llvm::raw_string_ostream s(str);
+    if (llvm::verifyFunction(*func, &s)) {
+      throw CompileError(s.str());
+    }
   }
 };
 
@@ -77,7 +85,8 @@ llvm::Function* Builder::BuildFnProto(std::shared_ptr<Decl> decl) {
                                 decl->name, module_);
 }
 
-void Builder::BuildStmt(std::unique_ptr<hir::Stmt> stmt) {
+void Builder::BuildStmt(std::unique_ptr<hir::Stmt> stmt,
+                        llvm::BasicBlock* afterBB) {
   switch (stmt->StmtKind()) {
     case hir::Stmt::EXPR:
       BuildExpr(unique_cast<hir::Stmt, hir::Expr>(std::move(stmt)));
@@ -92,11 +101,13 @@ void Builder::BuildStmt(std::unique_ptr<hir::Stmt> stmt) {
     case hir::Stmt::ASSIGN:
       BuildAssignStmt(unique_cast<hir::Stmt, hir::AssignStmt>(std::move(stmt)));
       break;
-    case hir::Stmt::IF:
-      BuildIfStmt(unique_cast<hir::Stmt, hir::IfStmt>(std::move(stmt)));
-      break;
+    case hir::Stmt::IF: {
+      BuildIfStmt(unique_cast<hir::Stmt, hir::IfStmt>(std::move(stmt)),
+                  afterBB);
+
+    } break;
     case hir::Stmt::BLOCK:
-      BuildBlock(unique_cast<hir::Stmt, hir::Block>(std::move(stmt)));
+      BuildBlock(unique_cast<hir::Stmt, hir::Block>(std::move(stmt)), afterBB);
       break;
   }
 }
@@ -125,37 +136,72 @@ void Builder::BuildAssignStmt(std::unique_ptr<hir::AssignStmt> stmt) {
   builder_.CreateStore(value, alloca);
 }
 
-void Builder::BuildIfStmt(std::unique_ptr<hir::IfStmt> ifStmt) {
+void Builder::BuildIfStmt(std::unique_ptr<hir::IfStmt> ifStmt,
+                          llvm::BasicBlock* endBB) {
+  std::cout << "[BUILD IFSTMT] endBB " << endBB << std::endl;
+  bool hasElse = ifStmt->els != nullptr;
   auto condVal = BuildExpr(std::move(ifStmt->cond));
   llvm::BasicBlock* thenBB =
-      llvm::BasicBlock::Create(ctx_, "then", currentFunc_);
-  llvm::BasicBlock* elseBB =
-      llvm::BasicBlock::Create(ctx_, "else", currentFunc_);
-  builder_.CreateCondBr(condVal, thenBB, elseBB);
-  builder_.SetInsertPoint(thenBB);
+      llvm::BasicBlock::Create(ctx_, "then", currentFunc_, endBB);
 
-  BuildBlock(std::move(ifStmt->block));
+  if (hasElse) {
+    //
+    // if cond {
+    //    <- thenBB
+    // } else {
+    //    <- elseBB
+    // }
+    // <- endBB
+    //
+    llvm::BasicBlock* elseBB =
+        llvm::BasicBlock::Create(ctx_, "else", currentFunc_, endBB);
+    builder_.CreateCondBr(condVal, thenBB, elseBB);
+    builder_.SetInsertPoint(thenBB);
+    BuildBlock(std::move(ifStmt->block), endBB);
 
-  builder_.CreateBr(elseBB);
-  builder_.SetInsertPoint(elseBB);
-
-  if (ifStmt->els) {
+    builder_.SetInsertPoint(elseBB);
     if (ifStmt->els->StmtKind() == hir::Stmt::Kind::IF) {
-      BuildIfStmt(unique_cast<hir::Stmt, hir::IfStmt>(std::move(ifStmt->els)));
+      BuildIfStmt(unique_cast<hir::Stmt, hir::IfStmt>(std::move(ifStmt->els)),
+                  endBB);
     } else if (ifStmt->els->StmtKind() == hir::Stmt::Kind::BLOCK) {
-      BuildBlock(unique_cast<hir::Stmt, hir::Block>(std::move(ifStmt->els)));
+      BuildBlock(unique_cast<hir::Stmt, hir::Block>(std::move(ifStmt->els)),
+                 endBB);
     }
+
+  } else {
+    // No else if-statement
+    //
+    // if cond {
+    //    <- thenBB
+    // }
+    // <- endBB
+    //
+    builder_.CreateCondBr(condVal, thenBB, endBB);
+    builder_.SetInsertPoint(thenBB);
+    BuildBlock(std::move(ifStmt->block), endBB);
   }
 }
 
-void Builder::BuildBlock(std::unique_ptr<hir::Block> block) {
-  int i = 0;
+void Builder::BuildBlock(std::unique_ptr<hir::Block> block,
+                         llvm::BasicBlock* afterBB) {
+  bool isTerm = block->IsTerminating();
   while (!block->stmts.empty()) {
-    std::cout << "Stmt " << i++ << std::endl;
     auto stmt = std::move(block->stmts.front());
     block->stmts.pop_front();
-    BuildStmt(std::move(stmt));
+
+    bool isLast = block->stmts.empty();
+    if (!isLast && stmt->StmtKind() == hir::Stmt::Kind::IF) {
+      auto endBB = llvm::BasicBlock::Create(ctx_, "end", currentFunc_);
+      BuildStmt(std::move(stmt), endBB);
+      builder_.SetInsertPoint(endBB);
+    } else {
+      BuildStmt(std::move(stmt), afterBB);
+    }
   }
+  if (afterBB && !isTerm) {
+    builder_.CreateBr(afterBB);
+  }
+  builder_.SetInsertPoint(afterBB);
 }
 
 llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
@@ -166,7 +212,6 @@ llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
   switch (binary->binOp) {
     case ast::BinOp::LT: {
       if (isF) {
-        std::cout << "<<<<<<<<<<<<<<<" << std::endl;
         return builder_.CreateFCmpOLT(lVal, rVal);
       } else {
         return builder_.CreateICmpSLT(lVal, rVal);
@@ -262,8 +307,10 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
         argValues[i] = expr;
         i++;
       }
+      bool isVoid = call->decl->AsFuncType()->ret->IsVoid();
       auto fnType = (llvm::Function*)declMap_[call->decl];
-      return builder_.CreateCall(fnType, argValues, call->decl->name);
+      return builder_.CreateCall(fnType, argValues,
+                                 isVoid ? "" : call->decl->name);
     } break;
     case hir::Expr::Kind::UNARY: {
       /* auto unary = (hir::Unary*)expr; */

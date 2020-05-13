@@ -44,12 +44,12 @@ class Builder {
 
   llvm::Function *BuildFnProto(std::shared_ptr<Decl>);
 
-  void BuildStmt(std::unique_ptr<hir::Stmt>);
+  void BuildStmt(std::unique_ptr<hir::Stmt>, llvm::BasicBlock *);
   void BuildRetStmt(std::unique_ptr<hir::RetStmt>);
   void BuildVarDeclStmt(std::unique_ptr<hir::VarDeclStmt>);
   void BuildAssignStmt(std::unique_ptr<hir::AssignStmt>);
-  void BuildIfStmt(std::unique_ptr<hir::IfStmt>);
-  void BuildBlock(std::unique_ptr<hir::Block>);
+  void BuildIfStmt(std::unique_ptr<hir::IfStmt>, llvm::BasicBlock *);
+  void BuildBlock(std::unique_ptr<hir::Block>, llvm::BasicBlock *);
 
   llvm::Value *BuildExpr(std::unique_ptr<hir::Expr>);
   llvm::Constant *BuildConstant(std::unique_ptr<hir::Constant>);

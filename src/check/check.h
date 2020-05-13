@@ -34,7 +34,8 @@ class Checker {
   std::unique_ptr<hir::AssignStmt> CheckAssignStmt(
       std::unique_ptr<ast::AssignStmt>);
   std::unique_ptr<hir::IfStmt> CheckIfStmt(std::unique_ptr<ast::IfStmt>);
-  std::unique_ptr<hir::Block> CheckBlock(std::unique_ptr<ast::Block>);
+  std::unique_ptr<hir::Block> CheckBlock(std::unique_ptr<ast::Block>,
+                                         bool isFnBody = false);
 
   std::unique_ptr<hir::Expr> MakeExpr(std::unique_ptr<ast::Expr> expr);
   std::unique_ptr<hir::Constant> MakeLit(std::unique_ptr<ast::Lit> lit);
