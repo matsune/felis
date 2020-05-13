@@ -42,7 +42,6 @@ llvm::Type* Builder::GetLLVMTyFromTy(std::shared_ptr<Type> ty) {
 }
 
 void Builder::Build(std::unique_ptr<hir::File> file) {
-  std::cout << "[Build HIR]" << std::endl;
   for (auto& ext : file->externs) {
     declMap_[ext->decl] = BuildFnProto(ext->decl);
   }
@@ -71,10 +70,11 @@ void Builder::Build(std::unique_ptr<hir::File> file) {
 
     BuildBlock(std::move(fnDecl->block), nullptr);
 
-    std::string str;
-    llvm::raw_string_ostream s(str);
+    /* std::string str; */
+    /* llvm::raw_string_ostream s(str); */
+    auto& s = llvm::outs();
     if (llvm::verifyFunction(*func, &s)) {
-      throw CompileError(s.str());
+      /* throw CompileError(s.str()); */
     }
   }
 };
@@ -138,7 +138,6 @@ void Builder::BuildAssignStmt(std::unique_ptr<hir::AssignStmt> stmt) {
 
 void Builder::BuildIfStmt(std::unique_ptr<hir::IfStmt> ifStmt,
                           llvm::BasicBlock* endBB) {
-  std::cout << "[BUILD IFSTMT] endBB " << endBB << std::endl;
   bool hasElse = ifStmt->els != nullptr;
   auto condVal = BuildExpr(std::move(ifStmt->cond));
   llvm::BasicBlock* thenBB =
@@ -184,24 +183,22 @@ void Builder::BuildIfStmt(std::unique_ptr<hir::IfStmt> ifStmt,
 
 void Builder::BuildBlock(std::unique_ptr<hir::Block> block,
                          llvm::BasicBlock* afterBB) {
-  bool isTerm = block->IsTerminating();
   while (!block->stmts.empty()) {
     auto stmt = std::move(block->stmts.front());
     block->stmts.pop_front();
 
     bool isLast = block->stmts.empty();
     if (!isLast && stmt->StmtKind() == hir::Stmt::Kind::IF) {
-      auto endBB = llvm::BasicBlock::Create(ctx_, "end", currentFunc_);
+      auto endBB = llvm::BasicBlock::Create(ctx_, "end", currentFunc_, afterBB);
       BuildStmt(std::move(stmt), endBB);
       builder_.SetInsertPoint(endBB);
     } else {
       BuildStmt(std::move(stmt), afterBB);
     }
   }
-  if (afterBB && !isTerm) {
+  if (!builder_.GetInsertBlock()->getTerminator()) {
     builder_.CreateBr(afterBB);
   }
-  builder_.SetInsertPoint(afterBB);
 }
 
 llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {

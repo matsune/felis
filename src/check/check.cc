@@ -23,7 +23,6 @@ void Checker::SetupBuiltin() {
 }
 
 std::unique_ptr<hir::File> Checker::Check(std::unique_ptr<ast::File> file) {
-  std::cout << "[CHECK AST]" << std::endl;
   auto hirFile = std::make_unique<hir::File>();
   for (auto& ext : file->externs) {
     auto decl = InsertFnDecl(true, ext->proto);
