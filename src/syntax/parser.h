@@ -8,18 +8,15 @@
 #include <vector>
 
 #include "error/error.h"
-#include "syntax/ast.h"
+#include "node/ast.h"
 #include "syntax/token.h"
 
 namespace felis {
 
 class Parser {
  public:
-  explicit Parser() {}
-
-  void PushToken(std::unique_ptr<Token> &&token) {
-    tokens_.push_back(std::move(token));
-  }
+  explicit Parser(std::deque<std::unique_ptr<Token>> tokens)
+      : tokens_(std::move(tokens)) {}
 
   std::unique_ptr<ast::File> Parse();
 
@@ -32,7 +29,7 @@ class Parser {
   std::unique_ptr<ast::Extern> ParseExtern();
   std::unique_ptr<ast::FnDecl> ParseFnDecl();
   std::unique_ptr<ast::FnProto> ParseFnProto();
-  std::vector<std::unique_ptr<ast::FnArg>> ParseFnArgs();
+  std::unique_ptr<ast::FnArgs> ParseFnArgs();
   std::unique_ptr<ast::FnArg> ParseFnArg();
   std::unique_ptr<ast::Expr> ParseExpr(uint8_t prec = 0);
   std::unique_ptr<ast::Expr> ParsePrimary();

@@ -5,8 +5,8 @@
 #include <memory>
 #include <string>
 
+#include "node/ast.h"
 #include "printer/printer.h"
-#include "syntax/ast.h"
 
 namespace felis {
 

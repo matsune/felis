@@ -1,16 +1,17 @@
-#ifndef FELIS_CHECK_HIR_H_
-#define FELIS_CHECK_HIR_H_
+#ifndef FELIS_NODE_HIR_H_
+#define FELIS_NODE_HIR_H_
 
 #include "check/decl.h"
 #include "check/type.h"
-#include "syntax/ast.h"
+#include "node/ast.h"
+#include "node/node.h"
 #include "syntax/rune.h"
 
 namespace felis {
 
 namespace hir {
 
-struct Stmt {
+struct Stmt : Node {
   enum Kind { EXPR, RET, VAR_DECL, ASSIGN, IF, BLOCK };
   virtual Kind StmtKind() = 0;
   virtual bool IsTerminating() { return false; }
@@ -19,25 +20,34 @@ struct Stmt {
 };
 
 struct Expr : public Stmt {
-  Stmt::Kind StmtKind() override { return Stmt::Kind::EXPR; }
+  Loc begin;
+  Loc end;
+
+  Expr(Loc begin, Loc end) : begin(begin), end(end) {}
 
   enum Kind { BINARY, VALUE, CALL, UNARY };
+
   virtual Expr::Kind ExprKind() = 0;
+
   virtual std::shared_ptr<Type> Ty() = 0;
+
   virtual bool IsConstant() = 0;
 
-  Expr(Pos pos) : pos(pos){};
-
-  Pos pos;
-
   void Debug();
+
+  Stmt::Kind StmtKind() override { return Stmt::Kind::EXPR; }
+
+  Loc Begin() override { return begin; }
+
+  Loc End() override { return end; }
 };
 
 struct Value : public Expr {
-  enum Kind { CONSTANT, VARIABLE };
-  virtual Value::Kind ValueKind() = 0;
+  Value(Loc begin, Loc end) : Expr(begin, end) {}
 
-  Value(Pos pos) : Expr(pos){};
+  enum Kind { CONSTANT, VARIABLE };
+
+  virtual Value::Kind ValueKind() = 0;
 
   Expr::Kind ExprKind() override { return Expr::Kind::VALUE; }
 
@@ -45,20 +55,21 @@ struct Value : public Expr {
 };
 
 struct Constant : public Value {
-  enum Kind { INT, FLOAT, CHAR, BOOL, STRING };
-  virtual Constant::Kind ConstantKind() = 0;
+  Constant(Loc begin, Loc end) : Value(begin, end) {}
 
-  Constant(Pos pos) : Value(pos){};
+  enum Kind { INT, FLOAT, CHAR, BOOL, STRING };
+
+  virtual Constant::Kind ConstantKind() = 0;
 
   Value::Kind ValueKind() override { return Value::Kind::CONSTANT; }
 };
 
 struct IntConstant : public Constant {
-  IntConstant(Pos pos, int64_t val)
-      : Constant(pos), val(val), is32(val <= INT32_MAX){};
-
   int64_t val;
   bool is32;
+
+  IntConstant(Loc begin, Loc end, int64_t val)
+      : Constant(begin, end), val(val), is32(val <= INT32_MAX){};
 
   std::shared_ptr<Type> Ty() override {
     return std::make_shared<Type>(is32 ? Type::Kind::I32 : Type::Kind::I64);
@@ -68,11 +79,13 @@ struct IntConstant : public Constant {
 };
 
 struct FloatConstant : public Constant {
-  FloatConstant(Pos pos, double val, bool is32)
-      : Constant(pos), val(val), is32(is32){};
-
+  Loc begin;
+  Loc end;
   double val;
   bool is32;
+
+  FloatConstant(Loc begin, Loc end, double val, bool is32)
+      : Constant(begin, end), end(end), val(val), is32(is32){};
 
   std::shared_ptr<Type> Ty() override {
     return std::make_shared<Type>(is32 ? Type::Kind::F32 : Type::Kind::F64);
@@ -82,9 +95,9 @@ struct FloatConstant : public Constant {
 };
 
 struct CharConstant : public Constant {
-  CharConstant(Pos pos, rune val) : Constant(pos), val(val){};
-
   rune val;
+
+  CharConstant(Loc begin, Loc end, rune val) : Constant(begin, end), val(val){};
 
   std::shared_ptr<Type> Ty() override {
     return std::make_shared<Type>(Type::Kind::CHAR);
@@ -94,7 +107,7 @@ struct CharConstant : public Constant {
 };
 
 struct BoolConstant : public Constant {
-  BoolConstant(Pos pos, bool val) : Constant(pos), val(val){};
+  BoolConstant(Loc begin, Loc end, bool val) : Constant(begin, end), val(val){};
 
   bool val;
 
@@ -106,7 +119,8 @@ struct BoolConstant : public Constant {
 };
 
 struct StringConstant : public Constant {
-  StringConstant(Pos pos, std::string val) : Constant(pos), val(val){};
+  StringConstant(Loc begin, Loc end, std::string val)
+      : Constant(begin, end), val(val){};
 
   std::string val;
 
@@ -118,10 +132,10 @@ struct StringConstant : public Constant {
 };
 
 struct Call : public Expr {
-  Call(Pos pos) : Expr(pos) {}
-
   std::shared_ptr<Decl> decl;
   std::deque<std::unique_ptr<Expr>> args;
+
+  Call(Loc begin, Loc end) : Expr(begin, end) {}
 
   std::shared_ptr<Type> Ty() override {
     auto fnType = (FuncType*)decl->type.get();
@@ -134,9 +148,9 @@ struct Call : public Expr {
 };
 
 struct Variable : public Value {
-  Variable(Pos pos) : Value(pos){};
-
   std::shared_ptr<Decl> decl;
+
+  Variable(Loc begin, Loc end) : Value(begin, end){};
 
   std::shared_ptr<Type> Ty() override { return decl->type; }
 
@@ -144,11 +158,13 @@ struct Variable : public Value {
 };
 
 struct Unary : public Expr {
-  Unary(Pos pos, ast::UnOp unOp, std::unique_ptr<Expr> expr)
-      : Expr(pos), unOp(unOp), expr(std::move(expr)) {}
+  enum Op { NEG, NOT };
 
-  ast::UnOp unOp;
+  Unary::Op op;
   std::unique_ptr<Expr> expr;
+
+  Unary(Loc begin, Loc end, Unary::Op op, std::unique_ptr<Expr> expr)
+      : Expr(begin, end), op(op), expr(std::move(expr)) {}
 
   std::shared_ptr<Type> Ty() override { return expr->Ty(); }
 
@@ -158,20 +174,33 @@ struct Unary : public Expr {
 };
 
 struct Binary : public Expr {
-  Binary(Pos pos, ast::BinOp binOp, std::unique_ptr<Expr> lhs,
-         std::unique_ptr<Expr> rhs)
-      : Expr(pos), binOp(binOp), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
+  enum Op {
+    LT,
+    LE,
+    GT,
+    GE,
+    ADD,
+    SUB,
 
-  ast::BinOp binOp;
+    MUL,
+    DIV,
+    MOD
+  };
+
+  Binary::Op op;
   std::unique_ptr<Expr> lhs;
   std::unique_ptr<Expr> rhs;
 
+  Binary(Loc begin, Loc end, Binary::Op op, std::unique_ptr<Expr> lhs,
+         std::unique_ptr<Expr> rhs)
+      : Expr(begin, end), op(op), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
+
   std::shared_ptr<Type> Ty() override {
-    switch (binOp) {
-      case ast::BinOp::GE:
-      case ast::BinOp::GT:
-      case ast::BinOp::LE:
-      case ast::BinOp::LT:
+    switch (op) {
+      case Binary::Op::GE:
+      case Binary::Op::GT:
+      case Binary::Op::LE:
+      case Binary::Op::LT:
         return std::make_shared<Type>(Type::Kind::BOOL);
       default:
         // TODO
@@ -185,7 +214,12 @@ struct Binary : public Expr {
 };
 
 struct Block : public Stmt {
+  Loc begin;
+  Loc end;
   std::deque<std::unique_ptr<Stmt>> stmts;
+
+  Block(Loc begin, Loc end, std::deque<std::unique_ptr<Stmt>> stmts)
+      : begin(begin), end(end), stmts(std::move(stmts)) {}
 
   Kind StmtKind() override { return Stmt::Kind::BLOCK; }
 
@@ -193,45 +227,75 @@ struct Block : public Stmt {
     if (stmts.empty()) return false;
     return stmts.back()->IsTerminating();
   }
+
+  Loc Begin() override { return begin; }
+
+  Loc End() override { return end; }
 };
 
 struct RetStmt : public Stmt {
-  RetStmt(std::unique_ptr<Expr> expr = nullptr) : expr(std::move(expr)) {}
-  bool IsTerminating() override { return true; }
-
+  Loc begin;
   std::unique_ptr<Expr> expr;
 
+  RetStmt(Loc begin, std::unique_ptr<Expr> expr = nullptr)
+      : expr(std::move(expr)) {}
+
+  bool IsTerminating() override { return true; }
+
   Kind StmtKind() override { return Stmt::Kind::RET; }
+
+  Loc Begin() override { return begin; }
+
+  Loc End() override {
+    if (expr)
+      return expr->End();
+    else
+      return begin + 2;
+  }
 };
 
 struct VarDeclStmt : public Stmt {
-  VarDeclStmt(std::shared_ptr<Decl> decl, std::unique_ptr<Expr> expr)
-      : decl(decl), expr(std::move(expr)) {}
-
+  Loc begin;
   std::shared_ptr<Decl> decl;
   std::unique_ptr<Expr> expr;
 
+  VarDeclStmt(Loc begin, std::shared_ptr<Decl> decl, std::unique_ptr<Expr> expr)
+      : begin(begin), decl(decl), expr(std::move(expr)) {}
+
   Kind StmtKind() override { return Stmt::Kind::VAR_DECL; }
+
+  Loc Begin() override { return begin; }
+
+  Loc End() override { return expr->End(); }
 };
 
 struct AssignStmt : public Stmt {
-  AssignStmt(std::shared_ptr<Decl> decl, std::unique_ptr<Expr> expr)
-      : decl(decl), expr(std::move(expr)) {}
-
+  Loc begin;
   std::shared_ptr<Decl> decl;
   std::unique_ptr<Expr> expr;
 
+  AssignStmt(Loc begin, std::shared_ptr<Decl> decl, std::unique_ptr<Expr> expr)
+      : begin(begin), decl(decl), expr(std::move(expr)) {}
+
   Kind StmtKind() override { return Stmt::Kind::ASSIGN; }
+
+  Loc Begin() override { return begin; }
+
+  Loc End() override { return expr->End(); }
 };
 
 struct IfStmt : public Stmt {
-  IfStmt(std::unique_ptr<Expr> cond, std::unique_ptr<Block> block,
-         std::unique_ptr<Stmt> els = nullptr)
-      : cond(std::move(cond)), block(std::move(block)), els(std::move(els)) {}
-
+  Loc begin;
   std::unique_ptr<Expr> cond;
   std::unique_ptr<Block> block;
-  std::unique_ptr<Stmt> els;  // block or if
+  std::unique_ptr<Stmt> els;  // null or Block or IfStmt
+
+  IfStmt(Loc begin, std::unique_ptr<Expr> cond, std::unique_ptr<Block> block,
+         std::unique_ptr<Stmt> els = nullptr)
+      : begin(begin),
+        cond(std::move(cond)),
+        block(std::move(block)),
+        els(std::move(els)) {}
 
   Kind StmtKind() override { return Stmt::Kind::IF; }
 
@@ -239,20 +303,40 @@ struct IfStmt : public Stmt {
     if (els == nullptr) return false;
     return block->IsTerminating() && els->IsTerminating();
   }
+
+  Loc Begin() override { return begin; }
+
+  Loc End() override {
+    if (els)
+      return els->End();
+    else
+      return block->End();
+  }
 };
 
-struct FnDecl {
-  FnDecl(std::shared_ptr<Decl> decl) : decl(decl) {}
-
+struct FnDecl : public Node {
+  Loc begin;
   std::shared_ptr<Decl> decl;
   std::deque<std::shared_ptr<Decl>> args;
   std::unique_ptr<Block> block;
+
+  FnDecl(Loc begin, std::shared_ptr<Decl> decl) : begin(begin), decl(decl) {}
+
+  Loc Begin() override { return begin; }
+
+  Loc End() override { return block->End(); }
 };
 
-struct Extern {
-  Extern(std::shared_ptr<Decl> decl) : decl(decl) {}
-
+struct Extern : public Node {
+  Loc begin;
+  Loc end;
   std::shared_ptr<Decl> decl;
+
+  Extern(Loc begin, Loc end, std::shared_ptr<Decl> decl) : decl(decl) {}
+
+  Loc Begin() override { return begin; }
+
+  Loc End() override { return end; }
 };
 
 struct File {
@@ -264,4 +348,4 @@ struct File {
 
 }  // namespace felis
 
-#endif  // FELIS_CHECK_HIR_H_
+#endif  // FELIS_NODE_HIR_H_

@@ -149,7 +149,7 @@ void HirPrinter::PrintConstant(hir::Constant *cons) {
     case hir::Constant::Kind::CHAR: {
       auto v = (hir::CharConstant *)cons;
       std::string s = "'";
-      appendRune(s, v->val);
+      s.append(v->val);
       Writeln("CONSTANT %s: %s'", ToString(v->Ty().get()).c_str(), s.c_str());
     } break;
     case hir::Constant::Kind::BOOL: {
@@ -178,7 +178,7 @@ void HirPrinter::PrintExpr(hir::Expr *expr) {
         auto binary = (hir::Binary *)expr;
         Write("Left: ");
         PrintExpr(binary->lhs.get());
-        Writeln("Op: " + ToString(binary->binOp));
+        Writeln("Op: " + ToString(binary->op));
         Write("Right: ");
         PrintExpr(binary->rhs.get());
       }
@@ -225,7 +225,7 @@ void HirPrinter::PrintExpr(hir::Expr *expr) {
       Down("Unary {");
       {
         auto unary = (hir::Unary *)expr;
-        std::string op = unary->unOp == ast::UnOp::NEG ? "-" : "!";
+        std::string op = unary->op == hir::Unary::Op::NEG ? "-" : "!";
         Writeln("op: %s", op.c_str());
         PrintExpr(unary->expr.get());
       }

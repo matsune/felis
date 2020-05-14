@@ -4,7 +4,7 @@
 #include <iostream>
 #include <memory>
 
-#include "syntax/pos.h"
+#include "loc.h"
 
 namespace felis {
 
@@ -57,9 +57,9 @@ class Printer {
     Writeln(s);
   }
 
-  void PrintPos(Pos pos) {
-    Writeln("Pos: line %d, col %d", pos.line, pos.column);
-  }
+  /* void PrintPos(Pos pos) { */
+  /*   Writeln("Pos: line %d, col %d", pos.line, pos.column); */
+  /* } */
 };
 
 }  // namespace felis

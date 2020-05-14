@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "syntax/pos.h"
+#include "loc.h"
 #include "syntax/rune.h"
 
 namespace felis {
@@ -61,13 +61,14 @@ struct Token {
   };
 
   Kind kind;
-  Pos pos;
+  Loc begin;
+  Loc end;
   bool ws;
   bool nl;
   std::string val;
 
   Token(Kind kind = Kind::END)
-      : kind(kind), pos(Pos()), ws(false), nl(false), val("") {}
+      : kind(kind), begin(0), end(0), ws(false), nl(false), val("") {}
 };
 
 }  // namespace felis

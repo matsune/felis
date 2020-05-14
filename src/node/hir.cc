@@ -1,4 +1,4 @@
-#include "check/hir.h"
+#include "node/hir.h"
 
 namespace felis {
 
@@ -14,7 +14,7 @@ bool Expr::IsConstant() {
 }
 
 void Expr::Debug() {
-  std::cout << "EXP " << pos.line << ":" << pos.column << ": ";
+  /* std::cout << "EXP " << pos.line << ":" << pos.column << ": "; */
   switch (ExprKind()) {
     case Expr::Kind::BINARY:
       std::cout << "BINARY" << std::endl;

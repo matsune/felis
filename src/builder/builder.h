@@ -11,8 +11,8 @@
 #include <memory>
 #include <string>
 
-#include "check/hir.h"
 #include "error/error.h"
+#include "node/hir.h"
 
 namespace felis {
 

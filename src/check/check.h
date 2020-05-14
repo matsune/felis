@@ -6,11 +6,11 @@
 #include <vector>
 
 #include "check/decl.h"
-#include "check/hir.h"
 #include "check/scope.h"
 #include "check/type.h"
+#include "node/ast.h"
+#include "node/hir.h"
 #include "string/string.h"
-#include "syntax/ast.h"
 
 namespace felis {
 
@@ -42,9 +42,9 @@ class Checker {
 
   std::unique_ptr<hir::Constant> MakeConstBinary(std::unique_ptr<hir::Constant>,
                                                  std::unique_ptr<hir::Constant>,
-                                                 ast::BinOp);
+                                                 hir::Binary::Op);
   std::unique_ptr<hir::Constant> MakeConstUnary(std::unique_ptr<hir::Constant>,
-                                                ast::UnOp);
+                                                hir::Unary::Op);
 
   std::unique_ptr<hir::IntConstant> ParseInt(std::unique_ptr<ast::Lit>);
   double ParseFloat(std::unique_ptr<ast::Lit>);

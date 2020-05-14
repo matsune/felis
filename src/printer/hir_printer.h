@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 
-#include "check/hir.h"
+#include "node/hir.h"
 #include "printer/printer.h"
 
 namespace felis {
@@ -23,7 +23,6 @@ class HirPrinter : public Printer<hir::File> {
   void PrintConstant(hir::Constant *);
   void PrintBlock(hir::Block *block);
   void PrintIndex(int idx);
-  void PrintPos(Pos pos);
 };
 
 }  // namespace felis

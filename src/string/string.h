@@ -7,7 +7,8 @@
 
 #include "check/decl.h"
 #include "check/type.h"
-#include "syntax/ast.h"
+#include "node/ast.h"
+#include "node/hir.h"
 #include "syntax/token.h"
 
 namespace felis {
@@ -21,7 +22,8 @@ std::string format(const std::string& fmt, Args... args) {
 }
 
 std::string ToString(Token::Kind kind);
-std::string ToString(ast::BinOp op);
+std::string ToString(ast::BinaryOp::Op op);
+std::string ToString(hir::Binary::Op op);
 std::string ToString(Decl::Kind);
 std::string ToString(Type*);
 

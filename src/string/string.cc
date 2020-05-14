@@ -80,25 +80,48 @@ std::string ToString(Token::Kind kind) {
   }
 }
 
-std::string ToString(ast::BinOp op) {
+std::string ToString(ast::BinaryOp::Op op) {
   switch (op) {
-    case ast::BinOp::LT:
+    case ast::BinaryOp::Op::LT:
       return ">";
-    case ast::BinOp::LE:
+    case ast::BinaryOp::Op::LE:
       return ">=";
-    case ast::BinOp::GT:
+    case ast::BinaryOp::Op::GT:
       return "<";
-    case ast::BinOp::GE:
+    case ast::BinaryOp::Op::GE:
       return "<=";
-    case ast::BinOp::ADD:
+    case ast::BinaryOp::Op::ADD:
       return "+";
-    case ast::BinOp::SUB:
+    case ast::BinaryOp::Op::SUB:
       return "-";
-    case ast::BinOp::MUL:
+    case ast::BinaryOp::Op::MUL:
       return "*";
-    case ast::BinOp::DIV:
+    case ast::BinaryOp::Op::DIV:
       return "/";
-    case ast::BinOp::MOD:
+    case ast::BinaryOp::Op::MOD:
+      return "%";
+  }
+}
+
+std::string ToString(hir::Binary::Op op) {
+  switch (op) {
+    case hir::Binary::Op::LT:
+      return ">";
+    case hir::Binary::Op::LE:
+      return ">=";
+    case hir::Binary::Op::GT:
+      return "<";
+    case hir::Binary::Op::GE:
+      return "<=";
+    case hir::Binary::Op::ADD:
+      return "+";
+    case hir::Binary::Op::SUB:
+      return "-";
+    case hir::Binary::Op::MUL:
+      return "*";
+    case hir::Binary::Op::DIV:
+      return "/";
+    case hir::Binary::Op::MOD:
       return "%";
   }
 }

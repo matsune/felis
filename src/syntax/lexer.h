@@ -7,7 +7,7 @@
 #include <string>
 
 #include "error/error.h"
-#include "pos.h"
+#include "loc.h"
 #include "rune.h"
 #include "token.h"
 
@@ -15,15 +15,21 @@ namespace felis {
 
 class Lexer {
  public:
-  Lexer(std::basic_istream<char> &in) : in_(in) { peek_ = Scan(); }
+  Lexer(std::istream &in) : in_(in), loc_(0), peek_(0) { Consume(); }
   std::unique_ptr<Token> Next();
 
  private:
-  std::basic_istream<char> &in_;
-  Pos pos_;
+  std::istream &in_;
+  Loc loc_;
   rune peek_;
 
-  rune Scan();
+  void Consume() {
+    try {
+      in_ >> peek_;
+    } catch (invalid_rune_error &err) {
+      Throw(err.what());
+    }
+  }
   rune Bump();
   bool BumpIf(char);
   bool BumpIf(std::function<bool(rune)>);

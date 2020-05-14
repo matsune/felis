@@ -206,15 +206,15 @@ llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
   bool isF = binary->lhs->Ty()->IsFloat();
   auto lVal = BuildExpr(std::move(binary->lhs));
   auto rVal = BuildExpr(std::move(binary->rhs));
-  switch (binary->binOp) {
-    case ast::BinOp::LT: {
+  switch (binary->op) {
+    case hir::Binary::Op::LT: {
       if (isF) {
         return builder_.CreateFCmpOLT(lVal, rVal);
       } else {
         return builder_.CreateICmpSLT(lVal, rVal);
       }
     }
-    case ast::BinOp::LE: {
+    case hir::Binary::Op::LE: {
       if (isF) {
         return builder_.CreateFCmpOLE(lVal, rVal);
       } else {
@@ -222,49 +222,49 @@ llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
       }
     }
 
-    case ast::BinOp::GT: {
+    case hir::Binary::Op::GT: {
       if (isF) {
         return builder_.CreateFCmpOGT(lVal, rVal);
       } else {
         return builder_.CreateICmpSGT(lVal, rVal);
       }
     }
-    case ast::BinOp::GE: {
+    case hir::Binary::Op::GE: {
       if (isF) {
         return builder_.CreateFCmpOGE(lVal, rVal);
       } else {
         return builder_.CreateICmpSGE(lVal, rVal);
       }
     }
-    case ast::BinOp::ADD: {
+    case hir::Binary::Op::ADD: {
       if (isF) {
         return builder_.CreateFAdd(lVal, rVal);
       } else {
         return builder_.CreateAdd(lVal, rVal);
       }
     }
-    case ast::BinOp::SUB: {
+    case hir::Binary::Op::SUB: {
       if (isF) {
         return builder_.CreateFSub(lVal, rVal);
       } else {
         return builder_.CreateSub(lVal, rVal);
       }
     }
-    case ast::BinOp::MUL: {
+    case hir::Binary::Op::MUL: {
       if (isF) {
         return builder_.CreateFMul(lVal, rVal);
       } else {
         return builder_.CreateMul(lVal, rVal);
       }
     }
-    case ast::BinOp::DIV: {
+    case hir::Binary::Op::DIV: {
       if (isF) {
         return builder_.CreateFDiv(lVal, rVal);
       } else {
         return builder_.CreateSDiv(lVal, rVal);
       }
     }
-    case ast::BinOp::MOD: {
+    case hir::Binary::Op::MOD: {
       if (isF) {
         return builder_.CreateFRem(lVal, rVal);
       } else {

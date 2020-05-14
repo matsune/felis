@@ -11,22 +11,11 @@
 #include "builder/builder.h"
 #include "check/check.h"
 #include "error/error.h"
+#include "loc.h"
 #include "printer/ast_printer.h"
 #include "printer/hir_printer.h"
 #include "syntax/lexer.h"
 #include "syntax/parser.h"
-
-std::unique_ptr<felis::ast::File> ParseFile(std::ifstream &in) {
-  felis::Parser parser;
-  felis::Lexer lexer(in);
-  bool isEnd(false);
-  while (!isEnd) {
-    auto token = lexer.Next();
-    isEnd = token->kind == felis::Token::Kind::END;
-    parser.PushToken(std::move(token));
-  }
-  return parser.Parse();
-}
 
 std::string getHostCPUFeatures() {
   llvm::SubtargetFeatures Features;
@@ -38,7 +27,7 @@ std::string getHostCPUFeatures() {
   return Features.getString();
 }
 
-std::unique_ptr<llvm::TargetMachine> CreateTargetMachine(std::string &err) {
+std::unique_ptr<llvm::TargetMachine> createTargetMachine(std::string &err) {
   if (llvm::InitializeNativeTarget()) return nullptr;
   if (llvm::InitializeNativeTargetAsmPrinter()) return nullptr;
 
@@ -55,54 +44,91 @@ std::unique_ptr<llvm::TargetMachine> CreateTargetMachine(std::string &err) {
       target->createTargetMachine(triple, cpu, features, opt, llvm::None));
 }
 
-int run(std::unique_ptr<Opts> opts) {
-  std::ifstream in;
-  in.open(opts->Filename());
-  if (!in.is_open()) {
-    std::cerr << "felisc: failed to open " << opts->Filename() << std::endl;
+class Session {
+ public:
+  Session(std::unique_ptr<Opts> opts) : opts(std::move(opts)){};
+
+  bool open(std::ifstream &in) {
+    in.open(opts->Filepath());
+    if (!in.is_open()) {
+      std::cerr << "felisc: failed to open " << opts->Filepath() << std::endl;
+      return false;
+    }
+    return true;
+  }
+
+  int Report(felis::CompileError &e) {
+    std::cerr << opts->Filepath() << ":" << e.what() << std::endl;
     return 1;
   }
 
-  std::unique_ptr<felis::ast::File> file;
-  try {
-    file = ParseFile(in);
-  } catch (const felis::CompileError &e) {
-    std::cerr << opts->Filename() << ":" << e.what() << std::endl;
-    in.close();
+  int Report(felis::LocError &e) {
+    std::ifstream in;
+    if (!open(in)) {
+      return 1;
+    }
+    felis::Pos pos(in, e.loc);
+    std::cerr << opts->Filepath() << ":" << pos.line << ":" << pos.col << ":"
+              << e.what() << std::endl;
     return 1;
   }
-  in.close();
 
-  if (opts->IsPrintAst()) felis::AstPrinter().Print(file);
-
-  felis::Checker checker;
-  checker.SetupBuiltin();
-  std::unique_ptr<felis::hir::File> hir = checker.Check(std::move(file));
-
-  felis::HirPrinter().Print(hir);
-
-  std::string err;
-  auto machine = CreateTargetMachine(err);
-  if (!machine) {
-    std::cerr << opts->Filename() << ":" << err << std::endl;
-    return 1;
+  std::deque<std::unique_ptr<felis::Token>> ParseTokens(std::ifstream &in) {
+    std::deque<std::unique_ptr<felis::Token>> tokens;
+    felis::Lexer lexer(in);
+    bool isEnd(false);
+    while (!isEnd) {
+      auto token = lexer.Next();
+      isEnd = token->kind == felis::Token::Kind::END;
+      tokens.push_back(std::move(token));
+    }
+    return std::move(tokens);
   }
-  felis::Builder builder("felis", opts->Filename(), std::move(machine));
-  try {
-    builder.Build(std::move(hir));
-  } catch (const felis::CompileError &e) {
-    std::cerr << opts->Filename() << ":" << e.what() << std::endl;
-    return 1;
+
+  std::unique_ptr<felis::ast::File> ParseAst() {
+    std::ifstream in;
+    if (!open(in)) {
+      return nullptr;
+    }
+    auto tokens = ParseTokens(in);
+    return felis::Parser(std::move(tokens)).Parse();
   }
-  try {
+
+  std::unique_ptr<felis::hir::File> CheckAst(
+      std::unique_ptr<felis::ast::File> ast) {
+    felis::Checker checker;
+    checker.SetupBuiltin();
+    return checker.Check(std::move(ast));
+  }
+
+  std::unique_ptr<llvm::TargetMachine> CreateTargetMachine() {
+    std::string err;
+    auto machine = createTargetMachine(err);
+    if (!machine) {
+      std::cerr << opts->Filepath() << ":" << err << std::endl;
+      return nullptr;
+    }
+    return std::move(machine);
+  }
+
+  std::unique_ptr<felis::Builder> Build(
+      std::unique_ptr<llvm::TargetMachine> machine,
+      std::unique_ptr<felis::hir::File> hir) {
+    auto builder = std::make_unique<felis::Builder>("felis", opts->Filepath(),
+                                                    std::move(machine));
+    builder->Build(std::move(hir));
+    return std::move(builder);
+  }
+
+  void Emit(std::unique_ptr<felis::Builder> builder) {
     if (opts->IsEmit(EmitType::LLVM_IR)) {
-      builder.EmitLLVMIR(opts->OutputName(EmitType::LLVM_IR));
+      builder->EmitLLVMIR(opts->OutputName(EmitType::LLVM_IR));
     }
     if (opts->IsEmit(EmitType::LLVM_BC)) {
-      builder.EmitLLVMBC(opts->OutputName(EmitType::LLVM_BC));
+      builder->EmitLLVMBC(opts->OutputName(EmitType::LLVM_BC));
     }
     if (opts->IsEmit(EmitType::ASM)) {
-      builder.EmitASM(opts->OutputName(EmitType::ASM));
+      builder->EmitASM(opts->OutputName(EmitType::ASM));
     }
     bool emitObj = opts->IsEmit(EmitType::OBJ);
     bool emitLink = opts->IsEmit(EmitType::LINK);
@@ -110,7 +136,7 @@ int run(std::unique_ptr<Opts> opts) {
     bool hasObj = false;
     std::string objPath = opts->OutputName(EmitType::OBJ);
     if (emitObj || emitLink) {
-      builder.EmitOBJ(objPath);
+      builder->EmitOBJ(objPath);
       hasObj = true;
     }
     if (emitLink) {
@@ -118,15 +144,48 @@ int run(std::unique_ptr<Opts> opts) {
       std::string s = "gcc " + objPath + " -o " + out;
       system(s.c_str());
     }
-  } catch (std::runtime_error err) {
-    std::cerr << err.what() << std::endl;
-    return 1;
   }
 
-  return 0;
-}
+  int run() {
+    int exit = 0;
+    try {
+      auto ast = ParseAst();
+      if (!ast) return 1;
+
+      if (opts->IsPrintAst()) felis::AstPrinter().Print(ast);
+
+      auto hir = CheckAst(std::move(ast));
+      if (!hir) return 1;
+
+      felis::HirPrinter().Print(hir);
+
+      auto machine = CreateTargetMachine();
+      if (!machine) return 1;
+
+      auto builder = Build(std::move(machine), std::move(hir));
+      if (!builder) return 1;
+
+      Emit(std::move(builder));
+
+    } catch (felis::LocError &err) {
+      exit = Report(err);
+    } catch (felis::CompileError &err) {
+      exit = Report(err);
+    } catch (std::runtime_error err) {
+      std::cerr << err.what() << std::endl;
+      exit = 1;
+    }
+    return exit;
+  }
+
+ private:
+  std::unique_ptr<Opts> opts;
+  std::ifstream in_;
+};
 
 int main(int argc, char *argv[]) {
   auto opts = ParseArgs(argc, argv);
-  return run(std::move(opts));
+
+  Session sess(std::move(opts));
+  return sess.run();
 }

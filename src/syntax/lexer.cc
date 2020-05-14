@@ -5,20 +5,27 @@ namespace felis {
 namespace {
 
 inline bool is_newline(rune c) { return c == 0x0A || c == 0x0D; }
+
 inline bool is_space(rune c) {
   return c == 0x09 || c == 0x0B || c == 0x0C || c == 0x20;
 }
+
 inline bool is_bitc(rune c) { return c == '0' || c == '1'; }
+
 inline bool is_octalc(rune c) { return c >= '0' && c <= '7'; }
+
 inline bool is_decimalc(rune c) { return c >= '0' && c <= '9'; }
+
 inline bool is_alphabet(rune c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
+
 inline bool is_hexc(rune c) {
   return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
          (c >= 'A' && c <= 'F');
 }
-inline int hexc(rune c) {
+
+inline char hexc(rune c) {
   if (c >= '0' && c <= '9') return c - '0';
   if (c >= 'a' && c <= 'f') return 10 + c - 'a';
   if (c >= 'A' && c <= 'F') return 10 + c - 'A';
@@ -60,16 +67,10 @@ inline bool is_ident_body(rune c) {
 
 }  // namespace
 
-rune Lexer::Scan() { return consumeRune(in_); }
-
 rune Lexer::Bump() {
-  if (peek_ == '\n') {
-    pos_.Lines();
-  } else {
-    pos_.Columns();
-  }
+  loc_ += peek_.bytes();
   rune tmp = peek_;
-  peek_ = Scan();
+  Consume();
   return tmp;
 }
 
@@ -179,9 +180,7 @@ void Lexer::EatChar(std::string &val) {
   if (peek_ != '\'') {
     Throw("more than one character");
   }
-  if (!appendRune(val, r)) {
-    Throw("invalid utf8");
-  }
+  val.append(r);
   Bump();
 }
 
@@ -197,11 +196,9 @@ void Lexer::EatString(std::string &str) {
       break;
     } else if (BumpIf('\\')) {
       Bump();
-      appendRune(str, Escape());
+      str.append(Escape());
     } else {
-      if (!appendRune(str, Bump())) {
-        Throw("invalid utf8");
-      }
+      str.append(Bump());
     }
   }
   if (!terminated) {
@@ -213,7 +210,8 @@ std::unique_ptr<Token> Lexer::Next() {
   auto tok = std::make_unique<Token>();
 
   while (true) {
-    tok->pos = pos_;
+    tok->begin = loc_;
+
     if (BumpIf(is_space)) {
       tok->ws = true;
       continue;
@@ -320,14 +318,15 @@ std::unique_ptr<Token> Lexer::Next() {
     } else {
       Throw("unsupported char %c", peek_);
     }
+    tok->end = loc_;
     return std::move(tok);
   }
 }
 
 void Lexer::EatIdent(std::unique_ptr<Token> &tok) {
-  appendRune(tok->val, Bump());
+  tok->val.append(Bump());
   while (is_ident_body(peek_)) {
-    appendRune(tok->val, Bump());
+    tok->val.append(Bump());
   }
   if (tok->val == "true" || tok->val == "false") {
     tok->kind = Token::Kind::LIT_BOOL;
@@ -355,7 +354,7 @@ void Lexer::EatDigits(std::string &str, std::function<bool(rune)> f) {
   while (true) {
     if (f(peek_)) {
       hasDigits = true;
-      appendRune(str, Bump());
+      str.append(Bump());
     } else if (peek_ == '_') {
       Bump();
     } else {
@@ -370,7 +369,7 @@ void Lexer::EatDigits(std::string &str, std::function<bool(rune)> f) {
 void Lexer::EatNum(std::unique_ptr<Token> &tok) {
   tok->kind = Token::Kind::LIT_INT;
   auto first = Bump();
-  appendRune(tok->val, first);
+  tok->val.append(first);
   bool canExponent = true;
   if (first == '0') {
     if (BumpIf('b')) {
@@ -397,7 +396,7 @@ void Lexer::EatNum(std::unique_ptr<Token> &tok) {
     } else if (is_decimalc(peek_) || peek_ == '_') {
       while (true) {
         if (is_decimalc(peek_)) {
-          appendRune(tok->val, Bump());
+          tok->val.append(Bump());
         } else if (peek_ == '_') {  // skip
           Bump();
         } else {
@@ -413,7 +412,7 @@ void Lexer::EatNum(std::unique_ptr<Token> &tok) {
   } else {
     while (true) {
       if (is_decimalc(peek_)) {
-        appendRune(tok->val, Bump());
+        tok->val.append(Bump());
       } else if (peek_ == '_') {
         Bump();
       } else {
@@ -433,9 +432,9 @@ void Lexer::EatNum(std::unique_ptr<Token> &tok) {
       Throw("'%c' exponent requires decimal mantissa\n", peek_);
     }
     tok->kind = Token::Kind::LIT_FLOAT;
-    appendRune(tok->val, Bump());
+    tok->val.append(Bump());
     if (!isDot && peek_ == '-') {
-      appendRune(tok->val, Bump());
+      tok->val.append(Bump());
     }
     EatDigits(tok->val, is_decimalc);
   }
@@ -480,7 +479,7 @@ bool Lexer::EatBlockComment() {
 
 template <typename... Args>
 void Lexer::Throw(const std::string &fmt, Args... args) {
-  throw CompileError::CreatePos(pos_, fmt, args...);
+  throw LocError::Create(loc_, fmt, args...);
 }
 
 }  // namespace felis
