@@ -88,25 +88,16 @@ void Builder::BuildStmt(std::unique_ptr<hir::Stmt> stmt,
                         llvm::BasicBlock* after_bb) {
   switch (stmt->StmtKind()) {
     case hir::Stmt::EXPR:
-      BuildExpr(unique_cast<hir::Stmt, hir::Expr>(std::move(stmt)));
+      BuildExpr(unique_cast<hir::Expr>(std::move(stmt)));
       break;
     case hir::Stmt::RET:
-      BuildRetStmt(unique_cast<hir::Stmt, hir::RetStmt>(std::move(stmt)));
+      BuildRetStmt(unique_cast<hir::RetStmt>(std::move(stmt)));
       break;
     case hir::Stmt::VAR_DECL:
-      BuildVarDeclStmt(
-          unique_cast<hir::Stmt, hir::VarDeclStmt>(std::move(stmt)));
+      BuildVarDeclStmt(unique_cast<hir::VarDeclStmt>(std::move(stmt)));
       break;
     case hir::Stmt::ASSIGN:
-      BuildAssignStmt(unique_cast<hir::Stmt, hir::AssignStmt>(std::move(stmt)));
-      break;
-    case hir::Stmt::IF: {
-      BuildIfStmt(unique_cast<hir::Stmt, hir::IfStmt>(std::move(stmt)),
-                  after_bb);
-
-    } break;
-    case hir::Stmt::BLOCK:
-      BuildBlock(unique_cast<hir::Stmt, hir::Block>(std::move(stmt)), after_bb);
+      BuildAssignStmt(unique_cast<hir::AssignStmt>(std::move(stmt)));
       break;
   }
 }
@@ -135,9 +126,9 @@ void Builder::BuildAssignStmt(std::unique_ptr<hir::AssignStmt> stmt) {
   builder_.CreateStore(value, alloca);
 }
 
-void Builder::BuildIfStmt(std::unique_ptr<hir::IfStmt> if_stmt,
-                          llvm::BasicBlock* end_bb) {
-  bool has_else = if_stmt->els != nullptr;
+void Builder::BuildIf(std::unique_ptr<hir::If> if_stmt,
+                      llvm::BasicBlock* end_bb) {
+  bool has_else = if_stmt->HasElse();
   auto cond_val = BuildExpr(std::move(if_stmt->cond));
   llvm::BasicBlock* then_bb =
       llvm::BasicBlock::Create(ctx_, "then", current_func_, end_bb);
@@ -158,12 +149,10 @@ void Builder::BuildIfStmt(std::unique_ptr<hir::IfStmt> if_stmt,
     BuildBlock(std::move(if_stmt->block), end_bb);
 
     builder_.SetInsertPoint(else_bb);
-    if (if_stmt->els->StmtKind() == hir::Stmt::Kind::IF) {
-      BuildIfStmt(unique_cast<hir::Stmt, hir::IfStmt>(std::move(if_stmt->els)),
-                  end_bb);
-    } else if (if_stmt->els->StmtKind() == hir::Stmt::Kind::BLOCK) {
-      BuildBlock(unique_cast<hir::Stmt, hir::Block>(std::move(if_stmt->els)),
-                 end_bb);
+    if (if_stmt->IsElseIf()) {
+      BuildIf(unique_cast<hir::If>(std::move(if_stmt->els)), end_bb);
+    } else if (if_stmt->IsElseBlock()) {
+      BuildBlock(unique_cast<hir::Block>(std::move(if_stmt->els)), end_bb);
     }
 
   } else {
@@ -186,14 +175,16 @@ void Builder::BuildBlock(std::unique_ptr<hir::Block> block,
     auto stmt = block->stmts.move_front();
 
     bool is_last = block->stmts.empty();
-    if (!is_last && stmt->StmtKind() == hir::Stmt::Kind::IF) {
-      auto end_bb =
-          llvm::BasicBlock::Create(ctx_, "end", current_func_, after_bb);
-      BuildStmt(std::move(stmt), end_bb);
-      builder_.SetInsertPoint(end_bb);
-    } else {
-      BuildStmt(std::move(stmt), after_bb);
-    }
+    // TODO
+    UNIMPLEMENTED
+    /* if (!is_last && stmt->ExprKind() == hir::Expr::Kind::IF) { */
+    /*   auto end_bb = */
+    /*       llvm::BasicBlock::Create(ctx_, "end", current_func_, after_bb); */
+    /*   BuildStmt(std::move(stmt), end_bb); */
+    /*   builder_.SetInsertPoint(end_bb); */
+    /* } else { */
+    /*   BuildStmt(std::move(stmt), after_bb); */
+    /* } */
   }
   if (!builder_.GetInsertBlock()->getTerminator()) {
     builder_.CreateBr(after_bb);
@@ -276,7 +267,7 @@ llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
 llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
   switch (expr->ExprKind()) {
     case hir::Expr::Kind::BINARY: {
-      return BuildBinary(unique_cast<hir::Expr, hir::Binary>(std::move(expr)));
+      return BuildBinary(unique_cast<hir::Binary>(std::move(expr)));
     } break;
     case hir::Expr::Kind::VALUE: {
       auto value = (hir::Value*)expr.get();
@@ -288,12 +279,11 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
 
         } break;
         case hir::Value::Kind::CONSTANT:
-          return BuildConstant(
-              unique_cast<hir::Expr, hir::Constant>(std::move(expr)));
+          return BuildConstant(unique_cast<hir::Constant>(std::move(expr)));
       }
     } break;
     case hir::Expr::Kind::CALL: {
-      auto call = unique_cast<hir::Expr, hir::Call>(std::move(expr));
+      auto call = unique_cast<hir::Call>(std::move(expr));
       std::vector<llvm::Value*> arg_values(call->args.size());
       int i = 0;
       while (!call->args.empty()) {
@@ -310,6 +300,16 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
     case hir::Expr::Kind::UNARY: {
       /* auto unary = (hir::Unary*)expr; */
     } break;
+    case hir::Expr::IF: {
+      UNIMPLEMENTED
+      /* BuildIf(unique_cast< hir::If>(std::move(stmt)), after_bb); */
+
+    } break;
+    case hir::Expr::BLOCK:
+      UNIMPLEMENTED
+      /* BuildBlock(unique_cast< hir::Block>(std::move(stmt)),
+       * after_bb); */
+      break;
   }
   UNREACHABLE
 }
@@ -318,29 +318,24 @@ llvm::Constant* Builder::BuildConstant(
     std::unique_ptr<hir::Constant> constant) {
   switch (constant->ConstantKind()) {
     case hir::Constant::Kind::INT: {
-      auto v =
-          unique_cast<hir::Constant, hir::IntConstant>(std::move(constant));
+      auto v = unique_cast<hir::IntConstant>(std::move(constant));
       return llvm::ConstantInt::getSigned(GetLLVMTyFromTy(v->Ty()), v->val);
     } break;
     case hir::Constant::Kind::FLOAT: {
-      auto v =
-          unique_cast<hir::Constant, hir::FloatConstant>(std::move(constant));
+      auto v = unique_cast<hir::FloatConstant>(std::move(constant));
       return llvm::ConstantFP::get(GetLLVMTyFromTy(v->Ty()), v->val);
     } break;
     case hir::Constant::Kind::CHAR: {
-      auto v =
-          unique_cast<hir::Constant, hir::CharConstant>(std::move(constant));
+      auto v = unique_cast<hir::CharConstant>(std::move(constant));
       return llvm::ConstantInt::getSigned(GetLLVMTyFromTy(v->Ty()), v->val);
     } break;
     case hir::Constant::Kind::BOOL: {
-      auto v =
-          unique_cast<hir::Constant, hir::BoolConstant>(std::move(constant));
+      auto v = unique_cast<hir::BoolConstant>(std::move(constant));
       return v->val ? llvm::ConstantInt::getTrue(ctx_)
                     : llvm::ConstantInt::getFalse(ctx_);
     } break;
     case hir::Constant::Kind::STRING: {
-      auto v =
-          unique_cast<hir::Constant, hir::StringConstant>(std::move(constant));
+      auto v = unique_cast<hir::StringConstant>(std::move(constant));
       return builder_.CreateGlobalStringPtr(v->val);
     } break;
   };

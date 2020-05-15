@@ -4,11 +4,13 @@
 #include <deque>
 #include <memory>
 
+#include "node/node.h"
+
 namespace felis {
 
-template <typename T, typename E>
-std::unique_ptr<E> unique_cast(std::unique_ptr<T> ptr) {
-  return std::unique_ptr<E>((E *)ptr.release());
+template <typename T>
+std::unique_ptr<T> unique_cast(std::unique_ptr<Node> ptr) {
+  return std::unique_ptr<T>((T *)ptr.release());
 }
 
 template <class T>

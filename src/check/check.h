@@ -33,7 +33,7 @@ class Checker {
       std::unique_ptr<ast::VarDeclStmt>);
   std::unique_ptr<hir::AssignStmt> CheckAssignStmt(
       std::unique_ptr<ast::AssignStmt>);
-  std::unique_ptr<hir::IfStmt> CheckIfStmt(std::unique_ptr<ast::IfStmt>);
+  std::unique_ptr<hir::If> CheckIf(std::unique_ptr<ast::If>);
   std::unique_ptr<hir::Block> CheckBlock(std::unique_ptr<ast::Block>,
                                          bool is_fn_body = false);
 

@@ -115,21 +115,6 @@ void HirPrinter::PrintStmt(hir::Stmt *stmt) {
       }
       Up("}");
       break;
-    case hir::Stmt::Kind::IF:
-      Down("If {");
-      {
-        auto if_stmt = (hir::IfStmt *)stmt;
-        Write("Cond: ");
-        PrintExpr(if_stmt->cond.get());
-        PrintBlock(if_stmt->block.get());
-        Write("Else: ");
-        PrintStmt(if_stmt->els.get());
-      }
-      Up("}");
-      break;
-    case hir::Stmt::Kind::BLOCK:
-      PrintBlock((hir::Block *)stmt);
-      break;
     default:
       std::cout << "unimplemented" << std::endl;
       exit(1);
@@ -230,6 +215,22 @@ void HirPrinter::PrintExpr(hir::Expr *expr) {
         PrintExpr(unary->expr.get());
       }
       Up("}");
+      break;
+
+    case hir::Expr::Kind::IF:
+      Down("If {");
+      {
+        auto if_stmt = (hir::If *)expr;
+        Write("Cond: ");
+        PrintExpr(if_stmt->cond.get());
+        PrintBlock(if_stmt->block.get());
+        Write("Else: ");
+        PrintStmt(if_stmt->els.get());
+      }
+      Up("}");
+      break;
+    case hir::Expr::Kind::BLOCK:
+      PrintBlock((hir::Block *)expr);
       break;
   }
 }

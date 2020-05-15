@@ -7,6 +7,10 @@ namespace felis {
   std::cerr << "unreachable " << __FILE__ << ":" << __LINE__ << std::endl; \
   exit(2);
 
+#define UNIMPLEMENTED                                                        \
+  std::cerr << "unimplemented " << __FILE__ << ":" << __LINE__ << std::endl; \
+  exit(2);
+
 }  // namespace felis
 
 #endif  // FELIS_MACRO_H_

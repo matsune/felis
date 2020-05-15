@@ -75,7 +75,7 @@ struct BinaryOp : public Operator {
 };
 
 struct Stmt : public Node {
-  enum Kind { EXPR, RET, VAR_DECL, ASSIGN, BLOCK, IF };
+  enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
   virtual Stmt::Kind StmtKind() const = 0;
 };
 
@@ -86,12 +86,7 @@ struct Expr : public Stmt {
   Stmt::Kind StmtKind() const override { return Stmt::Kind::EXPR; }
 };
 
-/* struct Else : public Node { */
-/*   enum Kind { BLOCK, IF }; */
-/*   virtual Else::Kind ElseKind() const = 0; */
-/* }; */
-
-struct Block : public Stmt {  // public Expr, public Else {
+struct Block : public Expr {
   Loc begin;
   Loc end;
   unique_deque<Stmt> stmts;
@@ -99,35 +94,43 @@ struct Block : public Stmt {  // public Expr, public Else {
   Block(Loc begin, Loc end, unique_deque<Stmt> stmts)
       : begin(begin), end(end), stmts(std::move(stmts)) {}
 
-  Stmt::Kind StmtKind() const override { return Stmt::Kind::BLOCK; }
-
-  /* Else::Kind ElseKind() const override { return Else::Kind::BLOCK; } */
-
-  /* Expr::Kind ExprKind() const override { return Expr::Kind::BLOCK; } */
+  Expr::Kind ExprKind() const override { return Expr::Kind::BLOCK; }
 
   Loc Begin() const override { return begin; }
 
   Loc End() const override { return end; }
 };
 
-struct IfStmt : public Stmt {  // public Expr, public Else {
+struct If : public Expr {
   Loc begin;
   std::unique_ptr<Expr> cond;
   std::unique_ptr<Block> block;
-  /* std::unique_ptr<Else> els;  // block or if */
-  std::unique_ptr<Stmt> els;  // block or if
+  std::unique_ptr<Expr> els;  // block or if
 
-  IfStmt(Loc begin, std::unique_ptr<Expr> cond, std::unique_ptr<Block> block,
-         /* std::unique_ptr<Else> els = nullptr) */
-         std::unique_ptr<Stmt> els = nullptr)
+  If(Loc begin, std::unique_ptr<Expr> cond, std::unique_ptr<Block> block,
+     std::unique_ptr<Expr> els = nullptr)
       : begin(begin),
         cond(std::move(cond)),
         block(std::move(block)),
         els(std::move(els)) {}
 
-  /* Expr::Kind ExprKind() const override { return Expr::Kind::IF; } */
-  /* Else::Kind ElseKind() const override { return Else::Kind::IF; } */
-  Stmt::Kind StmtKind() const override { return Stmt::Kind::IF; }
+  inline bool HasElse() const { return els != nullptr; }
+
+  inline bool IsElseBlock() const {
+    if (els)
+      return els->ExprKind() == Expr::Kind::BLOCK;
+    else
+      return false;
+  }
+
+  inline bool IsElseIf() const {
+    if (els)
+      return els->ExprKind() == Expr::Kind::IF;
+    else
+      return false;
+  }
+
+  Expr::Kind ExprKind() const override { return Expr::Kind::IF; }
 
   Loc Begin() const override { return begin; }
 

@@ -60,14 +60,16 @@ std::unique_ptr<hir::Block> Checker::CheckFnDecl(
   auto block = CheckBlock(std::move(fn_decl->block), true);
   CloseScope();
 
-  if (!block->IsTerminating()) {
-    if (current_func_->AsFuncType()->ret->IsVoid()) {
-      block->stmts.push_back(std::make_unique<hir::RetStmt>(block->End() - 1));
-    } else {
-      throw CompileError::Create("func %s is not terminated",
-                                 hirDecl->decl->name.c_str());
-    }
-  }
+  // TODO
+  /* if (!block->IsTerminating()) { */
+  /*   if (current_func_->AsFuncType()->ret->IsVoid()) { */
+  /*     block->stmts.push_back(std::make_unique<hir::RetStmt>(block->End() -
+   * 1)); */
+  /*   } else { */
+  /*     throw CompileError::Create("func %s is not terminated", */
+  /*                                hirDecl->decl->name.c_str()); */
+  /*   } */
+  /* } */
 
   return std::move(block);
 }
@@ -75,21 +77,14 @@ std::unique_ptr<hir::Block> Checker::CheckFnDecl(
 std::unique_ptr<hir::Stmt> Checker::CheckStmt(std::unique_ptr<ast::Stmt> stmt) {
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR: {
-      return MakeExpr(unique_cast<ast::Stmt, ast::Expr>(std::move(stmt)));
+      return MakeExpr(unique_cast<ast::Expr>(std::move(stmt)));
     } break;
     case ast::Stmt::Kind::RET:
-      return CheckRetStmt(
-          unique_cast<ast::Stmt, ast::RetStmt>(std::move(stmt)));
+      return CheckRetStmt(unique_cast<ast::RetStmt>(std::move(stmt)));
     case ast::Stmt::Kind::VAR_DECL:
-      return CheckVarDeclStmt(
-          unique_cast<ast::Stmt, ast::VarDeclStmt>(std::move(stmt)));
+      return CheckVarDeclStmt(unique_cast<ast::VarDeclStmt>(std::move(stmt)));
     case ast::Stmt::Kind::ASSIGN:
-      return CheckAssignStmt(
-          unique_cast<ast::Stmt, ast::AssignStmt>(std::move(stmt)));
-    case ast::Stmt::Kind::IF:
-      return CheckIfStmt(unique_cast<ast::Stmt, ast::IfStmt>(std::move(stmt)));
-    case ast::Stmt::Kind::BLOCK:
-      return CheckBlock(unique_cast<ast::Stmt, ast::Block>(std::move(stmt)));
+      return CheckAssignStmt(unique_cast<ast::AssignStmt>(std::move(stmt)));
   }
 }
 
@@ -151,30 +146,28 @@ std::unique_ptr<hir::AssignStmt> Checker::CheckAssignStmt(
   return std::make_unique<hir::AssignStmt>(begin, decl, std::move(expr));
 }
 
-std::unique_ptr<hir::IfStmt> Checker::CheckIfStmt(
-    std::unique_ptr<ast::IfStmt> if_stmt) {
+std::unique_ptr<hir::If> Checker::CheckIf(std::unique_ptr<ast::If> if_stmt) {
   auto begin = if_stmt->Begin();
+  auto end = if_stmt->End();
   auto cond = MakeExpr(std::move(if_stmt->cond));
   if (!cond->Ty()->IsBool()) {
     throw LocError::Create(cond->Begin(), "non bool if cond");
   }
   auto block = CheckBlock(std::move(if_stmt->block));
 
-  if (if_stmt->els) {
-    if (if_stmt->els->StmtKind() == ast::Stmt::Kind::IF) {
-      auto els = CheckIfStmt(
-          unique_cast<ast::Stmt, ast::IfStmt>(std::move(if_stmt->els)));
-      return std::make_unique<hir::IfStmt>(begin, std::move(cond),
-                                           std::move(block), std::move(els));
-    } else if (if_stmt->els->StmtKind() == ast::Stmt::Kind::BLOCK) {
-      auto els = CheckBlock(
-          unique_cast<ast::Stmt, ast::Block>(std::move(if_stmt->els)));
-      return std::make_unique<hir::IfStmt>(begin, std::move(cond),
-                                           std::move(block), std::move(els));
+  if (if_stmt->HasElse()) {
+    if (if_stmt->IsElseIf()) {
+      auto els = CheckIf(unique_cast<ast::If>(std::move(if_stmt->els)));
+      return std::make_unique<hir::If>(begin, end, std::move(cond),
+                                       std::move(block), std::move(els));
+    } else if (if_stmt->IsElseBlock()) {
+      auto els = CheckBlock(unique_cast<ast::Block>(std::move(if_stmt->els)));
+      return std::make_unique<hir::If>(begin, end, std::move(cond),
+                                       std::move(block), std::move(els));
     }
   }
-  return std::make_unique<hir::IfStmt>(begin, std::move(cond),
-                                       std::move(block));
+  return std::make_unique<hir::If>(begin, end, std::move(cond),
+                                   std::move(block));
 }
 
 std::unique_ptr<hir::Block> Checker::CheckBlock(
@@ -189,12 +182,13 @@ std::unique_ptr<hir::Block> Checker::CheckBlock(
 
     bool is_last = block->stmts.empty();
     auto stmt = CheckStmt(std::move(stmt_ast));
-    bool is_terminating = stmt->IsTerminating();
+    // TODO
+    /* bool is_terminating = stmt->IsTerminating(); */
 
-    if (is_terminating && !is_last) {
-      auto& next_stmt = block->stmts.front();
-      throw LocError::Create(next_stmt->Begin(), "unreachable code");
-    }
+    /* if (is_terminating && !is_last) { */
+    /*   auto& next_stmt = block->stmts.front(); */
+    /*   throw LocError::Create(next_stmt->Begin(), "unreachable code"); */
+    /* } */
 
     stmts.push_back(std::move(stmt));
   }
@@ -239,10 +233,10 @@ hir::Binary::Op bin_op_ast_to_hir(ast::BinaryOp::Op op) {
 std::unique_ptr<hir::Expr> Checker::MakeExpr(std::unique_ptr<ast::Expr> expr) {
   switch (expr->ExprKind()) {
     case ast::Expr::Kind::LIT: {
-      return MakeLit(unique_cast<ast::Expr, ast::Lit>(std::move(expr)));
+      return MakeLit(unique_cast<ast::Lit>(std::move(expr)));
     }
     case ast::Expr::Kind::CALL: {
-      auto call_expr = unique_cast<ast::Expr, ast::CallExpr>(std::move(expr));
+      auto call_expr = unique_cast<ast::CallExpr>(std::move(expr));
       auto begin = call_expr->Begin();
       auto end = call_expr->End();
 
@@ -276,7 +270,7 @@ std::unique_ptr<hir::Expr> Checker::MakeExpr(std::unique_ptr<ast::Expr> expr) {
     } break;
 
     case ast::Expr::Kind::IDENT: {
-      auto ident = unique_cast<ast::Expr, ast::Ident>(std::move(expr));
+      auto ident = unique_cast<ast::Ident>(std::move(expr));
       auto begin = ident->Begin();
       auto end = ident->End();
       auto decl = LookupDecl(ident->val);
@@ -295,35 +289,37 @@ std::unique_ptr<hir::Expr> Checker::MakeExpr(std::unique_ptr<ast::Expr> expr) {
     } break;
 
     case ast::Expr::Kind::UNARY: {
-      auto unary_expr = unique_cast<ast::Expr, ast::UnaryExpr>(std::move(expr));
+      auto unary_expr = unique_cast<ast::UnaryExpr>(std::move(expr));
       auto begin = unary_expr->Begin();
       auto end = unary_expr->End();
       auto op = un_op_ast_to_hir(unary_expr->op->op);
       auto e = MakeExpr(std::move(unary_expr->expr));
       if (e->IsConstant()) {
-        return MakeConstUnary(
-            unique_cast<hir::Expr, hir::Constant>(std::move(e)),
-            un_op_ast_to_hir(unary_expr->op->op));
+        return MakeConstUnary(unique_cast<hir::Constant>(std::move(e)),
+                              un_op_ast_to_hir(unary_expr->op->op));
       }
       return std::make_unique<hir::Unary>(begin, end, op, std::move(e));
     } break;
 
     case ast::Expr::Kind::BINARY: {
-      auto binary = unique_cast<ast::Expr, ast::BinaryExpr>(std::move(expr));
+      auto binary = unique_cast<ast::BinaryExpr>(std::move(expr));
       auto begin = binary->Begin();
       auto end = binary->End();
       auto op = bin_op_ast_to_hir(binary->op->op);
       auto lhs = MakeExpr(std::move(binary->lhs));
       auto rhs = MakeExpr(std::move(binary->rhs));
       if (lhs->IsConstant() && rhs->IsConstant()) {
-        return MakeConstBinary(
-            unique_cast<hir::Expr, hir::Constant>(std::move(lhs)),
-            unique_cast<hir::Expr, hir::Constant>(std::move(rhs)),
-            bin_op_ast_to_hir(binary->op->op));
+        return MakeConstBinary(unique_cast<hir::Constant>(std::move(lhs)),
+                               unique_cast<hir::Constant>(std::move(rhs)),
+                               bin_op_ast_to_hir(binary->op->op));
       }
       return CheckBinary(std::make_unique<hir::Binary>(
           begin, end, op, std::move(lhs), std::move(rhs)));
     } break;
+    case ast::Expr::Kind::IF:
+      return CheckIf(unique_cast<ast::If>(std::move(expr)));
+    case ast::Expr::Kind::BLOCK:
+      return CheckBlock(unique_cast<ast::Block>(std::move(expr)));
     default:
       return nullptr;
   }
@@ -334,7 +330,7 @@ std::unique_ptr<hir::Constant> Checker::MakeConstUnary(
   switch (op) {
     case hir::Unary::Op::NOT:
       if (cons->Ty()->IsBool()) {
-        auto b = unique_cast<hir::Constant, hir::BoolConstant>(std::move(cons));
+        auto b = unique_cast<hir::BoolConstant>(std::move(cons));
         b->val = !b->val;
         return std::move(b);
       } else {
@@ -343,13 +339,11 @@ std::unique_ptr<hir::Constant> Checker::MakeConstUnary(
     case hir::Unary::Op::NEG:
       if (cons->Ty()->IsNumeric()) {
         if (cons->Ty()->IsI32() || cons->Ty()->IsI64()) {
-          auto b =
-              unique_cast<hir::Constant, hir::IntConstant>(std::move(cons));
+          auto b = unique_cast<hir::IntConstant>(std::move(cons));
           b->val = -b->val;
           return b;
         } else {
-          auto b =
-              unique_cast<hir::Constant, hir::FloatConstant>(std::move(cons));
+          auto b = unique_cast<hir::FloatConstant>(std::move(cons));
           b->val = -b->val;
           return b;
         }
@@ -366,10 +360,10 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(
   auto rhs_end = rhs->End();
   switch (lhs->ConstantKind()) {
     case hir::Constant::Kind::INT: {
-      auto l = unique_cast<hir::Constant, hir::IntConstant>(std::move(lhs));
+      auto l = unique_cast<hir::IntConstant>(std::move(lhs));
       switch (rhs->ConstantKind()) {
         case hir::Constant::Kind::INT: {  // int int
-          auto r = unique_cast<hir::Constant, hir::IntConstant>(std::move(rhs));
+          auto r = unique_cast<hir::IntConstant>(std::move(rhs));
           switch (op) {
             case hir::Binary::Op::LT:
               return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
@@ -404,8 +398,7 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(
         } break;
 
         case hir::Constant::Kind::FLOAT: {  // int float
-          auto r =
-              unique_cast<hir::Constant, hir::FloatConstant>(std::move(rhs));
+          auto r = unique_cast<hir::FloatConstant>(std::move(rhs));
           switch (op) {
             case hir::Binary::Op::LT:
               return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
@@ -440,8 +433,7 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(
         } break;
 
         case hir::Constant::Kind::CHAR: {  // int char
-          auto r =
-              unique_cast<hir::Constant, hir::CharConstant>(std::move(rhs));
+          auto r = unique_cast<hir::CharConstant>(std::move(rhs));
           switch (op) {
             case hir::Binary::Op::LT:
               return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
@@ -480,10 +472,10 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(
     } break;
 
     case hir::Constant::Kind::FLOAT: {
-      auto l = unique_cast<hir::Constant, hir::FloatConstant>(std::move(lhs));
+      auto l = unique_cast<hir::FloatConstant>(std::move(lhs));
       switch (rhs->ConstantKind()) {
         case hir::Constant::Kind::INT: {  // float int
-          auto r = unique_cast<hir::Constant, hir::IntConstant>(std::move(rhs));
+          auto r = unique_cast<hir::IntConstant>(std::move(rhs));
           switch (op) {
             case hir::Binary::Op::LT:
               return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
@@ -517,8 +509,7 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(
           }
         } break;
         case hir::Constant::Kind::FLOAT: {  // float float
-          auto r =
-              unique_cast<hir::Constant, hir::FloatConstant>(std::move(rhs));
+          auto r = unique_cast<hir::FloatConstant>(std::move(rhs));
           bool is_32 = l->is_32 && r->is_32;
           switch (op) {
             case hir::Binary::Op::LT:
@@ -554,8 +545,7 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(
         } break;
 
         case hir::Constant::Kind::CHAR: {  // float char
-          auto r =
-              unique_cast<hir::Constant, hir::CharConstant>(std::move(rhs));
+          auto r = unique_cast<hir::CharConstant>(std::move(rhs));
           switch (op) {
             case hir::Binary::Op::LT:
               return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
@@ -594,10 +584,10 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(
     } break;
 
     case hir::Constant::Kind::CHAR: {
-      auto l = unique_cast<hir::Constant, hir::CharConstant>(std::move(lhs));
+      auto l = unique_cast<hir::CharConstant>(std::move(lhs));
       switch (rhs->ConstantKind()) {
         case hir::Constant::Kind::INT: {  // char int
-          auto r = unique_cast<hir::Constant, hir::IntConstant>(std::move(rhs));
+          auto r = unique_cast<hir::IntConstant>(std::move(rhs));
           switch (op) {
             case hir::Binary::Op::LT:
               return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
@@ -631,8 +621,7 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(
           }
         } break;
         case hir::Constant::Kind::FLOAT: {  // char float
-          auto r =
-              unique_cast<hir::Constant, hir::FloatConstant>(std::move(rhs));
+          auto r = unique_cast<hir::FloatConstant>(std::move(rhs));
           switch (op) {
             case hir::Binary::Op::LT:
               return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
@@ -666,8 +655,7 @@ std::unique_ptr<hir::Constant> Checker::MakeConstBinary(
           }
         } break;
         case hir::Constant::Kind::CHAR: {  // char char
-          auto r =
-              unique_cast<hir::Constant, hir::CharConstant>(std::move(rhs));
+          auto r = unique_cast<hir::CharConstant>(std::move(rhs));
           switch (op) {
             case hir::Binary::Op::LT:
               return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
@@ -796,8 +784,7 @@ std::unique_ptr<hir::Expr> Checker::TryConstantTy(
   switch (cons->ConstantKind()) {
     case hir::Constant::Kind::CHAR: {
       // char may be int or float
-      auto char_const =
-          unique_cast<hir::Constant, hir::CharConstant>(std::move(cons));
+      auto char_const = unique_cast<hir::CharConstant>(std::move(cons));
       switch (ty->TypeKind()) {
         case Type::CHAR:
           return std::move(char_const);
@@ -820,8 +807,7 @@ std::unique_ptr<hir::Expr> Checker::TryConstantTy(
     } break;
 
     case hir::Constant::Kind::INT: {
-      auto int_const =
-          unique_cast<hir::Constant, hir::IntConstant>(std::move(cons));
+      auto int_const = unique_cast<hir::IntConstant>(std::move(cons));
       switch (ty->TypeKind()) {
         case Type::CHAR: {
           if (int_const->is_32) {
@@ -870,8 +856,7 @@ std::unique_ptr<hir::Expr> Checker::TryConstantTy(
     } break;
 
     case hir::Constant::Kind::FLOAT: {
-      auto float_const =
-          unique_cast<hir::Constant, hir::FloatConstant>(std::move(cons));
+      auto float_const = unique_cast<hir::FloatConstant>(std::move(cons));
       switch (ty->TypeKind()) {
         case Type::F32: {
           if (float_const->is_32) {
@@ -917,14 +902,14 @@ std::unique_ptr<hir::Expr> Checker::TryExprTy(std::unique_ptr<hir::Expr> expr,
         } break;
         case hir::Value::Kind::CONSTANT: {
           // Constants can be casted implicitly
-          auto cons = unique_cast<hir::Expr, hir::Constant>(std::move(expr));
+          auto cons = unique_cast<hir::Constant>(std::move(expr));
           return TryConstantTy(std::move(cons), ty);
         } break;
       }
     } break;
 
     case hir::Expr::Kind::BINARY: {
-      auto binary = unique_cast<hir::Expr, hir::Binary>(std::move(expr));
+      auto binary = unique_cast<hir::Binary>(std::move(expr));
       if (*binary->Ty() == *ty) return std::move(binary);
       binary->lhs = TryExprTy(std::move(binary->lhs), ty);
       binary->rhs = TryExprTy(std::move(binary->rhs), ty);

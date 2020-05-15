@@ -155,18 +155,18 @@ class Session {
 
       if (opts->IsPrintAst()) felis::AstPrinter().Print(ast);
 
-      auto hir = CheckAst(std::move(ast));
-      if (!hir) return 1;
+      /* auto hir = CheckAst(std::move(ast)); */
+      /* if (!hir) return 1; */
 
-      felis::HirPrinter().Print(hir);
+      /* felis::HirPrinter().Print(hir); */
 
-      auto machine = CreateTargetMachine();
-      if (!machine) return 1;
+      /* auto machine = CreateTargetMachine(); */
+      /* if (!machine) return 1; */
 
-      auto builder = Build(std::move(machine), std::move(hir));
-      if (!builder) return 1;
+      /* auto builder = Build(std::move(machine), std::move(hir)); */
+      /* if (!builder) return 1; */
 
-      Emit(std::move(builder));
+      /* Emit(std::move(builder)); */
 
     } catch (felis::LocError &err) {
       exit = Report(err);
