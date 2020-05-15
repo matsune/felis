@@ -16,13 +16,13 @@ namespace felis {
 
 class Checker {
  public:
-  Checker() : currentScope_(std::make_shared<Scope>(nullptr)){};
+  Checker() : current_scope_(std::make_shared<Scope>(nullptr)){};
   void SetupBuiltin();
   std::unique_ptr<hir::File> Check(std::unique_ptr<ast::File>);
 
  private:
-  std::shared_ptr<Scope> currentScope_;
-  std::shared_ptr<Decl> currentFunc_;
+  std::shared_ptr<Scope> current_scope_;
+  std::shared_ptr<Decl> current_func_;
 
   std::unique_ptr<hir::Block> CheckFnDecl(std::unique_ptr<ast::FnDecl>,
                                           std::unique_ptr<hir::FnDecl> &);
@@ -35,7 +35,7 @@ class Checker {
       std::unique_ptr<ast::AssignStmt>);
   std::unique_ptr<hir::IfStmt> CheckIfStmt(std::unique_ptr<ast::IfStmt>);
   std::unique_ptr<hir::Block> CheckBlock(std::unique_ptr<ast::Block>,
-                                         bool isFnBody = false);
+                                         bool is_fn_body = false);
 
   std::unique_ptr<hir::Expr> MakeExpr(std::unique_ptr<ast::Expr> expr);
   std::unique_ptr<hir::Constant> MakeLit(std::unique_ptr<ast::Lit> lit);

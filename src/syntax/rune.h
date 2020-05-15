@@ -135,8 +135,8 @@ struct rune {
       r = 0;
       return in;
     }
-    uint8_t numBytes = num_bytes_from_first(byte1);
-    switch (numBytes) {
+    uint8_t num_bytes = num_bytes_from_first(byte1);
+    switch (num_bytes) {
       case 0:
         throw invalid_rune_error("invalid first byte " + std::to_string(byte1));
       case 1:
@@ -171,8 +171,8 @@ struct rune {
   }
 
   int encode(char res[4]) const {
-    int8_t numBytes = bytes();
-    switch (numBytes) {
+    int8_t num_bytes = bytes();
+    switch (num_bytes) {
       case 1: {
         res[0] = cp;
       } break;
@@ -192,7 +192,7 @@ struct rune {
         res[3] = TAIL_HEAD | (mask8(cp) & TAIL_MASK);
       } break;
     }
-    return numBytes;
+    return num_bytes;
   }
 
   int8_t bytes() const {

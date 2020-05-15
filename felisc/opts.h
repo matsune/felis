@@ -46,10 +46,10 @@ std::string extOfEmit(EmitType emit) {
 
 class Opts {
  public:
-  Opts(std::string filepath, std::string output, bool printAst, Emits emits)
+  Opts(std::string filepath, std::string output, bool print_ast, Emits emits)
       : filepath_(filepath),
         output_(output),
-        printAst_(printAst),
+        print_ast_(print_ast),
         emits_(emits){};
 
   std::string OutputName(EmitType emit) {
@@ -65,7 +65,7 @@ class Opts {
 
   std::string Filepath() { return filepath_; }
 
-  bool IsPrintAst() { return printAst_; }
+  bool IsPrintAst() { return print_ast_; }
 
   bool IsMultiEmits() {
     return emits_ != 0 && emits_ != EmitType::LINK &&
@@ -78,7 +78,7 @@ class Opts {
  private:
   std::string filepath_;
   std::string output_;
-  bool printAst_;
+  bool print_ast_;
   Emits emits_;
 };
 

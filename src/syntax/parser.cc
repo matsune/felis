@@ -93,28 +93,28 @@ std::unique_ptr<ast::FnProto> Parser::ParseFnProto() {
     Throw("expected 'fn'");
   }
   auto fn = Bump();
-  Loc fnBegin = fn->begin;
+  Loc fn_begin = fn->begin;
 
   if (Peek()->kind != Token::Kind::IDENT) {
     Throw("expected ident");
   }
-  auto nameTok = Bump();
-  auto name = std::make_unique<ast::Ident>(nameTok->begin, nameTok->val);
+  auto name_tok = Bump();
+  auto name = std::make_unique<ast::Ident>(name_tok->begin, name_tok->val);
 
-  auto fnArgs = ParseFnArgs();
+  auto fn_args = ParseFnArgs();
 
   if (Peek()->kind == Token::Kind::ARROW) {
     Bump();
     if (Peek()->kind != Token::Kind::IDENT) {
       Throw("expected ident");
     }
-    auto tyTok = Bump();
-    auto ty = std::make_unique<ast::Ident>(tyTok->begin, tyTok->val);
-    return std::make_unique<ast::FnProto>(fnBegin, std::move(name),
-                                          std::move(fnArgs), std::move(ty));
+    auto ty_tok = Bump();
+    auto ty = std::make_unique<ast::Ident>(ty_tok->begin, ty_tok->val);
+    return std::make_unique<ast::FnProto>(fn_begin, std::move(name),
+                                          std::move(fn_args), std::move(ty));
   } else {
-    return std::make_unique<ast::FnProto>(fnBegin, std::move(name),
-                                          std::move(fnArgs));
+    return std::make_unique<ast::FnProto>(fn_begin, std::move(name),
+                                          std::move(fn_args));
   }
 }
 
@@ -132,10 +132,10 @@ std::unique_ptr<ast::FnArgs> Parser::ParseFnArgs() {
   }
 
   auto arg = ParseFnArg();
-  bool hasName = arg->WithName();
-  std::map<std::string, bool> nameMap;
-  if (hasName) {
-    nameMap[arg->name->val] = true;
+  bool has_name = arg->WithName();
+  std::map<std::string, bool> name_map;
+  if (has_name) {
+    name_map[arg->name->val] = true;
   }
   args.push_back(std::move(arg));
 
@@ -143,14 +143,14 @@ std::unique_ptr<ast::FnArgs> Parser::ParseFnArgs() {
     Bump();
 
     arg = ParseFnArg();
-    if (hasName != arg->WithName()) {
+    if (has_name != arg->WithName()) {
       Throw("mixed name in func args");
     }
-    if (hasName) {
-      if (nameMap.count(arg->name->val)) {
+    if (has_name) {
+      if (name_map.count(arg->name->val)) {
         Throw("duplicate argument %s", arg->name->val.c_str());
       }
-      nameMap[arg->name->val] = true;
+      name_map[arg->name->val] = true;
     }
     args.push_back(std::move(arg));
   }
@@ -167,7 +167,7 @@ std::unique_ptr<ast::FnArg> Parser::ParseFnArg() {
   if (Peek()->kind != Token::Kind::IDENT) {
     Throw("expected ident");
   }
-  auto nameOrTyTok = Bump();
+  auto name_or_ty_tok = Bump();
 
   if (Peek()->kind == Token::Kind::COLON) {
     Bump();
@@ -176,26 +176,26 @@ std::unique_ptr<ast::FnArg> Parser::ParseFnArg() {
       Throw("expected ident");
     }
 
-    auto name =
-        std::make_unique<ast::Ident>(nameOrTyTok->begin, nameOrTyTok->val);
-    auto tyTok = Bump();
+    auto name = std::make_unique<ast::Ident>(name_or_ty_tok->begin,
+                                             name_or_ty_tok->val);
+    auto ty_tok = Bump();
     return std::make_unique<ast::FnArg>(
-        std::make_unique<ast::Ident>(tyTok->begin, tyTok->val),
+        std::make_unique<ast::Ident>(ty_tok->begin, ty_tok->val),
         std::move(name));
   } else {
-    return std::make_unique<ast::FnArg>(
-        std::make_unique<ast::Ident>(nameOrTyTok->begin, nameOrTyTok->val));
+    return std::make_unique<ast::FnArg>(std::make_unique<ast::Ident>(
+        name_or_ty_tok->begin, name_or_ty_tok->val));
   }
 }
 
 std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
-  std::unique_ptr<ast::UnaryOp> unOp;
+  std::unique_ptr<ast::UnaryOp> un_op;
   if (Peek()->kind == Token::Kind::MINUS) {
     Loc begin = Bump()->begin;
-    unOp = std::make_unique<ast::UnaryOp>(begin, ast::UnaryOp::Op::NEG);
+    un_op = std::make_unique<ast::UnaryOp>(begin, ast::UnaryOp::Op::NEG);
   } else if (Peek()->kind == Token::Kind::NOT) {
     Loc begin = Bump()->begin;
-    unOp = std::make_unique<ast::UnaryOp>(begin, ast::UnaryOp::Op::NOT);
+    un_op = std::make_unique<ast::UnaryOp>(begin, ast::UnaryOp::Op::NOT);
   }
 
   if (!is_primary(Peek()->kind)) {
@@ -241,8 +241,8 @@ std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
         end, unique_cast<ast::Expr, ast::Ident>(std::move(lhs)),
         std::move(args));
   }
-  if (unOp) {
-    return std::make_unique<ast::UnaryExpr>(std::move(unOp), std::move(lhs));
+  if (un_op) {
+    return std::make_unique<ast::UnaryExpr>(std::move(un_op), std::move(lhs));
   }
 
   if (Peek()->nl) {
@@ -256,13 +256,13 @@ std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
     auto peek = Peek();
     ast::BinaryOp::Op op = binop_from_tok(peek->kind);
     Loc begin = peek->begin;
-    auto binOp = std::make_unique<ast::BinaryOp>(begin, op);
+    auto bin_op = std::make_unique<ast::BinaryOp>(begin, op);
     if (op <= prec) {
       return lhs;
     }
 
     Bump();
-    lhs = std::make_unique<ast::BinaryExpr>(std::move(lhs), std::move(binOp),
+    lhs = std::make_unique<ast::BinaryExpr>(std::move(lhs), std::move(bin_op),
                                             ParseExpr(op));
   }
 }  // namespace felis
@@ -312,7 +312,7 @@ std::unique_ptr<ast::Stmt> Parser::ParseStmt() {
              Peek()->kind == Token::Kind::KW_VAR) {
     // variable decl
     auto kw = Bump();
-    bool isLet = kw->kind == Token::Kind::KW_LET;
+    bool is_let = kw->kind == Token::Kind::KW_LET;
     Loc begin = kw->begin;
 
     if (Peek()->kind != Token::Kind::IDENT) {
@@ -325,7 +325,7 @@ std::unique_ptr<ast::Stmt> Parser::ParseStmt() {
     }
     Bump();
 
-    return std::make_unique<ast::VarDeclStmt>(begin, isLet, std::move(name),
+    return std::make_unique<ast::VarDeclStmt>(begin, is_let, std::move(name),
                                               ParseExpr());
   } else if (Peek()->kind == Token::Kind::KW_IF) {
     return ParseIf();
@@ -409,7 +409,7 @@ std::unique_ptr<ast::File> Parser::Parse() {
       file->externs.push_back(std::move(ext));
     } else if (Peek()->kind == Token::Kind::KW_FN) {
       auto fn = ParseFnDecl();
-      file->fnDecls.push_back(std::move(fn));
+      file->fn_decls.push_back(std::move(fn));
     } else {
       Throw("unknown top-level token");
     }

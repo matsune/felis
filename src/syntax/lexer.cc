@@ -370,28 +370,28 @@ void Lexer::EatNum(std::unique_ptr<Token> &tok) {
   tok->kind = Token::Kind::LIT_INT;
   auto first = Bump();
   tok->val.append(first);
-  bool canExponent = true;
+  bool can_exponent = true;
   if (first == '0') {
     if (BumpIf('b')) {
       // TODO:
       Throw("unimplemented binary literal");
 
       // binary
-      canExponent = false;
+      can_exponent = false;
       EatDigits(tok->val, is_bitc);
     } else if (BumpIf('o')) {
       // TODO:
       Throw("unimplemented octal literal");
 
       // octal
-      canExponent = false;
+      can_exponent = false;
       EatDigits(tok->val, is_octalc);
     } else if (BumpIf('x')) {
       // TODO:
       Throw("unimplemented hex literal");
 
       // hex
-      canExponent = false;
+      can_exponent = false;
       EatDigits(tok->val, is_hexc);
     } else if (is_decimalc(peek_) || peek_ == '_') {
       while (true) {
@@ -422,18 +422,18 @@ void Lexer::EatNum(std::unique_ptr<Token> &tok) {
   }
 
   if (peek_ == '.' || peek_ == 'e' || peek_ == 'E') {
-    bool isDot = peek_ == '.';
-    if (!isDot) {  // TODO:
+    bool is_dot = peek_ == '.';
+    if (!is_dot) {  // TODO:
       Throw("unimplemented float literal");
     }
 
     // only decimal has fractional part
-    if (!canExponent) {
+    if (!can_exponent) {
       Throw("'%c' exponent requires decimal mantissa\n", peek_);
     }
     tok->kind = Token::Kind::LIT_FLOAT;
     tok->val.append(Bump());
-    if (!isDot && peek_ == '-') {
+    if (!is_dot && peek_ == '-') {
       tok->val.append(Bump());
     }
     EatDigits(tok->val, is_decimalc);
@@ -448,7 +448,7 @@ void Lexer::EatLineComment() {
 
 bool Lexer::EatBlockComment() {
   int depth(1);
-  bool hasNl(false);
+  bool has_nl(false);
 
   while (true) {
     if (peek_ == 0) {
@@ -466,7 +466,7 @@ bool Lexer::EatBlockComment() {
       }
     } else {
       if (is_newline(peek_)) {
-        hasNl = true;
+        has_nl = true;
       }
       Bump();
     }
@@ -474,7 +474,7 @@ bool Lexer::EatBlockComment() {
   if (depth != 0) {
     Throw("unterminated block comment");
   }
-  return hasNl;
+  return has_nl;
 }
 
 template <typename... Args>

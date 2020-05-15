@@ -69,13 +69,13 @@ struct Constant : public Value {
 
 struct IntConstant : public Constant {
   int64_t val;
-  bool is32;
+  bool is_32;
 
   IntConstant(Loc begin, Loc end, int64_t val)
-      : Constant(begin, end), val(val), is32(val <= INT32_MAX){};
+      : Constant(begin, end), val(val), is_32(val <= INT32_MAX){};
 
   std::shared_ptr<Type> Ty() const override {
-    return std::make_shared<Type>(is32 ? Type::Kind::I32 : Type::Kind::I64);
+    return std::make_shared<Type>(is_32 ? Type::Kind::I32 : Type::Kind::I64);
   }
 
   Constant::Kind ConstantKind() const override { return Constant::Kind::INT; };
@@ -85,13 +85,13 @@ struct FloatConstant : public Constant {
   Loc begin;
   Loc end;
   double val;
-  bool is32;
+  bool is_32;
 
-  FloatConstant(Loc begin, Loc end, double val, bool is32)
-      : Constant(begin, end), end(end), val(val), is32(is32){};
+  FloatConstant(Loc begin, Loc end, double val, bool is_32)
+      : Constant(begin, end), end(end), val(val), is_32(is_32){};
 
   std::shared_ptr<Type> Ty() const override {
-    return std::make_shared<Type>(is32 ? Type::Kind::F32 : Type::Kind::F64);
+    return std::make_shared<Type>(is_32 ? Type::Kind::F32 : Type::Kind::F64);
   }
 
   Constant::Kind ConstantKind() const override {
@@ -145,8 +145,8 @@ struct Call : public Expr {
   Call(Loc begin, Loc end) : Expr(begin, end) {}
 
   std::shared_ptr<Type> Ty() const override {
-    auto fnType = (FuncType*)decl->type.get();
-    return fnType->ret;
+    auto fn_type = (FuncType*)decl->type.get();
+    return fn_type->ret;
   }
 
   Expr::Kind ExprKind() const override { return Expr::Kind::CALL; }
@@ -348,7 +348,7 @@ struct Extern : public Node {
 
 struct File {
   std::vector<std::unique_ptr<Extern>> externs;
-  unique_deque<FnDecl> fnDecls;
+  unique_deque<FnDecl> fn_decls;
 };
 
 }  // namespace hir

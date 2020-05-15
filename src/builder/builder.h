@@ -18,12 +18,12 @@ namespace felis {
 
 class Builder {
  public:
-  Builder(std::string moduleName, std::string fileName,
+  Builder(std::string module_name, std::string file_name,
           std::unique_ptr<llvm::TargetMachine> machine)
-      : module_(moduleName, ctx_),
+      : module_(module_name, ctx_),
         builder_(ctx_),
         machine_(std::move(machine)) {
-    module_.setSourceFileName(fileName);
+    module_.setSourceFileName(file_name);
     module_.setDataLayout(machine_->createDataLayout());
   };
   void Build(std::unique_ptr<hir::File>);
@@ -37,9 +37,9 @@ class Builder {
   llvm::Module module_;
   llvm::IRBuilder<> builder_;
   std::unique_ptr<llvm::TargetMachine> machine_;
-  llvm::Function *currentFunc_;
+  llvm::Function *current_func_;
 
-  std::map<std::shared_ptr<Decl>, llvm::Value *> declMap_;
+  std::map<std::shared_ptr<Decl>, llvm::Value *> decl_map_;
   llvm::Type *GetLLVMTyFromTy(std::shared_ptr<Type>);
 
   llvm::Function *BuildFnProto(std::shared_ptr<Decl>);

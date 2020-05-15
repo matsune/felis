@@ -203,13 +203,13 @@ struct CallExpr : public Expr {
 };
 
 struct UnaryExpr : public Expr {
-  std::unique_ptr<UnaryOp> unOp;
+  std::unique_ptr<UnaryOp> op;
   std::unique_ptr<Expr> expr;
 
-  UnaryExpr(std::unique_ptr<UnaryOp> unOp, std::unique_ptr<Expr> expr)
-      : unOp(std::move(unOp)), expr(std::move(expr)) {}
+  UnaryExpr(std::unique_ptr<UnaryOp> op, std::unique_ptr<Expr> expr)
+      : op(std::move(op)), expr(std::move(expr)) {}
 
-  Loc Begin() const override { return unOp->Begin(); }
+  Loc Begin() const override { return op->Begin(); }
 
   Loc End() const override { return expr->End(); }
 
@@ -237,14 +237,14 @@ struct RetStmt : public Stmt {
 
 struct VarDeclStmt : public Stmt {
   Loc begin;
-  bool isLet;
+  bool is_let;
   std::unique_ptr<Ident> name;
   std::unique_ptr<Expr> expr;
 
-  VarDeclStmt(Loc begin, bool isLet, std::unique_ptr<Ident> name,
+  VarDeclStmt(Loc begin, bool is_let, std::unique_ptr<Ident> name,
               std::unique_ptr<Expr> expr)
       : begin(begin),
-        isLet(isLet),
+        is_let(is_let),
         name(std::move(name)),
         expr(std::move(expr)) {}
 
@@ -342,7 +342,7 @@ struct Extern : public Node {
 
 struct File {
   std::vector<std::unique_ptr<Extern>> externs;
-  unique_deque<FnDecl> fnDecls;
+  unique_deque<FnDecl> fn_decls;
 };
 
 }  // namespace ast

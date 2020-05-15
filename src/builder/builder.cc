@@ -26,12 +26,12 @@ llvm::Type* Builder::GetLLVMTyFromTy(std::shared_ptr<Type> ty) {
     case Type::Kind::STRING:
       return llvm::Type::getInt8PtrTy(ctx_);
     case Type::Kind::FUNC: {
-      auto funcType = (FuncType*)ty.get();
+      auto func_type = (FuncType*)ty.get();
       std::vector<llvm::Type*> args;
-      for (auto& arg : funcType->args) {
+      for (auto& arg : func_type->args) {
         args.push_back(GetLLVMTyFromTy(arg));
       }
-      return llvm::FunctionType::get(GetLLVMTyFromTy(funcType->ret), args,
+      return llvm::FunctionType::get(GetLLVMTyFromTy(func_type->ret), args,
                                      false);
     } break;
     case Type::Kind::VOID:
@@ -43,31 +43,31 @@ llvm::Type* Builder::GetLLVMTyFromTy(std::shared_ptr<Type> ty) {
 
 void Builder::Build(std::unique_ptr<hir::File> file) {
   for (auto& ext : file->externs) {
-    declMap_[ext->decl] = BuildFnProto(ext->decl);
+    decl_map_[ext->decl] = BuildFnProto(ext->decl);
   }
-  for (auto& fnDecl : file->fnDecls) {
-    declMap_[fnDecl->decl] = BuildFnProto(fnDecl->decl);
+  for (auto& fn_decl : file->fn_decls) {
+    decl_map_[fn_decl->decl] = BuildFnProto(fn_decl->decl);
   }
 
-  while (!file->fnDecls.empty()) {
-    auto fnDecl = file->fnDecls.move_front();
-    auto func = (llvm::Function*)declMap_[fnDecl->decl];
-    currentFunc_ = func;
+  while (!file->fn_decls.empty()) {
+    auto fn_decl = file->fn_decls.move_front();
+    auto func = (llvm::Function*)decl_map_[fn_decl->decl];
+    current_func_ = func;
     auto bb = llvm::BasicBlock::Create(ctx_, "", func);
     builder_.SetInsertPoint(bb);
 
     auto it = func->arg_begin();
-    while (!fnDecl->args.empty()) {
-      auto arg = fnDecl->args.front();
-      fnDecl->args.pop_front();
+    while (!fn_decl->args.empty()) {
+      auto arg = fn_decl->args.front();
+      fn_decl->args.pop_front();
       llvm::AllocaInst* alloca =
           builder_.CreateAlloca(it->getType(), nullptr, arg->name);
       builder_.CreateStore(it, alloca);
-      declMap_[arg] = alloca;
+      decl_map_[arg] = alloca;
       it++;
     }
 
-    BuildBlock(std::move(fnDecl->block), nullptr);
+    BuildBlock(std::move(fn_decl->block), nullptr);
 
     /* std::string str; */
     /* llvm::raw_string_ostream s(str); */
@@ -85,7 +85,7 @@ llvm::Function* Builder::BuildFnProto(std::shared_ptr<Decl> decl) {
 }
 
 void Builder::BuildStmt(std::unique_ptr<hir::Stmt> stmt,
-                        llvm::BasicBlock* afterBB) {
+                        llvm::BasicBlock* after_bb) {
   switch (stmt->StmtKind()) {
     case hir::Stmt::EXPR:
       BuildExpr(unique_cast<hir::Stmt, hir::Expr>(std::move(stmt)));
@@ -102,11 +102,11 @@ void Builder::BuildStmt(std::unique_ptr<hir::Stmt> stmt,
       break;
     case hir::Stmt::IF: {
       BuildIfStmt(unique_cast<hir::Stmt, hir::IfStmt>(std::move(stmt)),
-                  afterBB);
+                  after_bb);
 
     } break;
     case hir::Stmt::BLOCK:
-      BuildBlock(unique_cast<hir::Stmt, hir::Block>(std::move(stmt)), afterBB);
+      BuildBlock(unique_cast<hir::Stmt, hir::Block>(std::move(stmt)), after_bb);
       break;
   }
 }
@@ -126,147 +126,148 @@ void Builder::BuildVarDeclStmt(std::unique_ptr<hir::VarDeclStmt> stmt) {
   auto ty = GetLLVMTyFromTy(decl->type);
   llvm::AllocaInst* alloca = builder_.CreateAlloca(ty, nullptr, decl->name);
   builder_.CreateStore(value, alloca);
-  declMap_[decl] = alloca;
+  decl_map_[decl] = alloca;
 }
 
 void Builder::BuildAssignStmt(std::unique_ptr<hir::AssignStmt> stmt) {
   auto value = BuildExpr(std::move(stmt->expr));
-  auto alloca = declMap_[stmt->decl];
+  auto alloca = decl_map_[stmt->decl];
   builder_.CreateStore(value, alloca);
 }
 
-void Builder::BuildIfStmt(std::unique_ptr<hir::IfStmt> ifStmt,
-                          llvm::BasicBlock* endBB) {
-  bool hasElse = ifStmt->els != nullptr;
-  auto condVal = BuildExpr(std::move(ifStmt->cond));
-  llvm::BasicBlock* thenBB =
-      llvm::BasicBlock::Create(ctx_, "then", currentFunc_, endBB);
+void Builder::BuildIfStmt(std::unique_ptr<hir::IfStmt> if_stmt,
+                          llvm::BasicBlock* end_bb) {
+  bool has_else = if_stmt->els != nullptr;
+  auto cond_val = BuildExpr(std::move(if_stmt->cond));
+  llvm::BasicBlock* then_bb =
+      llvm::BasicBlock::Create(ctx_, "then", current_func_, end_bb);
 
-  if (hasElse) {
+  if (has_else) {
     //
     // if cond {
-    //    <- thenBB
+    //    <- then_bb
     // } else {
-    //    <- elseBB
+    //    <- else_bb
     // }
-    // <- endBB
+    // <- end_bb
     //
-    llvm::BasicBlock* elseBB =
-        llvm::BasicBlock::Create(ctx_, "else", currentFunc_, endBB);
-    builder_.CreateCondBr(condVal, thenBB, elseBB);
-    builder_.SetInsertPoint(thenBB);
-    BuildBlock(std::move(ifStmt->block), endBB);
+    llvm::BasicBlock* else_bb =
+        llvm::BasicBlock::Create(ctx_, "else", current_func_, end_bb);
+    builder_.CreateCondBr(cond_val, then_bb, else_bb);
+    builder_.SetInsertPoint(then_bb);
+    BuildBlock(std::move(if_stmt->block), end_bb);
 
-    builder_.SetInsertPoint(elseBB);
-    if (ifStmt->els->StmtKind() == hir::Stmt::Kind::IF) {
-      BuildIfStmt(unique_cast<hir::Stmt, hir::IfStmt>(std::move(ifStmt->els)),
-                  endBB);
-    } else if (ifStmt->els->StmtKind() == hir::Stmt::Kind::BLOCK) {
-      BuildBlock(unique_cast<hir::Stmt, hir::Block>(std::move(ifStmt->els)),
-                 endBB);
+    builder_.SetInsertPoint(else_bb);
+    if (if_stmt->els->StmtKind() == hir::Stmt::Kind::IF) {
+      BuildIfStmt(unique_cast<hir::Stmt, hir::IfStmt>(std::move(if_stmt->els)),
+                  end_bb);
+    } else if (if_stmt->els->StmtKind() == hir::Stmt::Kind::BLOCK) {
+      BuildBlock(unique_cast<hir::Stmt, hir::Block>(std::move(if_stmt->els)),
+                 end_bb);
     }
 
   } else {
     // No else if-statement
     //
     // if cond {
-    //    <- thenBB
+    //    <- then_bb
     // }
-    // <- endBB
+    // <- end_bb
     //
-    builder_.CreateCondBr(condVal, thenBB, endBB);
-    builder_.SetInsertPoint(thenBB);
-    BuildBlock(std::move(ifStmt->block), endBB);
+    builder_.CreateCondBr(cond_val, then_bb, end_bb);
+    builder_.SetInsertPoint(then_bb);
+    BuildBlock(std::move(if_stmt->block), end_bb);
   }
 }
 
 void Builder::BuildBlock(std::unique_ptr<hir::Block> block,
-                         llvm::BasicBlock* afterBB) {
+                         llvm::BasicBlock* after_bb) {
   while (!block->stmts.empty()) {
     auto stmt = block->stmts.move_front();
 
-    bool isLast = block->stmts.empty();
-    if (!isLast && stmt->StmtKind() == hir::Stmt::Kind::IF) {
-      auto endBB = llvm::BasicBlock::Create(ctx_, "end", currentFunc_, afterBB);
-      BuildStmt(std::move(stmt), endBB);
-      builder_.SetInsertPoint(endBB);
+    bool is_last = block->stmts.empty();
+    if (!is_last && stmt->StmtKind() == hir::Stmt::Kind::IF) {
+      auto end_bb =
+          llvm::BasicBlock::Create(ctx_, "end", current_func_, after_bb);
+      BuildStmt(std::move(stmt), end_bb);
+      builder_.SetInsertPoint(end_bb);
     } else {
-      BuildStmt(std::move(stmt), afterBB);
+      BuildStmt(std::move(stmt), after_bb);
     }
   }
   if (!builder_.GetInsertBlock()->getTerminator()) {
-    builder_.CreateBr(afterBB);
+    builder_.CreateBr(after_bb);
   }
 }
 
 llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
   auto ty = binary->Ty();
-  bool isF = binary->lhs->Ty()->IsFloat();
-  auto lVal = BuildExpr(std::move(binary->lhs));
-  auto rVal = BuildExpr(std::move(binary->rhs));
+  bool is_f = binary->lhs->Ty()->IsFloat();
+  auto l_val = BuildExpr(std::move(binary->lhs));
+  auto r_val = BuildExpr(std::move(binary->rhs));
   switch (binary->op) {
     case hir::Binary::Op::LT: {
-      if (isF) {
-        return builder_.CreateFCmpOLT(lVal, rVal);
+      if (is_f) {
+        return builder_.CreateFCmpOLT(l_val, r_val);
       } else {
-        return builder_.CreateICmpSLT(lVal, rVal);
+        return builder_.CreateICmpSLT(l_val, r_val);
       }
     }
     case hir::Binary::Op::LE: {
-      if (isF) {
-        return builder_.CreateFCmpOLE(lVal, rVal);
+      if (is_f) {
+        return builder_.CreateFCmpOLE(l_val, r_val);
       } else {
-        return builder_.CreateICmpSLE(lVal, rVal);
+        return builder_.CreateICmpSLE(l_val, r_val);
       }
     }
 
     case hir::Binary::Op::GT: {
-      if (isF) {
-        return builder_.CreateFCmpOGT(lVal, rVal);
+      if (is_f) {
+        return builder_.CreateFCmpOGT(l_val, r_val);
       } else {
-        return builder_.CreateICmpSGT(lVal, rVal);
+        return builder_.CreateICmpSGT(l_val, r_val);
       }
     }
     case hir::Binary::Op::GE: {
-      if (isF) {
-        return builder_.CreateFCmpOGE(lVal, rVal);
+      if (is_f) {
+        return builder_.CreateFCmpOGE(l_val, r_val);
       } else {
-        return builder_.CreateICmpSGE(lVal, rVal);
+        return builder_.CreateICmpSGE(l_val, r_val);
       }
     }
     case hir::Binary::Op::ADD: {
-      if (isF) {
-        return builder_.CreateFAdd(lVal, rVal);
+      if (is_f) {
+        return builder_.CreateFAdd(l_val, r_val);
       } else {
-        return builder_.CreateAdd(lVal, rVal);
+        return builder_.CreateAdd(l_val, r_val);
       }
     }
     case hir::Binary::Op::SUB: {
-      if (isF) {
-        return builder_.CreateFSub(lVal, rVal);
+      if (is_f) {
+        return builder_.CreateFSub(l_val, r_val);
       } else {
-        return builder_.CreateSub(lVal, rVal);
+        return builder_.CreateSub(l_val, r_val);
       }
     }
     case hir::Binary::Op::MUL: {
-      if (isF) {
-        return builder_.CreateFMul(lVal, rVal);
+      if (is_f) {
+        return builder_.CreateFMul(l_val, r_val);
       } else {
-        return builder_.CreateMul(lVal, rVal);
+        return builder_.CreateMul(l_val, r_val);
       }
     }
     case hir::Binary::Op::DIV: {
-      if (isF) {
-        return builder_.CreateFDiv(lVal, rVal);
+      if (is_f) {
+        return builder_.CreateFDiv(l_val, r_val);
       } else {
-        return builder_.CreateSDiv(lVal, rVal);
+        return builder_.CreateSDiv(l_val, r_val);
       }
     }
     case hir::Binary::Op::MOD: {
-      if (isF) {
-        return builder_.CreateFRem(lVal, rVal);
+      if (is_f) {
+        return builder_.CreateFRem(l_val, r_val);
       } else {
-        return builder_.CreateSRem(lVal, rVal);
+        return builder_.CreateSRem(l_val, r_val);
       }
     }
   }
@@ -282,7 +283,7 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
       switch (value->ValueKind()) {
         case hir::Value::Kind::VARIABLE: {
           auto variable = (hir::Variable*)value;
-          auto var = declMap_[variable->decl];
+          auto var = decl_map_[variable->decl];
           return builder_.CreateLoad(GetLLVMTyFromTy(variable->Ty()), var);
 
         } break;
@@ -293,18 +294,18 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
     } break;
     case hir::Expr::Kind::CALL: {
       auto call = unique_cast<hir::Expr, hir::Call>(std::move(expr));
-      std::vector<llvm::Value*> argValues(call->args.size());
+      std::vector<llvm::Value*> arg_values(call->args.size());
       int i = 0;
       while (!call->args.empty()) {
         auto arg = call->args.move_front();
         auto expr = BuildExpr(std::move(arg));
-        argValues[i] = expr;
+        arg_values[i] = expr;
         i++;
       }
-      bool isVoid = call->decl->AsFuncType()->ret->IsVoid();
-      auto fnType = (llvm::Function*)declMap_[call->decl];
-      return builder_.CreateCall(fnType, argValues,
-                                 isVoid ? "" : call->decl->name);
+      bool is_void = call->decl->AsFuncType()->ret->IsVoid();
+      auto fn_type = (llvm::Function*)decl_map_[call->decl];
+      return builder_.CreateCall(fn_type, arg_values,
+                                 is_void ? "" : call->decl->name);
     } break;
     case hir::Expr::Kind::UNARY: {
       /* auto unary = (hir::Unary*)expr; */
@@ -347,29 +348,29 @@ llvm::Constant* Builder::BuildConstant(
 }
 
 void Builder::EmitLLVMIR(std::string filename) {
-  std::error_code errCode;
-  llvm::raw_fd_ostream out(filename, errCode);
-  if (errCode) {
-    throw std::runtime_error(errCode.message());
+  std::error_code err_code;
+  llvm::raw_fd_ostream out(filename, err_code);
+  if (err_code) {
+    throw std::runtime_error(err_code.message());
   }
   module_.print(out, nullptr);
 }
 
 void Builder::EmitLLVMBC(std::string filename) {
-  std::error_code errCode;
-  llvm::raw_fd_ostream out(filename, errCode);
-  if (errCode) {
-    throw std::runtime_error(errCode.message());
+  std::error_code err_code;
+  llvm::raw_fd_ostream out(filename, err_code);
+  if (err_code) {
+    throw std::runtime_error(err_code.message());
   }
   llvm::WriteBitcodeToFile(module_, out);
 }
 
 void Builder::EmitCodeGen(std::string filename,
                           llvm::TargetMachine::CodeGenFileType ft) {
-  std::error_code errCode;
-  llvm::raw_fd_ostream out(filename, errCode);
-  if (errCode) {
-    throw std::runtime_error(errCode.message());
+  std::error_code err_code;
+  llvm::raw_fd_ostream out(filename, err_code);
+  if (err_code) {
+    throw std::runtime_error(err_code.message());
   }
   llvm::legacy::PassManager pass;
   if (machine_->addPassesToEmitFile(pass, out, nullptr, ft)) {

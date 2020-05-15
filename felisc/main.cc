@@ -77,10 +77,10 @@ class Session {
   felis::unique_deque<felis::Token> ParseTokens(std::ifstream &in) {
     felis::unique_deque<felis::Token> tokens;
     felis::Lexer lexer(in);
-    bool isEnd(false);
-    while (!isEnd) {
+    bool is_end(false);
+    while (!is_end) {
       auto token = lexer.Next();
-      isEnd = token->kind == felis::Token::Kind::END;
+      is_end = token->kind == felis::Token::Kind::END;
       tokens.push_back(std::move(token));
     }
     return std::move(tokens);
@@ -131,18 +131,18 @@ class Session {
     if (opts->IsEmit(EmitType::ASM)) {
       builder->EmitASM(opts->OutputName(EmitType::ASM));
     }
-    bool emitObj = opts->IsEmit(EmitType::OBJ);
-    bool emitLink = opts->IsEmit(EmitType::LINK);
+    bool emit_obj = opts->IsEmit(EmitType::OBJ);
+    bool emit_link = opts->IsEmit(EmitType::LINK);
 
-    bool hasObj = false;
-    std::string objPath = opts->OutputName(EmitType::OBJ);
-    if (emitObj || emitLink) {
-      builder->EmitOBJ(objPath);
-      hasObj = true;
+    bool has_obj = false;
+    std::string obj_path = opts->OutputName(EmitType::OBJ);
+    if (emit_obj || emit_link) {
+      builder->EmitOBJ(obj_path);
+      has_obj = true;
     }
-    if (emitLink) {
+    if (emit_link) {
       std::string out = opts->OutputName(EmitType::LINK);
-      std::string s = "gcc " + objPath + " -o " + out;
+      std::string s = "gcc " + obj_path + " -o " + out;
       system(s.c_str());
     }
   }

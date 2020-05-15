@@ -17,23 +17,23 @@ class Scope {
   Scope(std::shared_ptr<Scope> parent) : parent_(std::move(parent)){};
 
   std::shared_ptr<Decl> FindDecl(std::string name) {
-    auto it = declMap_.find(name);
-    if (it != declMap_.end()) return it->second;
+    auto it = decl_map_.find(name);
+    if (it != decl_map_.end()) return it->second;
     return nullptr;
   }
 
   void InsertDecl(std::string name, std::shared_ptr<Decl> decl) {
-    declMap_.emplace(name, decl);
+    decl_map_.emplace(name, decl);
   }
 
   std::shared_ptr<Type> FindType(std::string name) {
-    auto it = typeMap_.find(name);
-    if (it != typeMap_.end()) return it->second;
+    auto it = type_map_.find(name);
+    if (it != type_map_.end()) return it->second;
     return nullptr;
   }
 
   void InsertType(std::string name, std::shared_ptr<Type> type) {
-    typeMap_.emplace(name, std::move(type));
+    type_map_.emplace(name, std::move(type));
   }
 
   std::shared_ptr<Scope> GetParent() { return parent_; }
@@ -41,15 +41,15 @@ class Scope {
   bool IsTop() { return parent_ == nullptr; }
 
   void Debug() {
-    for (auto &it : declMap_) {
+    for (auto &it : decl_map_) {
       std::cout << it.first << ":" << ToString(it.second->kind) << std::endl;
     }
   }
 
  private:
   std::shared_ptr<Scope> parent_;
-  std::map<std::string, std::shared_ptr<Decl>> declMap_;
-  std::map<std::string, std::shared_ptr<Type>> typeMap_;
+  std::map<std::string, std::shared_ptr<Decl>> decl_map_;
+  std::map<std::string, std::shared_ptr<Type>> type_map_;
 };
 
 }  // namespace felis

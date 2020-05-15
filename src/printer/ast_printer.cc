@@ -23,9 +23,9 @@ void AstPrinter::Print(const std::unique_ptr<ast::File> &file) {
     PrintIndex(i);
     PrintExtern(file->externs.at(i).get());
   }
-  for (int i = 0; i < file->fnDecls.size(); i++) {
+  for (int i = 0; i < file->fn_decls.size(); i++) {
     PrintIndex(i);
-    PrintFnDecl(file->fnDecls.at(i).get());
+    PrintFnDecl(file->fn_decls.at(i).get());
   }
   printf("\n");
 }
@@ -149,12 +149,12 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
     case ast::Stmt::Kind::VAR_DECL:
       Down("VarDecl {");
       {
-        auto varDecl = dynamic_cast<ast::VarDeclStmt *>(stmt);
-        Writeln("Decl: %s", varDecl->isLet ? "let" : "var");
+        auto var_decl = dynamic_cast<ast::VarDeclStmt *>(stmt);
+        Writeln("Decl: %s", var_decl->is_let ? "let" : "var");
         Write("Name: ");
-        PrintIdent(varDecl->name.get());
+        PrintIdent(var_decl->name.get());
         Write("Expr: ");
-        PrintExpr(varDecl->expr.get());
+        PrintExpr(var_decl->expr.get());
         /* PrintPos(varDecl->GetPos()); */
       }
       Up("}");
@@ -174,12 +174,12 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
     case ast::Stmt::Kind::IF:
       Down("If {");
       {
-        auto ifStmt = dynamic_cast<ast::IfStmt *>(stmt);
+        auto if_stmt = dynamic_cast<ast::IfStmt *>(stmt);
         Write("Cond: ");
-        PrintExpr(ifStmt->cond.get());
-        PrintBlock(ifStmt->block.get());
+        PrintExpr(if_stmt->cond.get());
+        PrintBlock(if_stmt->block.get());
         Write("Else: ");
-        PrintStmt(ifStmt->els.get());
+        PrintStmt(if_stmt->els.get());
         /* PrintPos(ifStmt->GetPos()); */
       }
       Up("}");
@@ -241,7 +241,7 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
       Down("Unary {");
       {
         auto unary = dynamic_cast<ast::UnaryExpr *>(expr);
-        std::string op = unary->unOp->op == ast::UnaryOp::Op::NEG ? "-" : "!";
+        std::string op = unary->op->op == ast::UnaryOp::Op::NEG ? "-" : "!";
         Writeln("op: %s", op.c_str());
         PrintExpr(unary->expr.get());
         /* PrintPos(unary->GetPos()); */

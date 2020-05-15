@@ -23,9 +23,9 @@ void HirPrinter::Print(const std::unique_ptr<hir::File> &file) {
     PrintIndex(i);
     PrintExtern(file->externs.at(i).get());
   }
-  for (int i = 0; i < file->fnDecls.size(); i++) {
+  for (int i = 0; i < file->fn_decls.size(); i++) {
     PrintIndex(i);
-    PrintFnDecl(file->fnDecls.at(i).get());
+    PrintFnDecl(file->fn_decls.at(i).get());
   }
   printf("\n");
 }
@@ -100,9 +100,9 @@ void HirPrinter::PrintStmt(hir::Stmt *stmt) {
     case hir::Stmt::Kind::VAR_DECL:
       Down("VarDecl {");
       {
-        auto varDecl = (hir::VarDeclStmt *)stmt;
-        PrintDecl(varDecl->decl.get());
-        PrintExpr(varDecl->expr.get());
+        auto var_decl = (hir::VarDeclStmt *)stmt;
+        PrintDecl(var_decl->decl.get());
+        PrintExpr(var_decl->expr.get());
       }
       Up("}");
       break;
@@ -118,12 +118,12 @@ void HirPrinter::PrintStmt(hir::Stmt *stmt) {
     case hir::Stmt::Kind::IF:
       Down("If {");
       {
-        auto ifStmt = (hir::IfStmt *)stmt;
+        auto if_stmt = (hir::IfStmt *)stmt;
         Write("Cond: ");
-        PrintExpr(ifStmt->cond.get());
-        PrintBlock(ifStmt->block.get());
+        PrintExpr(if_stmt->cond.get());
+        PrintBlock(if_stmt->block.get());
         Write("Else: ");
-        PrintStmt(ifStmt->els.get());
+        PrintStmt(if_stmt->els.get());
       }
       Up("}");
       break;

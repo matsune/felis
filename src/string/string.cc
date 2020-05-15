@@ -144,18 +144,18 @@ std::string ToString(Decl::Kind kind) {
 std::string ToString(Type *type) {
   switch (type->TypeKind()) {
     case Type::Kind::FUNC: {
-      auto funcType = (FuncType *)type;
+      auto func_type = (FuncType *)type;
       std::string str = "func(";
       int i = 0;
-      for (auto &arg : funcType->args) {
+      for (auto &arg : func_type->args) {
         if (i++ > 0) {
           str += ", ";
         }
         str += ToString(arg.get());
       }
       str += ")";
-      if (!funcType->ret->IsVoid()) {
-        str += " -> " + ToString(funcType->ret.get());
+      if (!func_type->ret->IsVoid()) {
+        str += " -> " + ToString(func_type->ret.get());
       }
       return str;
     } break;
