@@ -207,7 +207,7 @@ struct rune {
     }
   }
 
-  /* private: */
+ private:
   int32_t cp;
 };
 
