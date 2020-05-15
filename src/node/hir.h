@@ -28,7 +28,6 @@ struct Expr : public Stmt {
   enum Kind { BINARY, VALUE, CALL, UNARY };
 
   virtual Expr::Kind ExprKind() const = 0;
-  ;
 
   virtual std::shared_ptr<Type> Ty() const = 0;
 
@@ -49,7 +48,6 @@ struct Value : public Expr {
   enum Kind { CONSTANT, VARIABLE };
 
   virtual Value::Kind ValueKind() const = 0;
-  ;
 
   Expr::Kind ExprKind() const override { return Expr::Kind::VALUE; }
 
@@ -62,7 +60,6 @@ struct Constant : public Value {
   enum Kind { INT, FLOAT, CHAR, BOOL, STRING };
 
   virtual Constant::Kind ConstantKind() const = 0;
-  ;
 
   Value::Kind ValueKind() const override { return Value::Kind::CONSTANT; }
 };
