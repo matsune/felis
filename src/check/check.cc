@@ -4,7 +4,7 @@
 
 #include "error/error.h"
 #include "macro.h"
-#include "ptr.h"
+#include "unique.h"
 
 namespace felis {
 
@@ -31,13 +31,13 @@ std::unique_ptr<hir::File> Checker::Check(std::unique_ptr<ast::File> file) {
   }
   for (auto& fn : file->fnDecls) {
     auto decl = InsertFnDecl(false, fn->proto);
-    hirFile->fnDecls.emplace_back(new hir::FnDecl(fn->Begin(), decl));
+    hirFile->fnDecls.push_back(
+        std::make_unique<hir::FnDecl>(fn->Begin(), decl));
   }
 
   int i = 0;
   while (!file->fnDecls.empty()) {
-    auto fn = std::move(file->fnDecls.front());
-    file->fnDecls.pop_front();
+    auto fn = file->fnDecls.move_front();
     hirFile->fnDecls[i]->block =
         CheckFnDecl(std::move(fn), hirFile->fnDecls[i]);
     i++;
@@ -183,10 +183,9 @@ std::unique_ptr<hir::Block> Checker::CheckBlock(
   auto begin = block->Begin();
   auto end = block->End();
 
-  std::deque<std::unique_ptr<hir::Stmt>> stmts;
+  unique_deque<hir::Stmt> stmts;
   while (!block->stmts.empty()) {
-    auto stmtAst = std::move(block->stmts.front());
-    block->stmts.pop_front();
+    auto stmtAst = block->stmts.move_front();
 
     bool isLast = block->stmts.empty();
     auto stmt = CheckStmt(std::move(stmtAst));
@@ -265,8 +264,7 @@ std::unique_ptr<hir::Expr> Checker::MakeExpr(std::unique_ptr<ast::Expr> expr) {
 
       int i = 0;
       while (!callExpr->args.empty()) {
-        auto arg = std::move(callExpr->args.front());
-        callExpr->args.pop_front();
+        auto arg = callExpr->args.move_front();
 
         auto exp = MakeExpr(std::move(arg));
         auto ty = fnType->args[i];

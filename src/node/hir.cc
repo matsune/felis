@@ -4,7 +4,7 @@ namespace felis {
 
 namespace hir {
 
-bool Expr::IsConstant() {
+bool Expr::IsConstant() const {
   if (ExprKind() == Kind::VALUE) {
     auto value = (Value*)this;
     return value->IsConstant();

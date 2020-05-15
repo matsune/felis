@@ -6,8 +6,8 @@
 namespace felis {
 
 struct Node {
-  virtual Loc Begin() = 0;
-  virtual Loc End() = 0;
+  virtual Loc Begin() const = 0;
+  virtual Loc End() const = 0;
 };
 
 }  // namespace felis

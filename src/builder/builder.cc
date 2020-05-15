@@ -5,7 +5,7 @@
 #include <llvm/IR/Verifier.h>
 
 #include "macro.h"
-#include "ptr.h"
+#include "unique.h"
 
 namespace felis {
 
@@ -50,8 +50,7 @@ void Builder::Build(std::unique_ptr<hir::File> file) {
   }
 
   while (!file->fnDecls.empty()) {
-    auto fnDecl = std::move(file->fnDecls.front());
-    file->fnDecls.pop_front();
+    auto fnDecl = file->fnDecls.move_front();
     auto func = (llvm::Function*)declMap_[fnDecl->decl];
     currentFunc_ = func;
     auto bb = llvm::BasicBlock::Create(ctx_, "", func);
@@ -59,7 +58,7 @@ void Builder::Build(std::unique_ptr<hir::File> file) {
 
     auto it = func->arg_begin();
     while (!fnDecl->args.empty()) {
-      auto arg = std::move(fnDecl->args.front());
+      auto arg = fnDecl->args.front();
       fnDecl->args.pop_front();
       llvm::AllocaInst* alloca =
           builder_.CreateAlloca(it->getType(), nullptr, arg->name);
@@ -184,8 +183,7 @@ void Builder::BuildIfStmt(std::unique_ptr<hir::IfStmt> ifStmt,
 void Builder::BuildBlock(std::unique_ptr<hir::Block> block,
                          llvm::BasicBlock* afterBB) {
   while (!block->stmts.empty()) {
-    auto stmt = std::move(block->stmts.front());
-    block->stmts.pop_front();
+    auto stmt = block->stmts.move_front();
 
     bool isLast = block->stmts.empty();
     if (!isLast && stmt->StmtKind() == hir::Stmt::Kind::IF) {
@@ -298,8 +296,7 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
       std::vector<llvm::Value*> argValues(call->args.size());
       int i = 0;
       while (!call->args.empty()) {
-        auto arg = std::move(call->args.front());
-        call->args.pop_front();
+        auto arg = call->args.move_front();
         auto expr = BuildExpr(std::move(arg));
         argValues[i] = expr;
         i++;

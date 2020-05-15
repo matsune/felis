@@ -4,7 +4,7 @@
 #include <map>
 #include <vector>
 
-#include "ptr.h"
+#include "unique.h"
 
 namespace felis {
 
@@ -65,18 +65,14 @@ inline ast::BinaryOp::Op binop_from_tok(Token::Kind kind) {
   }
 }
 
-std::unique_ptr<Token>& Parser::Peek() { return tokens_.front(); }
+const Token* Parser::Peek() const { return tokens_.front().get(); }
 
-std::unique_ptr<Token>& Parser::Peek2() {
-  if (tokens_.size() < 2) return tokens_.front();
-  return tokens_[1];
+const Token* Parser::Peek2() const {
+  if (tokens_.size() < 2) return nullptr;
+  return tokens_[1].get();
 }
 
-std::unique_ptr<Token> Parser::Bump() {
-  auto p = std::move(tokens_.front());
-  tokens_.pop_front();
-  return p;
-}
+std::unique_ptr<Token> Parser::Bump() { return tokens_.move_front(); }
 
 std::unique_ptr<ast::Extern> Parser::ParseExtern() {
   auto ext = Bump();
@@ -217,7 +213,7 @@ std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
     }
     Bump();
 
-    std::deque<std::unique_ptr<ast::Expr>> args;
+    unique_deque<ast::Expr> args;
     Loc end;
     if (Peek()->kind == Token::Kind::RPAREN) {
       end = Bump()->begin;
@@ -257,7 +253,7 @@ std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
     if (!is_bin_op(Peek()->kind)) {
       return lhs;
     }
-    auto& peek = Peek();
+    auto peek = Peek();
     ast::BinaryOp::Op op = binop_from_tok(peek->kind);
     Loc begin = peek->begin;
     auto binOp = std::make_unique<ast::BinaryOp>(begin, op);
@@ -332,7 +328,7 @@ std::unique_ptr<ast::Stmt> Parser::ParseStmt() {
     return std::make_unique<ast::VarDeclStmt>(begin, isLet, std::move(name),
                                               ParseExpr());
   } else if (Peek()->kind == Token::Kind::KW_IF) {
-    return ParseIfStmt();
+    return ParseIf();
   } else if (Peek()->kind == Token::Kind::IDENT) {
     if (Peek2()->kind == Token::Kind::EQ) {
       // assign stmt
@@ -345,7 +341,7 @@ std::unique_ptr<ast::Stmt> Parser::ParseStmt() {
   return ParseExpr();
 }
 
-std::unique_ptr<ast::IfStmt> Parser::ParseIfStmt() {
+std::unique_ptr<ast::IfStmt> Parser::ParseIf() {
   if (Peek()->kind != Token::Kind::KW_IF) {
     Throw("expected 'if'");
   }
@@ -360,7 +356,7 @@ std::unique_ptr<ast::IfStmt> Parser::ParseIfStmt() {
   Bump();
 
   if (Peek()->kind == Token::Kind::KW_IF) {
-    auto els = ParseIfStmt();
+    auto els = ParseIf();
     return std::make_unique<ast::IfStmt>(begin, std::move(cond),
                                          std::move(block), std::move(els));
   } else {
@@ -376,7 +372,7 @@ std::unique_ptr<ast::Block> Parser::ParseBlock() {
   }
   Loc begin = Bump()->begin;
 
-  std::deque<std::unique_ptr<ast::Stmt>> stmts;
+  unique_deque<ast::Stmt> stmts;
   while (true) {
     if (Peek()->kind == Token::Kind::RBRACE) {
       break;

@@ -16,6 +16,7 @@
 #include "printer/hir_printer.h"
 #include "syntax/lexer.h"
 #include "syntax/parser.h"
+#include "unique.h"
 
 std::string getHostCPUFeatures() {
   llvm::SubtargetFeatures Features;
@@ -73,8 +74,8 @@ class Session {
     return 1;
   }
 
-  std::deque<std::unique_ptr<felis::Token>> ParseTokens(std::ifstream &in) {
-    std::deque<std::unique_ptr<felis::Token>> tokens;
+  felis::unique_deque<felis::Token> ParseTokens(std::ifstream &in) {
+    felis::unique_deque<felis::Token> tokens;
     felis::Lexer lexer(in);
     bool isEnd(false);
     while (!isEnd) {
@@ -146,7 +147,7 @@ class Session {
     }
   }
 
-  int run() {
+  int Run() {
     int exit = 0;
     try {
       auto ast = ParseAst();
@@ -187,5 +188,5 @@ int main(int argc, char *argv[]) {
   auto opts = ParseArgs(argc, argv);
 
   Session sess(std::move(opts));
-  return sess.run();
+  return sess.Run();
 }
