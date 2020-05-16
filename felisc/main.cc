@@ -9,7 +9,7 @@
 
 #include "args.h"
 #include "builder/builder.h"
-#include "check/check.h"
+#include "check/decl_checker.h"
 #include "error/error.h"
 #include "loc.h"
 #include "printer/ast_printer.h"
@@ -97,9 +97,11 @@ class Session {
 
   std::unique_ptr<felis::hir::File> CheckAst(
       std::unique_ptr<felis::ast::File> ast) {
-    felis::Checker checker;
+    felis::DeclChecker checker;
     checker.SetupBuiltin();
-    return checker.Check(std::move(ast));
+    checker.Check(ast);
+    return nullptr;
+    /* return checker.Check(std::move(ast)); */
   }
 
   std::unique_ptr<llvm::TargetMachine> CreateTargetMachine() {
@@ -155,7 +157,7 @@ class Session {
 
       if (opts->IsPrintAst()) felis::AstPrinter().Print(ast);
 
-      /* auto hir = CheckAst(std::move(ast)); */
+      auto hir = CheckAst(std::move(ast));
       /* if (!hir) return 1; */
 
       /* felis::HirPrinter().Print(hir); */

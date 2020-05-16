@@ -13,7 +13,9 @@ namespace felis {
 
 namespace ast {
 
-struct Operator : public Node {
+struct AstNode : public Node {};
+
+struct Operator : public AstNode {
   enum Kind { UNARY, BINARY };
   virtual Operator::Kind OpKind() const = 0;
 };
@@ -74,7 +76,7 @@ struct BinaryOp : public Operator {
   }
 };
 
-struct Stmt : public Node {
+struct Stmt : public AstNode {
   enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
   virtual Stmt::Kind StmtKind() const = 0;
 };
@@ -272,7 +274,7 @@ struct AssignStmt : public Stmt {
   Stmt::Kind StmtKind() const override { return Stmt::Kind::ASSIGN; }
 };
 
-struct FnArg : public Node {
+struct FnArg : public AstNode {
   std::unique_ptr<Ident> ty;
   std::unique_ptr<Ident> name;
 
@@ -288,7 +290,7 @@ struct FnArg : public Node {
   Loc End() const override { return ty->End(); }
 };
 
-struct FnArgs : public Node {
+struct FnArgs : public AstNode {
   Loc begin;
   Loc end;
   std::vector<std::unique_ptr<FnArg>> list;
@@ -301,7 +303,7 @@ struct FnArgs : public Node {
   Loc End() const override { return end; }
 };
 
-struct FnProto : public Node {
+struct FnProto : public AstNode {
   Loc begin;
   std::unique_ptr<Ident> name;
   std::unique_ptr<FnArgs> args;
@@ -319,7 +321,7 @@ struct FnProto : public Node {
   Loc End() const override { return args->End(); }
 };
 
-struct FnDecl : public Node {
+struct FnDecl : public AstNode {
   std::unique_ptr<FnProto> proto;
   std::unique_ptr<Block> block;
 
@@ -331,7 +333,7 @@ struct FnDecl : public Node {
   Loc End() const override { return block->End(); }
 };
 
-struct Extern : public Node {
+struct Extern : public AstNode {
   Loc begin;
   std::unique_ptr<FnProto> proto;
 

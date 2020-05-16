@@ -10,6 +10,7 @@ namespace felis {
 struct Type {
  public:
   enum Kind {
+    UNRESOLVED,
     // FuncType
     FUNC,
     // BasicType
