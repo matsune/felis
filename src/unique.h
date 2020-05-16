@@ -25,8 +25,10 @@ class unique_deque {
   inline const std::unique_ptr<T> &at(int i) const { return que.at(i); }
 
   inline auto begin() noexcept { return que.begin(); }
+  inline auto begin() const noexcept { return que.begin(); }
   inline auto cbegin() const noexcept { return que.cbegin(); }
   inline auto end() noexcept { return que.end(); }
+  inline auto end() const noexcept { return que.end(); }
   inline auto cend() const noexcept { return que.cend(); }
   inline auto size() const noexcept { return que.size(); }
   inline bool empty() const noexcept { return que.empty(); }
@@ -39,6 +41,11 @@ class unique_deque {
   std::unique_ptr<T> move_front() {
     auto e = std::move(que.front());
     que.pop_front();
+    return e;
+  }
+  std::unique_ptr<T> move_back() {
+    auto e = std::move(que.back());
+    que.pop_back();
     return e;
   }
 

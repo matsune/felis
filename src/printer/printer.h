@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "loc.h"
+#include "node/node.h"
 
 namespace felis {
 
@@ -56,6 +57,8 @@ class Printer {
     depth_--;
     Writeln(s);
   }
+
+  void PrintPtr(Node *ptr) { Writeln("Address: %p", ptr); }
 
   /* void PrintPos(Pos pos) { */
   /*   Writeln("Pos: line %d, col %d", pos.line, pos.column); */

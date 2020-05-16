@@ -26,6 +26,7 @@ struct Type {
 
   Type(Type::Kind kind) : kind_(kind){};
   Type::Kind TypeKind() { return kind_; };
+  bool IsUnresolved() { return kind_ == Type::Kind::UNRESOLVED; }
   bool IsBool() { return kind_ == Type::Kind::BOOL; }
   bool IsI32() { return kind_ == Type::Kind::I32; }
   bool IsI64() { return kind_ == Type::Kind::I64; }
@@ -50,6 +51,8 @@ struct Type {
  private:
   Type::Kind kind_;
 };
+
+const std::shared_ptr<Type> VoidType = std::make_shared<Type>(Type::Kind::VOID);
 
 struct FuncType : public Type {
   FuncType(std::vector<std::shared_ptr<Type>> args, std::shared_ptr<Type> ret)

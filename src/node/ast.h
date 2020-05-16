@@ -346,7 +346,7 @@ struct Extern : public AstNode {
 };
 
 struct File {
-  std::vector<std::unique_ptr<Extern>> externs;
+  unique_deque<Extern> externs;
   unique_deque<FnDecl> fn_decls;
 };
 

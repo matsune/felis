@@ -4,11 +4,11 @@
 namespace felis {
 
 #define UNREACHABLE                                                        \
-  std::cerr << "unreachable " << __FILE__ << ":" << __LINE__ << std::endl; \
+  std::cerr << "UNREACHABLE " << __FILE__ << ":" << __LINE__ << std::endl; \
   exit(2);
 
 #define UNIMPLEMENTED                                                        \
-  std::cerr << "unimplemented " << __FILE__ << ":" << __LINE__ << std::endl; \
+  std::cerr << "UNIMPLEMENTED " << __FILE__ << ":" << __LINE__ << std::endl; \
   exit(2);
 
 }  // namespace felis

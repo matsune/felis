@@ -90,6 +90,7 @@ void AstPrinter::PrintFnArg(ast::FnArg *arg) {
     PrintIdent(arg->name.get());
     Write("Ty: ");
     PrintIdent(arg->ty.get());
+    PrintPtr(arg);
     /* PrintPos(arg->GetPos()); */
   }
   Up("}");
@@ -121,6 +122,7 @@ void AstPrinter::PrintIdent(ast::Ident *ident) {
   Down("Ident {");
   {
     Writeln("Name: " + ident->val);
+    PrintPtr(ident);
     /* PrintPos(ident->GetPos()); */
   }
   Up("}");
@@ -142,6 +144,7 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
         auto ret = (ast::RetStmt *)stmt;
         Write("Expr: ");
         PrintExpr(ret->expr.get());
+        PrintPtr(ret);
         /* PrintPos(ret->GetPos()); */
       }
       Up("}");
@@ -155,6 +158,7 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
         PrintIdent(var_decl->name.get());
         Write("Expr: ");
         PrintExpr(var_decl->expr.get());
+        PrintPtr(var_decl);
         /* PrintPos(varDecl->GetPos()); */
       }
       Up("}");
@@ -167,6 +171,7 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
         PrintIdent(assign->name.get());
         Write("Expr: ");
         PrintExpr(assign->expr.get());
+        PrintPtr(assign);
         /* PrintPos(assign->GetPos()); */
       }
       Up("}");
@@ -199,6 +204,7 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
         Writeln("Op: " + ToString(binary->op->op));
         Write("Right: ");
         PrintExpr(binary->rhs.get());
+        PrintPtr(binary);
         /* PrintPos(binary->GetPos()); */
       }
       Up("}");
@@ -218,6 +224,7 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
           }
         }
         Up("]");
+        PrintPtr(call);
       }
       Up("}");
       break;
@@ -228,6 +235,7 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
         std::string op = unary->op->op == ast::UnaryOp::Op::NEG ? "-" : "!";
         Writeln("op: %s", op.c_str());
         PrintExpr(unary->expr.get());
+        PrintPtr(unary);
         /* PrintPos(unary->GetPos()); */
       }
       Up("}");
@@ -241,6 +249,7 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
         PrintBlock(if_stmt->block.get());
         Write("Else: ");
         PrintExpr(if_stmt->els.get());
+        PrintPtr(if_stmt);
         /* PrintPos(ifStmt->GetPos()); */
       }
       Up("}");
@@ -263,6 +272,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = (ast::Lit *)lit;
         Writeln("Int: " + l->val);
+        PrintPtr(l);
         /* PrintPos(lit->GetPos()); */
       }
       Up("}");
@@ -270,8 +280,9 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
     case ast::Lit::Kind::FLOAT:
       Down("LitFloat {");
       {
-        auto f = (ast::Lit *)lit;
-        Writeln("Float: " + f->val);
+        auto l = (ast::Lit *)lit;
+        Writeln("Float: " + l->val);
+        PrintPtr(l);
         /* PrintPos(lit->GetPos()); */
       }
       Up("}");
@@ -281,6 +292,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = (ast::Lit *)lit;
         Writeln("Bool: " + l->val);
+        PrintPtr(l);
         /* PrintPos(lit->GetPos()); */
       }
       Up("}");
@@ -290,6 +302,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = (ast::Lit *)lit;
         Writeln("Char: '" + l->val + "'");
+        PrintPtr(l);
         /* PrintPos(lit->GetPos()); */
       }
       Up("}");
@@ -299,6 +312,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = (ast::Lit *)lit;
         Writeln("literal: \"" + l->val + "\"");
+        PrintPtr(l);
         /* PrintPos(lit->GetPos()); */
       }
       Up("}");

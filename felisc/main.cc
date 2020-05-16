@@ -10,6 +10,7 @@
 #include "args.h"
 #include "builder/builder.h"
 #include "check/decl_checker.h"
+#include "check/lower.h"
 #include "error/error.h"
 #include "loc.h"
 #include "printer/ast_printer.h"
@@ -95,13 +96,13 @@ class Session {
     return felis::Parser(std::move(tokens)).Parse();
   }
 
-  std::unique_ptr<felis::hir::File> CheckAst(
+  std::unique_ptr<felis::hir::File> LowerAst(
       std::unique_ptr<felis::ast::File> ast) {
-    felis::DeclChecker checker;
+    std::map<felis::ast::AstNode *, std::shared_ptr<felis::Decl>> ast_decl;
+    felis::DeclChecker checker(ast_decl);
     checker.SetupBuiltin();
     checker.Check(ast);
-    return nullptr;
-    /* return checker.Check(std::move(ast)); */
+    return felis::Lower(ast_decl).Lowering(std::move(ast));
   }
 
   std::unique_ptr<llvm::TargetMachine> CreateTargetMachine() {
@@ -157,10 +158,10 @@ class Session {
 
       if (opts->IsPrintAst()) felis::AstPrinter().Print(ast);
 
-      auto hir = CheckAst(std::move(ast));
-      /* if (!hir) return 1; */
+      auto hir = LowerAst(std::move(ast));
+      if (!hir) return 1;
 
-      /* felis::HirPrinter().Print(hir); */
+      felis::HirPrinter().Print(hir);
 
       /* auto machine = CreateTargetMachine(); */
       /* if (!machine) return 1; */

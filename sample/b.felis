@@ -3,13 +3,13 @@ fn e() -> i32 { if true { 3 } else { 4 } }
 fn c() { }
 
 fn main() -> i32 {
-  if true { d() } else { c() }
+ var c = if true { d() } else { c() }
+ c = if true { 4 } else if false { ret  3 } else { d() }
 
   let b = 4
-  let a = if b > 2 {
+  if true {
     b
   } else {
     2
   }
-  a
 }

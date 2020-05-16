@@ -16,14 +16,15 @@ namespace felis {
 
 class DeclChecker {
  public:
-  DeclChecker() : current_scope_(std::make_shared<Scope>(nullptr)){};
+  DeclChecker(std::map<ast::AstNode *, std::shared_ptr<Decl>> &ast_decl)
+      : current_scope_(std::make_shared<Scope>(nullptr)), ast_decl_(ast_decl){};
   void SetupBuiltin();
   void Check(const std::unique_ptr<ast::File> &);
 
  private:
   std::shared_ptr<Scope> current_scope_;
   std::shared_ptr<Decl> current_func_;
-  std::map<ast::AstNode *, std::shared_ptr<Decl>> ast_decl_;
+  std::map<ast::AstNode *, std::shared_ptr<Decl>> &ast_decl_;
 
   void CheckFnDecl(const std::unique_ptr<ast::FnDecl> &);
   void CheckStmt(const std::unique_ptr<ast::Stmt> &);

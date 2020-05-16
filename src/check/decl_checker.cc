@@ -56,7 +56,7 @@ void DeclChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
         throw LocError::Create(begin, "%s is not declared as function",
                                call_expr->ident->val.c_str());
       }
-      auto fn_type = (FuncType*)decl->type.get();
+      auto fn_type = decl->AsFuncType();
       if (fn_type->args.size() != call_expr->args.size()) {
         throw LocError::Create(begin, "args count doesn't match");
       }
@@ -64,6 +64,9 @@ void DeclChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
       for (auto& arg : call_expr->args) {
         CheckExpr(arg);
       }
+
+      ast_decl_[call_expr.get()] = decl;
+
     } break;
 
     case ast::Expr::Kind::IDENT: {
@@ -78,6 +81,7 @@ void DeclChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
         throw LocError::Create(begin, "%s is not declared as variable",
                                ident->val.c_str());
       }
+      ast_decl_[ident.get()] = decl;
     } break;
 
     case ast::Expr::Kind::UNARY: {
@@ -115,6 +119,8 @@ void DeclChecker::CheckVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
   if (!CanDecl(name)) {
     throw LocError::Create(stmt->Begin(), "redeclared var %s", name.c_str());
   }
+  CheckExpr(stmt->expr);
+
   auto decl = std::make_shared<Decl>(
       name, std::make_shared<Type>(Type::Kind::UNRESOLVED),
       stmt->is_let ? Decl::Kind::LET : Decl::Kind::VAR);
@@ -136,6 +142,7 @@ void DeclChecker::CheckAssign(const std::unique_ptr<ast::AssignStmt>& stmt) {
     throw LocError::Create(stmt->Begin(), "%s is declared as mutable variable",
                            name.c_str());
   }
+  ast_decl_[stmt.get()] = decl;
   CheckExpr(stmt->expr);
 }
 

@@ -143,6 +143,8 @@ std::string ToString(Decl::Kind kind) {
 
 std::string ToString(Type *type) {
   switch (type->TypeKind()) {
+    case Type::Kind::UNRESOLVED:
+      return "UNRESOLVED";
     case Type::Kind::FUNC: {
       auto func_type = (FuncType *)type;
       std::string str = "func(";
@@ -176,8 +178,7 @@ std::string ToString(Type *type) {
     case Type::Kind::STRING:
       return "string";
     default:
-      std::cout << "unreachable" << std::endl;
-      std::terminate();
+      UNREACHABLE
   }
 }
 
