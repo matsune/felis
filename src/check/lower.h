@@ -45,6 +45,8 @@ class Lower {
   std::unique_ptr<hir::Expr> CheckBinary(std::unique_ptr<hir::Binary>);
   std::unique_ptr<hir::Constant> ConstUnary(std::unique_ptr<hir::Constant>,
                                             hir::Unary::Op);
+
+  void CheckNotVoidType(const hir::Expr *expr);
 };
 
 }  // namespace felis

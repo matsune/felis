@@ -182,4 +182,30 @@ std::string ToString(Type *type) {
   }
 }
 
+std::string ToString(ast::Stmt::Kind kind) {
+  switch (kind) {
+    case ast::Stmt::Kind::ASSIGN:
+      return "ASSIGN";
+    case ast::Stmt::Kind::EXPR:
+      return "EXPR";
+    case ast::Stmt::Kind::RET:
+      return "RET";
+    case ast::Stmt::Kind::VAR_DECL:
+      return "VAR_DECL";
+  }
+}
+
+std::string ToString(hir::Stmt::Kind kind) {
+  switch (kind) {
+    case hir::Stmt::Kind::ASSIGN:
+      return "ASSIGN";
+    case hir::Stmt::Kind::EXPR:
+      return "EXPR";
+    case hir::Stmt::Kind::RET:
+      return "RET";
+    case hir::Stmt::Kind::VAR_DECL:
+      return "VAR_DECL";
+  }
+}
+
 }  // namespace felis

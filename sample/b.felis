@@ -6,10 +6,16 @@ fn main() -> i32 {
  var c = if true { d() } else { c() }
  c = if true { 4 } else if false { ret  3 } else { d() }
 
+ let n = if true {
+    4
+ } else {
+   ret 5
+ }
+
   let b = 4
   if true {
-    b
+   ret b
   } else {
-    2
+    5
   }
 }

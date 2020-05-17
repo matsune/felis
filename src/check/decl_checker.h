@@ -23,7 +23,7 @@ class DeclChecker {
 
  private:
   std::shared_ptr<Scope> current_scope_;
-  std::shared_ptr<Decl> current_func_;
+  FuncType *current_func_;
   std::map<ast::AstNode *, std::shared_ptr<Decl>> &ast_decl_;
 
   void CheckFnDecl(const std::unique_ptr<ast::FnDecl> &);

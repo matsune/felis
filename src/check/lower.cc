@@ -79,6 +79,7 @@ std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file) {
 }
 
 std::unique_ptr<hir::Stmt> Lower::LowerStmt(std::unique_ptr<ast::Stmt> stmt) {
+  std::cout << ToString(stmt->StmtKind()) << " " << stmt.get() << std::endl;
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR:
       return LowerExpr(unique_cast<ast::Expr>(std::move(stmt)));
@@ -96,7 +97,6 @@ std::unique_ptr<hir::RetStmt> Lower::LowerRet(
   auto begin = stmt->Begin();
   if (stmt->expr) {
     auto expr = LowerExpr(std::move(stmt->expr));
-    /* if (*expr->Ty() != *func_type->ret) */
     expr = TryExprTy(std::move(expr), current_func_->ret);
     return std::make_unique<hir::RetStmt>(begin, std::move(expr));
   } else {
@@ -104,22 +104,53 @@ std::unique_ptr<hir::RetStmt> Lower::LowerRet(
   }
 }
 
+bool IsAllTerminated(hir::If* root) {
+  assert(!root->MissingElse());
+  bool else_terminated;
+  if (root->IsElseBlock()) {
+    auto els = (hir::Block*)root->els.get();
+    else_terminated = els->HasRet();
+  } else {
+    auto els = (hir::If*)root->els.get();
+    else_terminated = IsAllTerminated(els);
+  }
+  return root->block->HasRet() && else_terminated;
+}
+
+void Lower::CheckNotVoidType(const hir::Expr* expr) {
+  if (!expr->Ty()->IsVoid()) return;
+
+  switch (expr->ExprKind()) {
+    case hir::Expr::Kind::IF: {
+      auto& if_stmt = (std::unique_ptr<hir::If>&)expr;
+      if (if_stmt->MissingElse())
+        throw LocError(if_stmt->End(), "missing else clause");
+
+      if (IsAllTerminated(if_stmt.get()))
+        throw LocError(if_stmt->Begin(), "all ret if");
+
+    } break;
+    case hir::Expr::Kind::BLOCK: {
+      auto& block = (std::unique_ptr<hir::Block>&)expr;
+      if (block->stmts.empty()) throw LocError(block->End(), "no statements");
+      if (block->HasRet())
+        throw LocError(block->End(), "block contains ret statement");
+    } break;
+    default:
+      break;
+  }
+  throw LocError::Create(expr->Begin(), "cannot use void type");
+}
+
 std::unique_ptr<hir::VarDeclStmt> Lower::LowerVarDecl(
     std::unique_ptr<ast::VarDeclStmt> stmt) {
   auto begin = stmt->Begin();
   auto decl = ast_decl_.at(stmt.get());
-  decl->Debug();
-  auto expr = LowerExpr(std::move(stmt->expr));
   assert(decl->type->IsUnresolved());
-  if (expr->Ty()->IsVoid()) {
-    if (expr->ExprKind() == hir::Expr::Kind::IF) {
-      auto& if_stmt = (std::unique_ptr<hir::If>&)expr;
-      if (!if_stmt->IsComprehend())
-        throw LocError(if_stmt->End(), "missing else clause");
-    }
-    throw LocError::Create(expr->Begin(), "cannot use void type");
-  }
+  auto expr = LowerExpr(std::move(stmt->expr));
+  CheckNotVoidType(expr.get());
   decl->type = expr->Ty();
+  decl->Debug();
   return std::make_unique<hir::VarDeclStmt>(begin, decl, std::move(expr));
 }
 
@@ -848,11 +879,13 @@ std::unique_ptr<hir::Expr> Lower::TryExprTy(std::unique_ptr<hir::Expr> expr,
                                             std::shared_ptr<Type> ty) {
   switch (expr->ExprKind()) {
     case hir::Expr::Kind::VALUE: {
+      CheckNotVoidType(expr.get());
       auto value = unique_cast<hir::Value>(std::move(expr));
       switch (value->ValueKind()) {
         case hir::Value::Kind::VARIABLE: {
           // Variables can't be casted implicitly
-          auto var = unique_cast<hir::Variable>(std::move(expr));
+          auto var = unique_cast<hir::Variable>(std::move(value));
+          var->decl->Debug();
           if (*var->decl->type != *ty) {
             throw LocError::Create(expr->Begin(), "unmatched variable type");
           }
@@ -867,50 +900,44 @@ std::unique_ptr<hir::Expr> Lower::TryExprTy(std::unique_ptr<hir::Expr> expr,
     } break;
 
     case hir::Expr::Kind::BINARY: {
+      CheckNotVoidType(expr.get());
       auto binary = unique_cast<hir::Binary>(std::move(expr));
       if (*binary->Ty() == *ty) return std::move(binary);
       binary->lhs = TryExprTy(std::move(binary->lhs), ty);
       binary->rhs = TryExprTy(std::move(binary->rhs), ty);
-      /* if (*binary->Ty() != *ty) { */
-      /*   throw LocError::Create(binary->Begin(), "unmatched binary type"); */
-      /* } */
       return std::move(binary);
     } break;
 
     case hir::Expr::Kind::CALL:
     case hir::Expr::Kind::UNARY:
+      CheckNotVoidType(expr.get());
       if (*expr->Ty() != *ty) {
         throw LocError::Create(expr->Begin(), "unmatched exp type");
       }
       return std::move(expr);
     case hir::Expr::Kind::IF: {
+      CheckNotVoidType(expr.get());
       auto if_stmt = unique_cast<hir::If>(std::move(expr));
-      if (!if_stmt->IsComprehend()) {
-        throw LocError(if_stmt->End(), "missing else clause");
-      }
+
       if_stmt->block =
           unique_cast<hir::Block>(TryExprTy(std::move(if_stmt->block), ty));
-      if (if_stmt->HasElse()) {
-        if (if_stmt->IsElseIf()) {
-          if_stmt->els =
-              unique_cast<hir::If>(TryExprTy(std::move(if_stmt->els), ty));
-        } else if (if_stmt->IsElseBlock()) {
-          if_stmt->els =
-              unique_cast<hir::Block>(TryExprTy(std::move(if_stmt->els), ty));
-        }
-      } else {
-        throw LocError(if_stmt->End(), "not terminating");
+
+      if (if_stmt->IsElseIf()) {
+        if_stmt->els =
+            unique_cast<hir::If>(TryExprTy(std::move(if_stmt->els), ty));
+      } else if (if_stmt->IsElseBlock()) {
+        if_stmt->els =
+            unique_cast<hir::Block>(TryExprTy(std::move(if_stmt->els), ty));
       }
       return std::move(if_stmt);
     } break;
     case hir::Expr::Kind::BLOCK: {
       auto block = unique_cast<hir::Block>(std::move(expr));
       if (block->HasRet()) {
-        // ret block doesn't check type
+        // ret block doesn't need to check type
         return std::move(block);
       }
-      if (block->stmts.empty())
-        throw LocError(block->Begin(), "block is empty");
+      CheckNotVoidType(block.get());
       auto last = block->stmts.move_back();
       if (last->StmtKind() == hir::Stmt::Kind::EXPR) {
         last = TryExprTy(unique_cast<hir::Expr>(std::move(last)), ty);

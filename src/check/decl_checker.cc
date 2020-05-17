@@ -9,18 +9,18 @@ namespace felis {
 void DeclChecker::SetupBuiltin() {
   assert(current_scope_->IsTop());
   // insert basic types into global scope
-  current_scope_->InsertType("void", std::make_shared<Type>(Type::Kind::VOID));
-  current_scope_->InsertType("i32", std::make_shared<Type>(Type::Kind::I32));
-  current_scope_->InsertType("i64", std::make_shared<Type>(Type::Kind::I64));
-  current_scope_->InsertType("f32", std::make_shared<Type>(Type::Kind::F32));
-  current_scope_->InsertType("f64", std::make_shared<Type>(Type::Kind::F64));
-  current_scope_->InsertType("bool", std::make_shared<Type>(Type::Kind::BOOL));
-  current_scope_->InsertType("char", std::make_shared<Type>(Type::Kind::CHAR));
-  current_scope_->InsertType("string",
-                             std::make_shared<Type>(Type::Kind::STRING));
+  current_scope_->InsertType("void", kTypeVoid);
+  current_scope_->InsertType("i32", kTypeI32);
+  current_scope_->InsertType("i64", kTypeI64);
+  current_scope_->InsertType("f32", kTypeF32);
+  current_scope_->InsertType("f64", kTypeF64);
+  current_scope_->InsertType("bool", kTypeBool);
+  current_scope_->InsertType("char", kTypeChar);
+  current_scope_->InsertType("string", kTypeString);
 }
 
 void DeclChecker::CheckStmt(const std::unique_ptr<ast::Stmt>& stmt) {
+  std::cout << "CheckStmt " << ToString(stmt->StmtKind()) << std::endl;
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR:
       CheckExpr((std::unique_ptr<ast::Expr>&)stmt);
@@ -104,14 +104,16 @@ void DeclChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
 }
 
 void DeclChecker::CheckRet(const std::unique_ptr<ast::RetStmt>& stmt) {
-  auto func_type = current_func_->AsFuncType();
-  bool is_void_func = func_type->ret->IsVoid();
+  bool is_void_func = current_func_->ret->IsVoid();
   bool has_ret_expr = stmt->expr != nullptr;
+
   if (has_ret_expr && is_void_func) {
     throw LocError::Create(stmt->expr->Begin(), "func type is void");
   } else if (!has_ret_expr && !is_void_func) {
     throw LocError::Create(stmt->Begin(), "func type is not void");
   }
+
+  if (has_ret_expr) CheckExpr(stmt->expr);
 }
 
 void DeclChecker::CheckVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
@@ -122,8 +124,7 @@ void DeclChecker::CheckVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
   CheckExpr(stmt->expr);
 
   auto decl = std::make_shared<Decl>(
-      name, std::make_shared<Type>(Type::Kind::UNRESOLVED),
-      stmt->is_let ? Decl::Kind::LET : Decl::Kind::VAR);
+      name, kTypeUnresolved, stmt->is_let ? Decl::Kind::LET : Decl::Kind::VAR);
   current_scope_->InsertDecl(name, decl);
   ast_decl_[stmt.get()] = decl;
 }
@@ -183,7 +184,7 @@ void DeclChecker::Check(const std::unique_ptr<ast::File>& file) {
 }
 
 void DeclChecker::CheckFnDecl(const std::unique_ptr<ast::FnDecl>& fn) {
-  current_func_ = ast_decl_[fn.get()];
+  current_func_ = ast_decl_[fn.get()]->AsFuncType();
   OpenScope();
   for (auto& arg : fn->proto->args->list) {
     // arg-name duplication is already checked in parser
@@ -233,7 +234,7 @@ std::shared_ptr<Decl> DeclChecker::InsertFnDecl(
                              proto->ret->val.c_str());
     }
   } else {
-    ret_ty = std::make_shared<Type>(Type::Kind::VOID);
+    ret_ty = kTypeVoid;
   }
   auto fn_type = std::make_shared<FuncType>(std::move(args), std::move(ret_ty));
   Decl::Kind kind = is_ext ? Decl::Kind::EXT : Decl::Kind::FN;

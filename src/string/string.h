@@ -26,6 +26,8 @@ std::string ToString(ast::BinaryOp::Op op);
 std::string ToString(hir::Binary::Op op);
 std::string ToString(Decl::Kind);
 std::string ToString(Type*);
+std::string ToString(ast::Stmt::Kind);
+std::string ToString(hir::Stmt::Kind);
 
 }  // namespace felis
 

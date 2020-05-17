@@ -17,7 +17,9 @@ struct Decl {
   Kind kind;
 
   Decl(std::string name, std::shared_ptr<Type> type, Kind kind)
-      : name(name), type(std::move(type)), kind(kind) {}
+      : name(name), type(type), kind(kind) {
+    assert(type != nullptr);
+  }
 
   FuncType* AsFuncType() {
     assert(IsFunc());

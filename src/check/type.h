@@ -52,8 +52,6 @@ struct Type {
   Type::Kind kind_;
 };
 
-const std::shared_ptr<Type> VoidType = std::make_shared<Type>(Type::Kind::VOID);
-
 struct FuncType : public Type {
   FuncType(std::vector<std::shared_ptr<Type>> args, std::shared_ptr<Type> ret)
       : Type(Type::Kind::FUNC), args(std::move(args)), ret(std::move(ret)) {}
@@ -61,6 +59,16 @@ struct FuncType : public Type {
   std::vector<std::shared_ptr<Type>> args;
   std::shared_ptr<Type> ret;
 };
+
+const auto kTypeUnresolved = std::make_shared<Type>(Type::Kind::UNRESOLVED);
+const auto kTypeVoid = std::make_shared<Type>(Type::Kind::VOID);
+const auto kTypeI32 = std::make_shared<Type>(Type::Kind::I32);
+const auto kTypeI64 = std::make_shared<Type>(Type::Kind::I64);
+const auto kTypeF32 = std::make_shared<Type>(Type::Kind::F32);
+const auto kTypeF64 = std::make_shared<Type>(Type::Kind::F64);
+const auto kTypeBool = std::make_shared<Type>(Type::Kind::BOOL);
+const auto kTypeChar = std::make_shared<Type>(Type::Kind::CHAR);
+const auto kTypeString = std::make_shared<Type>(Type::Kind::STRING);
 
 }  // namespace felis
 

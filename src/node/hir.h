@@ -15,7 +15,7 @@ namespace hir {
 struct Stmt : Node {
   enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
   virtual Kind StmtKind() const = 0;
-  virtual std::shared_ptr<Type> Ty() const { return VoidType; }
+  virtual std::shared_ptr<Type> Ty() const { return kTypeVoid; }
 
   bool IsRet() const { return StmtKind() == Kind::RET; }
 };
@@ -68,7 +68,7 @@ struct IntConstant : public Constant {
 
   // override Stmt
   std::shared_ptr<Type> Ty() const override {
-    return std::make_shared<Type>(is_32 ? Type::Kind::I32 : Type::Kind::I64);
+    return is_32 ? kTypeI32 : kTypeI64;
   }
 
   // override Constant
@@ -86,7 +86,7 @@ struct FloatConstant : public Constant {
 
   // override Stmt
   std::shared_ptr<Type> Ty() const override {
-    return std::make_shared<Type>(is_32 ? Type::Kind::F32 : Type::Kind::F64);
+    return is_32 ? kTypeF32 : kTypeF64;
   }
 
   // override Constant
@@ -101,9 +101,7 @@ struct CharConstant : public Constant {
   CharConstant(Loc begin, Loc end, rune val) : Constant(begin, end), val(val){};
 
   // override Stmt
-  std::shared_ptr<Type> Ty() const override {
-    return std::make_shared<Type>(Type::Kind::CHAR);
-  }
+  std::shared_ptr<Type> Ty() const override { return kTypeChar; }
 
   // override Constant
   Constant::Kind ConstantKind() const override { return Constant::Kind::CHAR; };
@@ -115,9 +113,7 @@ struct BoolConstant : public Constant {
   BoolConstant(Loc begin, Loc end, bool val) : Constant(begin, end), val(val){};
 
   // override Stmt
-  std::shared_ptr<Type> Ty() const override {
-    return std::make_shared<Type>(Type::Kind::BOOL);
-  }
+  std::shared_ptr<Type> Ty() const override { return kTypeBool; }
 
   // override Constant
   Constant::Kind ConstantKind() const override { return Constant::Kind::BOOL; };
@@ -130,9 +126,7 @@ struct StringConstant : public Constant {
       : Constant(begin, end), val(val){};
 
   // override Stmt
-  std::shared_ptr<Type> Ty() const override {
-    return std::make_shared<Type>(Type::Kind::STRING);
-  }
+  std::shared_ptr<Type> Ty() const override { return kTypeString; }
 
   // override Constant
   Constant::Kind ConstantKind() const override {
@@ -215,7 +209,7 @@ struct Binary : public Expr {
       case Binary::Op::GT:
       case Binary::Op::LE:
       case Binary::Op::LT:
-        return std::make_shared<Type>(Type::Kind::BOOL);
+        return kTypeBool;
       default:
         // TODO
         return lhs->Ty();
@@ -234,7 +228,7 @@ struct Block : public Expr {
 
   // override Stmt
   std::shared_ptr<Type> Ty() const override {
-    if (stmts.empty()) return VoidType;
+    if (stmts.empty()) return kTypeVoid;
     return stmts.back()->Ty();
   }
 
@@ -244,11 +238,6 @@ struct Block : public Expr {
     }
     return false;
   }
-
-  /* bool IsTerminating() const { */
-  /*   if (stmts.empty()) return false; */
-  /*   return stmts.back()->IsTerminating(); */
-  /* } */
 };
 
 struct RetStmt : public Stmt {
@@ -257,8 +246,6 @@ struct RetStmt : public Stmt {
 
   RetStmt(Loc begin, std::unique_ptr<Expr> expr = nullptr)
       : begin(begin), expr(std::move(expr)) {}
-
-  /* bool IsTerminating() const override { return true; } */
 
   // override Stmt
   Kind StmtKind() const override { return Stmt::Kind::RET; }
@@ -336,43 +323,24 @@ struct If : public Expr {
       return false;
   }
 
-  bool IsComprehend() const {
-    if (HasElse()) {
-      if (IsElseBlock()) return true;
-      auto else_if = (If *)els.get();
-      return else_if->IsComprehend();
+  bool MissingElse() const {
+    if (els) {
+      if (IsElseBlock()) return false;
+      return ((std::unique_ptr<If> &)els)->MissingElse();
     } else {
-      return false;
+      return true;
     }
   }
 
   // override Expr
   Expr::Kind ExprKind() const override { return Expr::Kind::IF; }
+
   std::shared_ptr<Type> Ty() const override {
-    /* auto block_ty = block->Ty(); */
-    if (HasElse()) {
-      if (block->HasRet()) {
-        return els->Ty();
-      }
-      return block->Ty();
-    } else {
-      return VoidType;
-    }
+    if (MissingElse()) return kTypeVoid;
+    auto block_ty = block->Ty();
+    if (block_ty->IsVoid()) return els->Ty();
+    return block_ty;
   }
-
-  /* bool IsTerminating() const override { */
-  /*   if (els == nullptr) return false; */
-  /*   return block->IsTerminating() && els->IsTerminating(); */
-  /* } */
-
-  /* Loc Begin() const override { return begin; } */
-
-  /* Loc End() const override { */
-  /*   if (els) */
-  /*     return els->End(); */
-  /*   else */
-  /*     return block->End(); */
-  /* } */
 };
 
 struct FnDecl : public Node {
