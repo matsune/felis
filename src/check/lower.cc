@@ -2,6 +2,7 @@
 
 #include <assert.h>
 
+#include "check/constant.h"
 #include "error/error.h"
 #include "unique.h"
 
@@ -61,16 +62,8 @@ std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file) {
       args.push_back(ast_decl_.at(arg.get()));
     }
     auto block = LowerBlock(std::move(fn->block));
-
-    if (*block->Ty() != *current_func_->ret) {
-      Loc loc;
-      if (block->stmts.empty()) {
-        loc = block->End();
-      } else {
-        loc = block->stmts.back()->Begin();
-      }
-      throw LocError(loc, "unmatched return type");
-    }
+    block = unique_cast<hir::Block>(
+        MatchBlockType(std::move(block), current_func_->ret));
 
     hir_file->fn_decls.push_back(std::make_unique<hir::FnDecl>(
         fn->Begin(), decl, args, std::move(block)));
@@ -97,7 +90,7 @@ std::unique_ptr<hir::RetStmt> Lower::LowerRet(
   auto begin = stmt->Begin();
   if (stmt->expr) {
     auto expr = LowerExpr(std::move(stmt->expr));
-    expr = TryExprTy(std::move(expr), current_func_->ret);
+    expr = MatchExprTy(std::move(expr), current_func_->ret);
     return std::make_unique<hir::RetStmt>(begin, std::move(expr));
   } else {
     return std::make_unique<hir::RetStmt>(begin);
@@ -159,7 +152,7 @@ std::unique_ptr<hir::AssignStmt> Lower::LowerAssign(
   auto begin = stmt->Begin();
   auto decl = ast_decl_.at(stmt.get());
   auto expr = LowerExpr(std::move(stmt->expr));
-  expr = TryExprTy(std::move(expr), decl->type);
+  expr = MatchExprTy(std::move(expr), decl->type);
   return std::make_unique<hir::AssignStmt>(begin, decl, std::move(expr));
 }
 
@@ -180,7 +173,7 @@ std::unique_ptr<hir::Expr> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
         auto expr = LowerExpr(std::move(arg));
         auto idx = args.size();
         auto ty = func_decl->args[idx];
-        expr = TryExprTy(std::move(expr), ty);
+        expr = MatchExprTy(std::move(expr), ty);
         args.push_back(std::move(expr));
       }
       return std::make_unique<hir::Call>(begin, end, decl, std::move(args));
@@ -266,7 +259,7 @@ std::unique_ptr<hir::Constant> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
 
     case ast::Lit::Kind::FLOAT: {
       auto val = ParseFloat(std::move(lit));
-      return std::make_unique<hir::FloatConstant>(begin, end, val, true);
+      return std::make_unique<hir::FloatConstant>(begin, end, val);
     } break;
     case ast::Lit::Kind::BOOL: {
       return std::make_unique<hir::BoolConstant>(begin, end,
@@ -313,536 +306,255 @@ double Lower::ParseFloat(std::unique_ptr<ast::Lit> lit) {
   }
 }
 
-std::unique_ptr<hir::Constant> Lower::ConstBinary(
-    std::unique_ptr<hir::Constant> lhs, std::unique_ptr<hir::Constant> rhs,
-    hir::Binary::Op op) {
-  auto lhs_begin = lhs->Begin();
-  auto rhs_end = rhs->End();
-  switch (lhs->ConstantKind()) {
-    case hir::Constant::Kind::INT: {
-      auto l = unique_cast<hir::IntConstant>(std::move(lhs));
-      switch (rhs->ConstantKind()) {
-        case hir::Constant::Kind::INT: {  // int int
-          auto r = unique_cast<hir::IntConstant>(std::move(rhs));
-          switch (op) {
-            case hir::Binary::Op::LT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val < r->val);
-            case hir::Binary::Op::LE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val <= r->val);
-            case hir::Binary::Op::GT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val > r->val);
-            case hir::Binary::Op::GE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val >= r->val);
+bool no_check_constant_type(Type::Kind ty) {
+  return ty == Type::Kind::BOOL || ty == Type::Kind::STRING;
+}
 
-            case hir::Binary::Op::ADD:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val + r->val);
-            case hir::Binary::Op::SUB:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val - r->val);
+bool is_left_prior_constant_type(std::shared_ptr<Type> l,
+                                 std::shared_ptr<Type> r) {
+  if (no_check_constant_type(l->TypeKind()) ||
+      no_check_constant_type(r->TypeKind())) {
+    return true;
+  }
 
-            case hir::Binary::Op::MUL:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val * r->val);
-            case hir::Binary::Op::DIV:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val / r->val);
-            case hir::Binary::Op::MOD:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val % r->val);
-          }
-        } break;
-
-        case hir::Constant::Kind::FLOAT: {  // int float
-          auto r = unique_cast<hir::FloatConstant>(std::move(rhs));
-          switch (op) {
-            case hir::Binary::Op::LT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val < r->val);
-            case hir::Binary::Op::LE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val <= r->val);
-            case hir::Binary::Op::GT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val > r->val);
-            case hir::Binary::Op::GE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val >= r->val);
-
-            case hir::Binary::Op::ADD:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val + r->val, true);
-            case hir::Binary::Op::SUB:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val - r->val, true);
-
-            case hir::Binary::Op::MUL:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val * r->val, true);
-            case hir::Binary::Op::DIV:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val / r->val, true);
-            case hir::Binary::Op::MOD:
-              throw LocError::Create(
-                  r->Begin(), "operator \% not defined on untyped float");
-          }
-        } break;
-
-        case hir::Constant::Kind::CHAR: {  // int char
-          auto r = unique_cast<hir::CharConstant>(std::move(rhs));
-          switch (op) {
-            case hir::Binary::Op::LT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val < r->val);
-            case hir::Binary::Op::LE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val <= r->val);
-            case hir::Binary::Op::GT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val > r->val);
-            case hir::Binary::Op::GE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val >= r->val);
-
-            case hir::Binary::Op::ADD:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val + r->val);
-            case hir::Binary::Op::SUB:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val - r->val);
-
-            case hir::Binary::Op::MUL:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val * r->val);
-            case hir::Binary::Op::DIV:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val / r->val);
-            case hir::Binary::Op::MOD:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val % r->val);
-          }
-        } break;
+  switch (l->TypeKind()) {
+    case Type::Kind::I32:
+      switch (r->TypeKind()) {
+        case Type::Kind::CHAR:
+        case Type::Kind::I32:
+          return true;
+        case Type::Kind::F32:
+        case Type::Kind::I64:
+        case Type::Kind::F64:
+          return false;
         default:
-          throw LocError::Create(lhs->Begin(), "cannot binary");
+          UNREACHABLE
       }
-    } break;
-
-    case hir::Constant::Kind::FLOAT: {
-      auto l = unique_cast<hir::FloatConstant>(std::move(lhs));
-      switch (rhs->ConstantKind()) {
-        case hir::Constant::Kind::INT: {  // float int
-          auto r = unique_cast<hir::IntConstant>(std::move(rhs));
-          switch (op) {
-            case hir::Binary::Op::LT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val < r->val);
-            case hir::Binary::Op::LE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val <= r->val);
-            case hir::Binary::Op::GT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val > r->val);
-            case hir::Binary::Op::GE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val >= r->val);
-
-            case hir::Binary::Op::ADD:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val + r->val, true);
-            case hir::Binary::Op::SUB:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val - r->val, true);
-
-            case hir::Binary::Op::MUL:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val * r->val, true);
-            case hir::Binary::Op::DIV:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val / r->val, true);
-            case hir::Binary::Op::MOD:
-              throw LocError::Create(
-                  l->Begin(), "operator \% not defined on untyped float");
-          }
-        } break;
-        case hir::Constant::Kind::FLOAT: {  // float float
-          auto r = unique_cast<hir::FloatConstant>(std::move(rhs));
-          bool is_32 = l->is_32 && r->is_32;
-          switch (op) {
-            case hir::Binary::Op::LT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val < r->val);
-            case hir::Binary::Op::LE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val <= r->val);
-            case hir::Binary::Op::GT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val > r->val);
-            case hir::Binary::Op::GE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val >= r->val);
-
-            case hir::Binary::Op::ADD:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val + r->val, is_32);
-            case hir::Binary::Op::SUB:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val - r->val, is_32);
-
-            case hir::Binary::Op::MUL:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val * r->val, is_32);
-            case hir::Binary::Op::DIV:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val / r->val, is_32);
-            case hir::Binary::Op::MOD:
-              throw LocError::Create(
-                  l->Begin(), "operator \% not defined on untyped float");
-          }
-        } break;
-
-        case hir::Constant::Kind::CHAR: {  // float char
-          auto r = unique_cast<hir::CharConstant>(std::move(rhs));
-          switch (op) {
-            case hir::Binary::Op::LT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val < r->val);
-            case hir::Binary::Op::LE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val <= r->val);
-            case hir::Binary::Op::GT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val > r->val);
-            case hir::Binary::Op::GE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val >= r->val);
-
-            case hir::Binary::Op::ADD:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val + r->val, true);
-            case hir::Binary::Op::SUB:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val - r->val, true);
-
-            case hir::Binary::Op::MUL:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val * r->val, true);
-            case hir::Binary::Op::DIV:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val / r->val, true);
-            case hir::Binary::Op::MOD:
-              throw LocError::Create(
-                  l->Begin(), "operator \% not defined on untyped float");
-          }
-        } break;
+    case Type::Kind::F32:
+      switch (r->TypeKind()) {
+        case Type::Kind::CHAR:
+        case Type::Kind::I32:
+        case Type::Kind::F32:
+          return true;
+        case Type::Kind::I64:
+        case Type::Kind::F64:
+          return false;
         default:
-          throw LocError::Create(lhs->Begin(), "cannot binary");
+          UNREACHABLE
       }
-    } break;
-
-    case hir::Constant::Kind::CHAR: {
-      auto l = unique_cast<hir::CharConstant>(std::move(lhs));
-      switch (rhs->ConstantKind()) {
-        case hir::Constant::Kind::INT: {  // char int
-          auto r = unique_cast<hir::IntConstant>(std::move(rhs));
-          switch (op) {
-            case hir::Binary::Op::LT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val < r->val);
-            case hir::Binary::Op::LE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val <= r->val);
-            case hir::Binary::Op::GT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val > r->val);
-            case hir::Binary::Op::GE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val >= r->val);
-
-            case hir::Binary::Op::ADD:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val + r->val);
-            case hir::Binary::Op::SUB:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val - r->val);
-
-            case hir::Binary::Op::MUL:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val * r->val);
-            case hir::Binary::Op::DIV:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val / r->val);
-            case hir::Binary::Op::MOD:
-              return std::make_unique<hir::IntConstant>(lhs_begin, rhs_end,
-                                                        l->val % r->val);
-          }
-        } break;
-        case hir::Constant::Kind::FLOAT: {  // char float
-          auto r = unique_cast<hir::FloatConstant>(std::move(rhs));
-          switch (op) {
-            case hir::Binary::Op::LT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val < r->val);
-            case hir::Binary::Op::LE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val <= r->val);
-            case hir::Binary::Op::GT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val > r->val);
-            case hir::Binary::Op::GE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val >= r->val);
-
-            case hir::Binary::Op::ADD:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val + r->val, true);
-            case hir::Binary::Op::SUB:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val - r->val, true);
-
-            case hir::Binary::Op::MUL:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val * r->val, true);
-            case hir::Binary::Op::DIV:
-              return std::make_unique<hir::FloatConstant>(
-                  lhs_begin, rhs_end, l->val / r->val, true);
-            case hir::Binary::Op::MOD:
-              throw LocError::Create(
-                  r->Begin(), "operator \% not defined on untyped float");
-          }
-        } break;
-        case hir::Constant::Kind::CHAR: {  // char char
-          auto r = unique_cast<hir::CharConstant>(std::move(rhs));
-          switch (op) {
-            case hir::Binary::Op::LT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val < r->val);
-            case hir::Binary::Op::LE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val <= r->val);
-            case hir::Binary::Op::GT:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val > r->val);
-            case hir::Binary::Op::GE:
-              return std::make_unique<hir::BoolConstant>(lhs_begin, rhs_end,
-                                                         l->val >= r->val);
-
-            case hir::Binary::Op::ADD:
-              return std::make_unique<hir::CharConstant>(lhs_begin, rhs_end,
-                                                         l->val + r->val);
-            case hir::Binary::Op::SUB:
-              return std::make_unique<hir::CharConstant>(lhs_begin, rhs_end,
-                                                         l->val - r->val);
-
-            case hir::Binary::Op::MUL:
-              return std::make_unique<hir::CharConstant>(lhs_begin, rhs_end,
-                                                         l->val * r->val);
-            case hir::Binary::Op::DIV:
-              return std::make_unique<hir::CharConstant>(lhs_begin, rhs_end,
-                                                         l->val / r->val);
-            case hir::Binary::Op::MOD:
-              return std::make_unique<hir::CharConstant>(lhs_begin, rhs_end,
-                                                         l->val % r->val);
-          }
-        } break;
+    case Type::Kind::I64:
+      switch (r->TypeKind()) {
+        case Type::Kind::CHAR:
+        case Type::Kind::I32:
+        case Type::Kind::F32:
+        case Type::Kind::I64:
+          return true;
+        case Type::Kind::F64:
+          return false;
         default:
-          throw LocError::Create(lhs->Begin(), "cannot binary");
+          UNREACHABLE
       }
-    } break;
-
-    case hir::Constant::Kind::BOOL: {
-      /* auto l = (hir::BoolConstant*)lhs; */
-      /* switch (rhs->ConstantKind()) { */
-      /*   case hir::Constant::Kind::BOOL: { */
-      /*     auto r = (hir::BoolConstant*)rhs; */
-      throw CompileError::Create("unimplemented bool bool");
-
-      /* } break; */
-      /* default: */
-      /*   throw LocError::Create(lhs->Begin(), "cannot binary"); */
-      /* } */
-
-    } break;
-
-    case hir::Constant::Kind::STRING: {
-      /* auto lBl = (hir::BoolConstant*)lhs; */
-      /* switch (rhs->ConstantKind()) { */
-      /* case hir::Constant::Kind::STRING: { */
-      throw CompileError::Create("unimplemented str str");
-
-      /* } break; */
-      /* default: */
-      /*   throw LocError::Create(lhs->Begin(), "cannot binary"); */
-      /* } */
-
-    } break;
+    case Type::Kind::F64:
+      switch (r->TypeKind()) {
+        case Type::Kind::CHAR:
+        case Type::Kind::I32:
+        case Type::Kind::F32:
+        case Type::Kind::I64:
+        case Type::Kind::F64:
+          return true;
+        default:
+          UNREACHABLE
+      }
+    default:
+      UNREACHABLE
   }
 }
 
-std::unique_ptr<hir::Expr> Lower::TryConstantTy(
-    std::unique_ptr<hir::Constant> cons, std::shared_ptr<Type> ty) {
-  auto begin = cons->Begin();
-  auto end = cons->End();
-  switch (cons->ConstantKind()) {
-    case hir::Constant::Kind::CHAR: {
-      // char may be int or float
-      auto char_const = unique_cast<hir::CharConstant>(std::move(cons));
-      switch (ty->TypeKind()) {
-        case Type::CHAR:
-          return std::move(char_const);
-        case Type::I32:
-        case Type::I64: {
-          auto rune = char_const->val;
-          return std::make_unique<hir::IntConstant>(begin, end, rune);
-        } break;
-
-        case Type::F32:
-        case Type::F64: {
-          auto rune = char_const->val;
-          return std::make_unique<hir::FloatConstant>(begin, end, rune,
-                                                      ty->IsF32());
-        } break;
-
-        default:
-          throw LocError::Create(begin, "cannot cast char literal");
-      }
-    } break;
-
-    case hir::Constant::Kind::INT: {
-      auto int_const = unique_cast<hir::IntConstant>(std::move(cons));
-      switch (ty->TypeKind()) {
-        case Type::CHAR: {
-          if (int_const->is_32) {
-            auto val = int_const->val;
-            return std::make_unique<hir::CharConstant>(begin, end, val);
-          }
-
-          throw LocError::Create(begin, "overflow char");
-        } break;
-
-        case Type::I32: {
-          if (int_const->is_32) return std::move(int_const);
-
-          if (int_const->val > INT32_MAX)
-            throw LocError::Create(begin, "overflow int32");
-
-          int_const->is_32 = true;
-          return std::move(int_const);
-        } break;
-
-        case Type::I64:
-          return std::move(int_const);
-
-        case Type::F32: {
-          if (int_const->is_32) {
-            auto val = int_const->val;
-            return std::make_unique<hir::FloatConstant>(begin, end, val, true);
-          }
-
-          throw LocError::Create(begin, "overflow f32");
-        } break;
-
-        case Type::F64: {
-          auto rune = int_const->val;
-          return std::make_unique<hir::FloatConstant>(begin, end, rune, false);
-        } break;
-
-        default:
-          throw LocError::Create(begin, "can't cast");
-      }
-    } break;
-
-    case hir::Constant::Kind::BOOL: {
-      if (!ty->IsBool())
-        throw LocError::Create(cons->Begin(), "can't cast bool");
-      return std::move(cons);
-    } break;
-
-    case hir::Constant::Kind::FLOAT: {
-      auto float_const = unique_cast<hir::FloatConstant>(std::move(cons));
-      switch (ty->TypeKind()) {
-        case Type::F32: {
-          if (float_const->is_32) {
-            return std::move(float_const);
-          }
-          throw LocError::Create(begin, "overflow f32");
-        } break;
-
-        case Type::F64: {
-          float_const->is_32 = false;
-          return std::move(float_const);
-        } break;
-
-        default:
-          throw LocError::Create(begin, "can't cast");
-      }
-
-    } break;
-
-    case hir::Constant::Kind::STRING: {
-      if (!ty->IsString())
-        throw LocError::Create(cons->Begin(), "can't cast string");
-      return std::move(cons);
-    } break;
+std::unique_ptr<hir::Constant> Lower::ConstBinary(
+    std::unique_ptr<hir::Binary> binary) {
+  if (is_left_prior_constant_type(binary->lhs->Ty(), binary->rhs->Ty())) {
+    binary->rhs = MatchExprTy(std::move(binary->rhs), binary->lhs->Ty());
+  } else {
+    binary->lhs = MatchExprTy(std::move(binary->lhs), binary->rhs->Ty());
   }
-  UNREACHABLE
+
+  auto begin = binary->Begin();
+  auto end = binary->End();
+
+  switch (binary->lhs->Ty()->TypeKind()) {
+    case Type::Kind::CHAR: {
+      auto l = unique_cast<hir::CharConstant>(std::move(binary->lhs));
+      auto r = unique_cast<hir::CharConstant>(std::move(binary->rhs));
+      switch (binary->op) {
+        case hir::Binary::Op::LT:
+          return std::make_unique<hir::BoolConstant>(begin, end,
+                                                     l->val < r->val);
+        case hir::Binary::Op::LE:
+          return std::make_unique<hir::BoolConstant>(begin, end,
+                                                     l->val <= r->val);
+        case hir::Binary::Op::GT:
+          return std::make_unique<hir::BoolConstant>(begin, end,
+                                                     l->val > r->val);
+        case hir::Binary::Op::GE:
+          return std::make_unique<hir::BoolConstant>(begin, end,
+                                                     l->val >= r->val);
+        case hir::Binary::Op::ADD:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val + r->val);
+        case hir::Binary::Op::SUB:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val - r->val);
+
+        case hir::Binary::Op::MUL:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val * r->val);
+        case hir::Binary::Op::DIV:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val / r->val);
+        case hir::Binary::Op::MOD:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val % r->val);
+      }
+
+    } break;
+
+    case Type::Kind::STRING: {
+      auto l = unique_cast<hir::StringConstant>(std::move(binary->lhs));
+      auto r = unique_cast<hir::StringConstant>(std::move(binary->rhs));
+      throw CompileError::Create("cannot use string for binary");
+    } break;
+
+    case Type::Kind::BOOL: {
+      auto l = unique_cast<hir::BoolConstant>(std::move(binary->lhs));
+      auto r = unique_cast<hir::BoolConstant>(std::move(binary->rhs));
+      throw CompileError::Create("cannot use bool for binary");
+    } break;
+
+    case Type::Kind::I32:
+    case Type::Kind::I64: {
+      auto l = unique_cast<hir::IntConstant>(std::move(binary->lhs));
+      auto r = unique_cast<hir::IntConstant>(std::move(binary->rhs));
+      switch (binary->op) {
+        case hir::Binary::Op::LT:
+          return std::make_unique<hir::BoolConstant>(begin, end,
+                                                     l->val < r->val);
+        case hir::Binary::Op::LE:
+          return std::make_unique<hir::BoolConstant>(begin, end,
+                                                     l->val <= r->val);
+        case hir::Binary::Op::GT:
+          return std::make_unique<hir::BoolConstant>(begin, end,
+                                                     l->val > r->val);
+        case hir::Binary::Op::GE:
+          return std::make_unique<hir::BoolConstant>(begin, end,
+                                                     l->val >= r->val);
+        case hir::Binary::Op::ADD:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val + r->val);
+        case hir::Binary::Op::SUB:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val - r->val);
+
+        case hir::Binary::Op::MUL:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val * r->val);
+        case hir::Binary::Op::DIV:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val / r->val);
+        case hir::Binary::Op::MOD:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val % r->val);
+      }
+
+    } break;
+    case Type::Kind::F32:
+    case Type::Kind::F64: {
+      auto l = unique_cast<hir::FloatConstant>(std::move(binary->lhs));
+      auto r = unique_cast<hir::FloatConstant>(std::move(binary->rhs));
+      switch (binary->op) {
+        case hir::Binary::Op::LT:
+          return std::make_unique<hir::BoolConstant>(begin, end,
+                                                     l->val < r->val);
+        case hir::Binary::Op::LE:
+          return std::make_unique<hir::BoolConstant>(begin, end,
+                                                     l->val <= r->val);
+        case hir::Binary::Op::GT:
+          return std::make_unique<hir::BoolConstant>(begin, end,
+                                                     l->val > r->val);
+        case hir::Binary::Op::GE:
+          return std::make_unique<hir::BoolConstant>(begin, end,
+                                                     l->val >= r->val);
+        case hir::Binary::Op::ADD:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val + r->val);
+        case hir::Binary::Op::SUB:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val - r->val);
+
+        case hir::Binary::Op::MUL:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val * r->val);
+        case hir::Binary::Op::DIV:
+          return std::make_unique<hir::IntConstant>(begin, end,
+                                                    l->val / r->val);
+        case hir::Binary::Op::MOD:
+          throw LocError::Create(begin,
+                                 "operator \% not defined on untyped float");
+      }
+
+    } break;
+      break;
+    default:
+      UNREACHABLE
+  }
+}
+
+inline bool is_operand_type(Type::Kind ty) {
+  return ty == Type::Kind::I32 || ty == Type::Kind::I64 ||
+         ty == Type::Kind::F32 || ty == Type::Kind::F64 ||
+         ty == Type::Kind::BOOL || ty == Type::Kind::CHAR ||
+         ty == Type::Kind::STRING;
 }
 
 std::unique_ptr<hir::Expr> Lower::CheckBinary(
     std::unique_ptr<hir::Binary> binary) {
-  if (binary->lhs->IsConstant() && binary->rhs->IsConstant()) {
-    return ConstBinary(unique_cast<hir::Constant>(std::move(binary->lhs)),
-                       unique_cast<hir::Constant>(std::move(binary->rhs)),
-                       binary->op);
+  if (!is_operand_type(binary->lhs->Ty()->TypeKind())) {
+    throw LocError::Create(binary->lhs->Begin(), "not binary type");
   }
-  auto lhs_ty = binary->lhs->Ty();
-  auto rhs_ty = binary->rhs->Ty();
-  if (!lhs_ty->IsNumeric()) {
-    throw LocError::Create(binary->lhs->Begin(), "lhs is not numeric type");
-  }
-  if (!rhs_ty->IsNumeric()) {
-    throw LocError::Create(binary->rhs->Begin(), "rhs is not numeric type");
+  if (!is_operand_type(binary->rhs->Ty()->TypeKind())) {
+    throw LocError::Create(binary->lhs->Begin(), "not binary type");
   }
 
-  if (*lhs_ty == *rhs_ty) return std::move(binary);
+  if (binary->lhs->IsConstant() && binary->rhs->IsConstant()) {
+    return ConstBinary(std::move(binary));
+  }
+  std::shared_ptr<Type> operand_ty;
+  if (binary->lhs->IsConstant()) {
+    operand_ty = binary->rhs->Ty();
+    binary->lhs = MatchExprTy(std::move(binary->lhs), operand_ty);
+  } else {
+    operand_ty = binary->lhs->Ty();
+    binary->rhs = MatchExprTy(std::move(binary->rhs), operand_ty);
+  }
 
   switch (binary->op) {
     case hir::Binary::Op::LT:
-      break;
     case hir::Binary::Op::LE:
-      break;
     case hir::Binary::Op::GT:
-      break;
     case hir::Binary::Op::GE:
-      break;
-
     case hir::Binary::Op::ADD:
-      break;
     case hir::Binary::Op::SUB:
-      break;
     case hir::Binary::Op::MUL:
-      break;
     case hir::Binary::Op::DIV:
+      if (!operand_ty->IsNumeric())
+        throw LocError::Create(binary->Begin(), "not numeric type");
       break;
     case hir::Binary::Op::MOD:
-      if (!lhs_ty->IsI32() && !lhs_ty->IsI64() && !lhs_ty->IsChar())
+      if (operand_ty->IsFloat())
         throw LocError::Create(binary->lhs->Begin(),
-                               "operator \% not defined on untyped float");
-      if (!rhs_ty->IsI32() && !rhs_ty->IsI64() && !rhs_ty->IsChar())
-        throw LocError::Create(binary->rhs->Begin(),
-                               "operator \% not defined on untyped float");
+                               "operator \% not defined on float");
       break;
   }
 
-  bool is_right_prior = binary->lhs->IsConstant();
-  if (is_right_prior) {
-    binary->lhs = TryExprTy(std::move(binary->lhs), rhs_ty);
-  } else {
-    binary->rhs = TryExprTy(std::move(binary->rhs), lhs_ty);
-  }
   return std::move(binary);
 }
 
@@ -874,80 +586,86 @@ std::unique_ptr<hir::Constant> Lower::ConstUnary(
   }
 }
 
-// check exp's type and try to set type `ty`
-std::unique_ptr<hir::Expr> Lower::TryExprTy(std::unique_ptr<hir::Expr> expr,
-                                            std::shared_ptr<Type> ty) {
-  switch (expr->ExprKind()) {
-    case hir::Expr::Kind::VALUE: {
-      CheckNotVoidType(expr.get());
-      auto value = unique_cast<hir::Value>(std::move(expr));
-      switch (value->ValueKind()) {
-        case hir::Value::Kind::VARIABLE: {
-          // Variables can't be casted implicitly
-          auto var = unique_cast<hir::Variable>(std::move(value));
-          var->decl->Debug();
-          if (*var->decl->type != *ty) {
-            throw LocError::Create(expr->Begin(), "unmatched variable type");
-          }
-          return std::move(var);
-        } break;
-        case hir::Value::Kind::CONSTANT: {
-          // Constants can be casted implicitly
-          auto cons = unique_cast<hir::Constant>(std::move(value));
-          return TryConstantTy(std::move(cons), ty);
-        } break;
-      }
-    } break;
+std::unique_ptr<hir::Expr> Lower::MatchExprTy(std::unique_ptr<hir::Expr> e,
+                                              std::shared_ptr<Type> ty) {
+  std::cout << "MatchExpr " << e.get() << " " << ToString(ty.get())
+            << std::endl;
+  switch (e->ExprKind()) {
+    case hir::Expr::Kind::VALUE:
+      return MatchValueType(unique_cast<hir::Value>(std::move(e)), ty);
 
-    case hir::Expr::Kind::BINARY: {
-      CheckNotVoidType(expr.get());
-      auto binary = unique_cast<hir::Binary>(std::move(expr));
-      if (*binary->Ty() == *ty) return std::move(binary);
-      binary->lhs = TryExprTy(std::move(binary->lhs), ty);
-      binary->rhs = TryExprTy(std::move(binary->rhs), ty);
-      return std::move(binary);
-    } break;
-
+    case hir::Expr::Kind::BINARY:
     case hir::Expr::Kind::CALL:
     case hir::Expr::Kind::UNARY:
-      CheckNotVoidType(expr.get());
-      if (*expr->Ty() != *ty) {
-        throw LocError::Create(expr->Begin(), "unmatched exp type");
-      }
-      return std::move(expr);
-    case hir::Expr::Kind::IF: {
-      CheckNotVoidType(expr.get());
-      auto if_stmt = unique_cast<hir::If>(std::move(expr));
+      return MatchJustType(std::move(e), ty);
 
-      if_stmt->block =
-          unique_cast<hir::Block>(TryExprTy(std::move(if_stmt->block), ty));
+    case hir::Expr::Kind::IF:
+      return MatchIfType(unique_cast<hir::If>(std::move(e)), ty);
 
-      if (if_stmt->IsElseIf()) {
-        if_stmt->els =
-            unique_cast<hir::If>(TryExprTy(std::move(if_stmt->els), ty));
-      } else if (if_stmt->IsElseBlock()) {
-        if_stmt->els =
-            unique_cast<hir::Block>(TryExprTy(std::move(if_stmt->els), ty));
-      }
-      return std::move(if_stmt);
-    } break;
-    case hir::Expr::Kind::BLOCK: {
-      auto block = unique_cast<hir::Block>(std::move(expr));
-      if (block->HasRet()) {
-        // ret block doesn't need to check type
-        return std::move(block);
-      }
-      CheckNotVoidType(block.get());
-      auto last = block->stmts.move_back();
-      if (last->StmtKind() == hir::Stmt::Kind::EXPR) {
-        last = TryExprTy(unique_cast<hir::Expr>(std::move(last)), ty);
-        block->stmts.push_back(std::move(last));
-        return std::move(block);
-      } else {
-        throw LocError(last->Begin(), "block is empty");
-      }
-    } break;
+    case hir::Expr::Kind::BLOCK:
+      return MatchBlockType(unique_cast<hir::Block>(std::move(e)), ty);
   };
+}
+
+std::unique_ptr<hir::Expr> Lower::MatchJustType(std::unique_ptr<hir::Expr> e,
+                                                std::shared_ptr<Type> ty) {
+  if (*e->Ty() != *ty) {
+    throw LocError::Create(e->Begin(), "unmatched expr type");
+  }
+  return std::move(e);
+}
+
+std::unique_ptr<hir::Expr> Lower::MatchValueType(std::unique_ptr<hir::Value> e,
+                                                 std::shared_ptr<Type> ty) {
+  switch (e->ValueKind()) {
+    case hir::Value::Kind::VARIABLE:
+      return MatchJustType(std::move(e), ty);
+    case hir::Value::Kind::CONSTANT:
+      return MatchConstantType(unique_cast<hir::Constant>(std::move(e)), ty);
+  }
+}
+
+std::unique_ptr<hir::Expr> Lower::MatchConstantType(
+    std::unique_ptr<hir::Constant> c, std::shared_ptr<Type> ty) {
+  switch (c->ConstantKind()) {
+    case hir::Constant::Kind::CHAR:
+      return MatchType(unique_cast<hir::CharConstant>(std::move(c)), ty);
+    case hir::Constant::Kind::INT:
+      return MatchType(unique_cast<hir::IntConstant>(std::move(c)), ty);
+    case hir::Constant::Kind::BOOL:
+      return MatchType(unique_cast<hir::BoolConstant>(std::move(c)), ty);
+    case hir::Constant::Kind::FLOAT:
+      return MatchType(unique_cast<hir::FloatConstant>(std::move(c)), ty);
+    case hir::Constant::Kind::STRING:
+      return MatchType(unique_cast<hir::StringConstant>(std::move(c)), ty);
+  }
+}
+
+std::unique_ptr<hir::Expr> Lower::MatchIfType(std::unique_ptr<hir::If> e,
+                                              std::shared_ptr<Type> ty) {
+  e->block = unique_cast<hir::Block>(MatchExprTy(std::move(e->block), ty));
+  if (e->IsElseIf()) {
+    e->els = unique_cast<hir::If>(MatchExprTy(std::move(e->els), ty));
+  } else if (e->IsElseBlock()) {
+    e->els = unique_cast<hir::Block>(MatchExprTy(std::move(e->els), ty));
+  }
+  return std::move(e);
+}
+
+std::unique_ptr<hir::Expr> Lower::MatchBlockType(std::unique_ptr<hir::Block> e,
+                                                 std::shared_ptr<Type> ty) {
+  if (e->HasRet()) {
+    // ret block doesn't need to check type
+    return std::move(e);
+  }
+  if (*e->Ty() == *ty) return std::move(e);
+
+  if (e->stmts.empty()) throw LocError(e->End(), "block is empty");
+
+  auto last = e->stmts.move_back();
+  last = MatchExprTy(unique_cast<hir::Expr>(std::move(last)), ty);
+  e->stmts.push_back(std::move(last));
+  return std::move(e);
 }
 
 }  // namespace felis

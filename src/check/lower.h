@@ -34,17 +34,23 @@ class Lower {
   std::unique_ptr<hir::IntConstant> ParseInt(std::unique_ptr<ast::Lit>);
   double ParseFloat(std::unique_ptr<ast::Lit>);
 
-  std::unique_ptr<hir::Expr> TryExprTy(std::unique_ptr<hir::Expr>,
-                                       std::shared_ptr<Type>);
-
-  std::unique_ptr<hir::Constant> ConstBinary(std::unique_ptr<hir::Constant>,
-                                             std::unique_ptr<hir::Constant>,
-                                             hir::Binary::Op);
-  std::unique_ptr<hir::Expr> TryConstantTy(std::unique_ptr<hir::Constant>,
-                                           std::shared_ptr<Type>);
+  std::unique_ptr<hir::Constant> ConstBinary(std::unique_ptr<hir::Binary>);
   std::unique_ptr<hir::Expr> CheckBinary(std::unique_ptr<hir::Binary>);
   std::unique_ptr<hir::Constant> ConstUnary(std::unique_ptr<hir::Constant>,
                                             hir::Unary::Op);
+
+  std::unique_ptr<hir::Expr> MatchExprTy(std::unique_ptr<hir::Expr>,
+                                         std::shared_ptr<Type>);
+  std::unique_ptr<hir::Expr> MatchJustType(std::unique_ptr<hir::Expr>,
+                                           std::shared_ptr<Type>);
+  std::unique_ptr<hir::Expr> MatchIfType(std::unique_ptr<hir::If>,
+                                         std::shared_ptr<Type>);
+  std::unique_ptr<hir::Expr> MatchBlockType(std::unique_ptr<hir::Block>,
+                                            std::shared_ptr<Type>);
+  std::unique_ptr<hir::Expr> MatchValueType(std::unique_ptr<hir::Value>,
+                                            std::shared_ptr<Type>);
+  std::unique_ptr<hir::Expr> MatchConstantType(std::unique_ptr<hir::Constant>,
+                                               std::shared_ptr<Type>);
 
   void CheckNotVoidType(const hir::Expr *expr);
 };

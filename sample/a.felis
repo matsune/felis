@@ -1,6 +1,6 @@
 ext fn puts(string) -> i32
 
-fn 関数1(a: i32) -> i32{
+fn 関数1(a: i64) -> i32{
   if a < 0 {
     ret 3
   } else if true {

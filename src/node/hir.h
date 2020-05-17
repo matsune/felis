@@ -61,15 +61,15 @@ struct Constant : public Value {
 
 struct IntConstant : public Constant {
   int64_t val;
-  bool is_32;
+  std::shared_ptr<Type> type;
 
   IntConstant(Loc begin, Loc end, int64_t val)
-      : Constant(begin, end), val(val), is_32(val <= INT32_MAX){};
+      : Constant(begin, end), val(val), type(kTypeI64){};
+
+  bool IsI32Size() const { return INT32_MIN <= val && val <= INT32_MAX; }
 
   // override Stmt
-  std::shared_ptr<Type> Ty() const override {
-    return is_32 ? kTypeI32 : kTypeI64;
-  }
+  std::shared_ptr<Type> Ty() const override { return type; }
 
   // override Constant
   Constant::Kind ConstantKind() const override { return Constant::Kind::INT; };
@@ -79,15 +79,14 @@ struct FloatConstant : public Constant {
   Loc begin;
   Loc end;
   double val;
-  bool is_32;
+  std::shared_ptr<Type> type;
 
-  FloatConstant(Loc begin, Loc end, double val, bool is_32)
-      : Constant(begin, end), end(end), val(val), is_32(is_32){};
+  FloatConstant(Loc begin, Loc end, double val,
+                std::shared_ptr<Type> type = kTypeF32)
+      : Constant(begin, end), end(end), val(val), type(type){};
 
   // override Stmt
-  std::shared_ptr<Type> Ty() const override {
-    return is_32 ? kTypeF32 : kTypeF64;
-  }
+  std::shared_ptr<Type> Ty() const override { return type; }
 
   // override Constant
   Constant::Kind ConstantKind() const override {

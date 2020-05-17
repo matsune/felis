@@ -197,17 +197,6 @@ void DeclChecker::CheckFnDecl(const std::unique_ptr<ast::FnDecl>& fn) {
     CheckStmt(stmt);
   }
   CloseScope();
-
-  // TODO
-  /* if (!block->IsTerminating()) { */
-  /*   if (current_func_->AsFuncType()->ret->IsVoid()) { */
-  /*     block->stmts.push_back(std::make_unique<hir::RetStmt>(block->End() -
-   * 1)); */
-  /*   } else { */
-  /*     throw CompileError::Create("func %s is not terminated", */
-  /*                                hirDecl->decl->name.c_str()); */
-  /*   } */
-  /* } */
 }
 
 std::shared_ptr<Decl> DeclChecker::InsertFnDecl(
