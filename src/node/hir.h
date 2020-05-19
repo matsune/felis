@@ -52,7 +52,7 @@ struct Value : public Expr {
 struct Constant : public Value {
   Constant(Loc begin, Loc end) : Value(begin, end) {}
 
-  enum Kind { INT, FLOAT, CHAR, BOOL, STRING };
+  enum Kind { INT, FLOAT, BOOL, STRING };
   virtual Constant::Kind ConstantKind() const = 0;
 
   // override Value
@@ -64,7 +64,7 @@ struct IntConstant : public Constant {
   std::shared_ptr<Type> type;
 
   IntConstant(Loc begin, Loc end, int64_t val)
-      : Constant(begin, end), val(val), type(kTypeI64){};
+      : Constant(begin, end), val(val) {}  //, type(kTypeUnresolved){};
 
   bool IsI32Size() const { return INT32_MIN <= val && val <= INT32_MAX; }
 
@@ -81,9 +81,10 @@ struct FloatConstant : public Constant {
   double val;
   std::shared_ptr<Type> type;
 
-  FloatConstant(Loc begin, Loc end, double val,
-                std::shared_ptr<Type> type = kTypeF32)
-      : Constant(begin, end), end(end), val(val), type(type){};
+  FloatConstant(Loc begin, Loc end, double val)
+      : Constant(begin, end),
+        end(end),
+        val(val) {}  //, type(kTypeUnresolved){};
 
   // override Stmt
   std::shared_ptr<Type> Ty() const override { return type; }
@@ -92,18 +93,6 @@ struct FloatConstant : public Constant {
   Constant::Kind ConstantKind() const override {
     return Constant::Kind::FLOAT;
   };
-};
-
-struct CharConstant : public Constant {
-  rune val;
-
-  CharConstant(Loc begin, Loc end, rune val) : Constant(begin, end), val(val){};
-
-  // override Stmt
-  std::shared_ptr<Type> Ty() const override { return kTypeChar; }
-
-  // override Constant
-  Constant::Kind ConstantKind() const override { return Constant::Kind::CHAR; };
 };
 
 struct BoolConstant : public Constant {
@@ -179,6 +168,8 @@ struct Unary : public Expr {
 
 struct Binary : public Expr {
   enum Op {
+    EQEQ,
+    NEQ,
     LT,
     LE,
     GT,

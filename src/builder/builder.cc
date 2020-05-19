@@ -13,8 +13,8 @@ llvm::Type* Builder::GetLLVMTyFromTy(std::shared_ptr<Type> ty) {
   switch (ty->TypeKind()) {
     case Type::Kind::BOOL:
       return llvm::Type::getInt1Ty(ctx_);
-    case Type::Kind::CHAR:
-      return llvm::Type::getInt32Ty(ctx_);
+    /* case Type::Kind::CHAR: */
+    /*   return llvm::Type::getInt32Ty(ctx_); */
     case Type::Kind::I32:
       return llvm::Type::getInt32Ty(ctx_);
     case Type::Kind::I64:
@@ -193,7 +193,7 @@ void Builder::BuildBlock(std::unique_ptr<hir::Block> block,
 
 llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
   auto ty = binary->Ty();
-  bool is_f = binary->lhs->Ty()->IsFloat();
+  bool is_f = binary->lhs->Ty()->IsTypedFloat();
   auto l_val = BuildExpr(std::move(binary->lhs));
   auto r_val = BuildExpr(std::move(binary->rhs));
   switch (binary->op) {
@@ -325,10 +325,11 @@ llvm::Constant* Builder::BuildConstant(
       auto v = unique_cast<hir::FloatConstant>(std::move(constant));
       return llvm::ConstantFP::get(GetLLVMTyFromTy(v->Ty()), v->val);
     } break;
-    case hir::Constant::Kind::CHAR: {
-      auto v = unique_cast<hir::CharConstant>(std::move(constant));
-      return llvm::ConstantInt::getSigned(GetLLVMTyFromTy(v->Ty()), v->val);
-    } break;
+    /* case hir::Constant::Kind::CHAR: { */
+    /*   auto v = unique_cast<hir::CharConstant>(std::move(constant)); */
+    /*   return llvm::ConstantInt::getSigned(GetLLVMTyFromTy(v->Ty()), v->val);
+     */
+    /* } break; */
     case hir::Constant::Kind::BOOL: {
       auto v = unique_cast<hir::BoolConstant>(std::move(constant));
       return v->val ? llvm::ConstantInt::getTrue(ctx_)

@@ -33,6 +33,8 @@ bool is_bin_op(Token::Kind kind) {
     case Token::Kind::LE:
     case Token::Kind::GT:
     case Token::Kind::GE:
+    case Token::Kind::EQEQ:
+    case Token::Kind::NEQ:
       return true;
     default:
       return false;
@@ -61,6 +63,10 @@ inline ast::BinaryOp::Op binop_from_tok(Token::Kind kind) {
       return ast::BinaryOp::Op::LT;
     case Token::Kind::LE:
       return ast::BinaryOp::Op::LE;
+    case Token::Kind::EQEQ:
+      return ast::BinaryOp::EQEQ;
+    case Token::Kind::NEQ:
+      return ast::BinaryOp::NEQ;
     default:
       assert(false);
   }

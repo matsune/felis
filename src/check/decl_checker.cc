@@ -15,12 +15,11 @@ void DeclChecker::SetupBuiltin() {
   current_scope_->InsertType("f32", kTypeF32);
   current_scope_->InsertType("f64", kTypeF64);
   current_scope_->InsertType("bool", kTypeBool);
-  current_scope_->InsertType("char", kTypeChar);
+  /* current_scope_->InsertType("char", kTypeChar); */
   current_scope_->InsertType("string", kTypeString);
 }
 
 void DeclChecker::CheckStmt(const std::unique_ptr<ast::Stmt>& stmt) {
-  std::cout << "CheckStmt " << ToString(stmt->StmtKind()) << std::endl;
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR:
       CheckExpr((std::unique_ptr<ast::Expr>&)stmt);
@@ -40,7 +39,6 @@ void DeclChecker::CheckStmt(const std::unique_ptr<ast::Stmt>& stmt) {
 void DeclChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
   switch (expr->ExprKind()) {
     case ast::Expr::Kind::LIT:
-      /* return MakeLit(unique_cast<ast::Lit>(std::move(expr))); */
       break;
 
     case ast::Expr::Kind::CALL: {
@@ -122,9 +120,8 @@ void DeclChecker::CheckVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
     throw LocError::Create(stmt->Begin(), "redeclared var %s", name.c_str());
   }
   CheckExpr(stmt->expr);
-
   auto decl = std::make_shared<Decl>(
-      name, kTypeUnresolved, stmt->is_let ? Decl::Kind::LET : Decl::Kind::VAR);
+      name, MakeUnresolved(), stmt->is_let ? Decl::Kind::LET : Decl::Kind::VAR);
   current_scope_->InsertDecl(name, decl);
   ast_decl_[stmt.get()] = decl;
 }
@@ -143,8 +140,8 @@ void DeclChecker::CheckAssign(const std::unique_ptr<ast::AssignStmt>& stmt) {
     throw LocError::Create(stmt->Begin(), "%s is declared as mutable variable",
                            name.c_str());
   }
-  ast_decl_[stmt.get()] = decl;
   CheckExpr(stmt->expr);
+  ast_decl_[stmt.get()] = decl;
 }
 
 void DeclChecker::CheckIf(const std::unique_ptr<ast::If>& stmt) {

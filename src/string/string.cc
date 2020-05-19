@@ -82,6 +82,10 @@ std::string ToString(Token::Kind kind) {
 
 std::string ToString(ast::BinaryOp::Op op) {
   switch (op) {
+    case ast::BinaryOp::Op::EQEQ:
+      return "==";
+    case ast::BinaryOp::Op::NEQ:
+      return "!=";
     case ast::BinaryOp::Op::LT:
       return ">";
     case ast::BinaryOp::Op::LE:
@@ -142,9 +146,17 @@ std::string ToString(Decl::Kind kind) {
 }
 
 std::string ToString(Type *type) {
+  if (!type) return "NULL";
   switch (type->TypeKind()) {
-    case Type::Kind::UNRESOLVED:
-      return "UNRESOLVED";
+    case Type::Kind::UNRESOLVED: {
+      auto un_type = (UnresolvedType *)type;
+      return "T" + std::to_string(un_type->id);
+
+    } break;
+    case Type::Kind::UNTYPED_INT:
+      return "UntypedInt";
+    case Type::Kind::UNTYPED_FLOAT:
+      return "UntypedFloat";
     case Type::Kind::FUNC: {
       auto func_type = (FuncType *)type;
       std::string str = "func(";
@@ -173,13 +185,12 @@ std::string ToString(Type *type) {
       return "f64";
     case Type::Kind::BOOL:
       return "bool";
-    case Type::Kind::CHAR:
-      return "char";
+    /* case Type::Kind::CHAR: */
+    /*   return "char"; */
     case Type::Kind::STRING:
       return "string";
-    default:
-      UNREACHABLE
   }
+  UNREACHABLE
 }
 
 std::string ToString(ast::Stmt::Kind kind) {

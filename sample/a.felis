@@ -14,9 +14,14 @@ fn 関数1(a: i64) -> i32{
   }
 }
 
+fn b() ->i32{}
+fn o() {}
+
 fn main()->i32 {
-  let a = 20
-  let c = 関数1(a)
+  var a = 'a';
+  let c = b() + '4';
+  let d = 関数1(a)
+  let vv =  3
   if c >= 10 {
     let str = "あいう"
     puts(str)

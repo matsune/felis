@@ -11,6 +11,7 @@
 #include "builder/builder.h"
 #include "check/decl_checker.h"
 #include "check/lower.h"
+#include "check/ty_infer.h"
 #include "error/error.h"
 #include "loc.h"
 #include "printer/ast_printer.h"
@@ -99,10 +100,23 @@ class Session {
   std::unique_ptr<felis::hir::File> LowerAst(
       std::unique_ptr<felis::ast::File> ast) {
     std::map<felis::ast::AstNode *, std::shared_ptr<felis::Decl>> ast_decl;
+    std::map<felis::ast::AstNode *, int> node_ty_id_;
     felis::DeclChecker checker(ast_decl);
     checker.SetupBuiltin();
     checker.Check(ast);
-    return felis::Lower(ast_decl).Lowering(std::move(ast));
+    felis::TyInfer infer(ast_decl);
+    infer.Infer(ast);
+
+    for (auto &it : infer.ty_map) {
+      std::cout << it.first << " " << ToString(it.second.get()) << std::endl;
+    }
+    std::cout << "--------------" << std::endl;
+    for (auto &it : ast_decl) {
+      std::cout << it.first << " | ";
+      it.second->Debug();
+    }
+    return nullptr;
+    /* return felis::Lower(ast_decl).Lowering(std::move(ast)); */
   }
 
   std::unique_ptr<llvm::TargetMachine> CreateTargetMachine() {

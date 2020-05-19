@@ -131,12 +131,13 @@ void HirPrinter::PrintConstant(hir::Constant *cons) {
       auto v = (hir::FloatConstant *)cons;
       Writeln("CONSTANT %s: %f", ToString(v->Ty().get()).c_str(), v->val);
     } break;
-    case hir::Constant::Kind::CHAR: {
-      auto v = (hir::CharConstant *)cons;
-      std::string s = "'";
-      s.append(v->val);
-      Writeln("CONSTANT %s: %s'", ToString(v->Ty().get()).c_str(), s.c_str());
-    } break;
+    /* case hir::Constant::Kind::CHAR: { */
+    /*   auto v = (hir::CharConstant *)cons; */
+    /*   std::string s = "'"; */
+    /*   s.append(v->val); */
+    /*   Writeln("CONSTANT %s: %s'", ToString(v->Ty().get()).c_str(),
+     * s.c_str()); */
+    /* } break; */
     case hir::Constant::Kind::BOOL: {
       auto v = (hir::BoolConstant *)cons;
       Writeln("CONSTANT %s: %s", ToString(v->Ty().get()).c_str(),

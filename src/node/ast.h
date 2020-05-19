@@ -37,10 +37,12 @@ struct UnaryOp : public Operator {
 
 struct BinaryOp : public Operator {
   enum Op {
-    LT = 1,
-    LE = 2,
-    GT = 3,
-    GE = 4,
+    EQEQ = 1,
+    NEQ = 2,
+    LT = 3,
+    LE = 4,
+    GT = 5,
+    GE = 6,
 
     ADD = 11,
     SUB = 12,
@@ -61,6 +63,9 @@ struct BinaryOp : public Operator {
 
   Loc End() const override {
     switch (op) {
+      case BinaryOp::Op::EQEQ:
+      case BinaryOp::Op::NEQ:
+        return begin + 2;
       case BinaryOp::Op::LT:
       case BinaryOp::Op::LE:
       case BinaryOp::Op::GT:
@@ -79,6 +84,8 @@ struct BinaryOp : public Operator {
 struct Stmt : public AstNode {
   enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
   virtual Stmt::Kind StmtKind() const = 0;
+
+  bool IsRet() const { return StmtKind() == Kind::RET; }
 };
 
 struct Expr : public Stmt {
@@ -101,6 +108,13 @@ struct Block : public Expr {
   Loc Begin() const override { return begin; }
 
   Loc End() const override { return end; }
+
+  bool HasRet() const {
+    for (auto &stmt : stmts) {
+      if (stmt->IsRet()) return true;
+    }
+    return false;
+  }
 };
 
 struct If : public Expr {
@@ -318,7 +332,12 @@ struct FnProto : public AstNode {
 
   Loc Begin() const override { return begin; }
 
-  Loc End() const override { return args->End(); }
+  Loc End() const override {
+    if (ret)
+      return ret->End();
+    else
+      return args->End();
+  }
 };
 
 struct FnDecl : public AstNode {

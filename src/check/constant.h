@@ -7,24 +7,24 @@
 namespace felis {
 
 // CharConstant
-std::unique_ptr<hir::Expr> MatchType(std::unique_ptr<hir::CharConstant> e,
-                                     std::shared_ptr<Type> ty) {
-  auto begin = e->Begin();
-  auto end = e->End();
-  // char may be int or float
-  switch (ty->TypeKind()) {
-    case Type::CHAR:
-      return std::move(e);
-    case Type::I32:
-    case Type::I64:
-      return std::make_unique<hir::IntConstant>(begin, end, e->val);
-    case Type::F32:
-    case Type::F64:
-      return std::make_unique<hir::FloatConstant>(begin, end, e->val, ty);
-    default:
-      throw LocError::Create(begin, "cannot cast char literal");
-  }
-}
+/* std::unique_ptr<hir::Expr> MatchType(std::unique_ptr<hir::CharConstant> e, */
+/*                                      std::shared_ptr<Type> ty) { */
+/*   auto begin = e->Begin(); */
+/*   auto end = e->End(); */
+/*   // char may be int or float */
+/*   switch (ty->TypeKind()) { */
+/*     case Type::CHAR: */
+/*       return std::move(e); */
+/*     case Type::I32: */
+/*     case Type::I64: */
+/*       return std::make_unique<hir::IntConstant>(begin, end, e->val); */
+/*     case Type::F32: */
+/*     case Type::F64: */
+/*       return std::make_unique<hir::FloatConstant>(begin, end, e->val, ty); */
+/*     default: */
+/*       throw LocError::Create(begin, "cannot cast char literal"); */
+/*   } */
+/* } */
 
 // IntConstant
 std::unique_ptr<hir::Expr> MatchType(std::unique_ptr<hir::IntConstant> e,
@@ -32,14 +32,17 @@ std::unique_ptr<hir::Expr> MatchType(std::unique_ptr<hir::IntConstant> e,
   auto begin = e->Begin();
   auto end = e->End();
   switch (ty->TypeKind()) {
-    case Type::CHAR: {
-      if (e->IsI32Size()) {
-        if (!is_valid_code_point(e->val))
-          throw LocError::Create(e->Begin(), "invalid code point");
-        return std::make_unique<hir::CharConstant>(begin, end, e->val);
-      }
-      throw LocError::Create(begin, "overflow char");
-    } break;
+      /* case Type::CHAR: { */
+      /*   UNREACHABLE */
+      /*   /1* if (e->IsI32Size()) { *1/ */
+      /*   /1*   if (!is_valid_code_point(e->val)) *1/ */
+      /*   /1*     throw LocError::Create(e->Begin(), "invalid code point"); *1/
+       */
+      /*   /1*   return std::make_unique<hir::CharConstant>(begin, end, e->val);
+       * *1/ */
+      /*   /1* } *1/ */
+      /*   throw LocError::Create(begin, "overflow char"); */
+      /* } break; */
 
     case Type::I32: {
       if (e->IsI32Size()) {
@@ -62,7 +65,7 @@ std::unique_ptr<hir::Expr> MatchType(std::unique_ptr<hir::IntConstant> e,
     } break;
 
     case Type::F64: {
-      return std::make_unique<hir::FloatConstant>(begin, end, e->val, kTypeF64);
+      return std::make_unique<hir::FloatConstant>(begin, end, e->val);
     } break;
 
     default:

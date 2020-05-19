@@ -4,6 +4,8 @@
 #include <fstream>
 #include <iostream>
 
+#include "syntax/rune.h"
+
 namespace felis {
 
 using Loc = uint32_t;
@@ -14,17 +16,19 @@ struct Pos {
   Pos(uint32_t line = 1, uint32_t col = 1) : line(line), col(col) {}
 
   Pos(std::ifstream &in, Loc loc) : Pos() {
-    while (loc-- > 0) {
+    while (loc > 0) {
       if (in.eof() || in.fail()) {
         break;
       }
-      char c = in.get();
+      rune c;
+      in >> c;
       if (c == '\n') {
         line++;
         col = 1;
       } else {
         col++;
       }
+      loc -= c.bytes();
     }
   }
 };
