@@ -23,11 +23,14 @@ std::string format(const std::string& fmt, Args... args) {
 
 std::string ToString(Token::Kind kind);
 std::string ToString(ast::BinaryOp::Op op);
-std::string ToString(hir::Binary::Op op);
+/* std::string ToString(hir::Binary::Op op); */
 std::string ToString(Decl::Kind);
-std::string ToString(Type*);
+std::string ToString(std::shared_ptr<Ty>);
+std::string ToString(Typed*);
+std::string ToString(FuncType*);
+std::string ToString(Untyped*);
 std::string ToString(ast::Stmt::Kind);
-std::string ToString(hir::Stmt::Kind);
+/* std::string ToString(hir::Stmt::Kind); */
 
 }  // namespace felis
 

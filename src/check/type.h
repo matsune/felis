@@ -1,19 +1,41 @@
 #ifndef FELIS_CHECK_TYPE_H_
 #define FELIS_CHECK_TYPE_H_
 
+#include <cassert>
 #include <memory>
 #include <string>
 #include <vector>
 
 namespace felis {
 
-struct Type {
- public:
+struct Ty {
+  enum Kind { UNTYPED, TYPED };
+  virtual Ty::Kind TyKind() const = 0;
+
+  bool IsTyped() const { return TyKind() == Kind::TYPED; }
+  bool IsUntyped() const { return TyKind() == Kind::UNTYPED; }
+
+  bool operator==(const Ty& other);
+  bool operator!=(const Ty& other) { return !(*this == other); }
+
+  virtual bool IsFunc() const { return false; }
+  virtual bool IsBool() const { return false; }
+  virtual bool IsString() const { return false; }
+  virtual bool IsVoid() const { return false; }
+  virtual bool IsI32() const { return false; }
+  virtual bool IsI64() const { return false; }
+  virtual bool IsF32() const { return false; }
+  virtual bool IsF64() const { return false; }
+  virtual bool IsTypedInt() const { return false; }
+  virtual bool IsTypedFloat() const { return false; }
+  virtual bool IsTypedNum() const { return false; }
+
+  virtual bool IsUntypedInt() const { return false; }
+  virtual bool IsUntypedFloat() const { return false; }
+};
+
+struct Typed : public Ty {
   enum Kind {
-    UNRESOLVED,
-    // Untyped
-    UNTYPED_INT,
-    UNTYPED_FLOAT,
     // FuncType
     FUNC,
     // BasicType
@@ -25,68 +47,84 @@ struct Type {
     BOOL,
     STRING,
   };
+  Typed::Kind kind;
 
-  Type(Type::Kind kind) : kind_(kind){};
-  Type::Kind TypeKind() const { return kind_; };
+  Typed::Kind TypedKind() const { return kind; }
 
-  bool IsUnresolved() const { return kind_ == Type::Kind::UNRESOLVED; }
-  bool IsUntyped() const {
-    return kind_ == Type::Kind::UNTYPED_INT ||
-           kind_ == Type::Kind::UNTYPED_FLOAT;
+  Typed(Typed::Kind kind) : kind(kind) {}
+
+  Ty::Kind TyKind() const override { return Ty::TYPED; }
+
+  bool IsFunc() const override { return kind == Typed::Kind::FUNC; }
+  bool IsBool() const override { return kind == Typed::Kind::BOOL; }
+  bool IsString() const override { return kind == Typed::Kind::STRING; }
+  bool IsVoid() const override { return kind == Typed::Kind::VOID; }
+  bool IsI32() const override { return kind == Typed::Kind::I32; }
+  bool IsI64() const override { return kind == Typed::Kind::I64; }
+  bool IsF32() const override { return kind == Typed::Kind::F32; }
+  bool IsF64() const override { return kind == Typed::Kind::F64; }
+  bool IsTypedInt() const override { return IsI32() || IsI64(); }
+  bool IsTypedFloat() const override { return IsF32() || IsF64(); }
+  bool IsTypedNum() const override { return IsTypedInt() || IsTypedFloat(); }
+};
+
+struct FuncType : public Typed {
+  FuncType(std::vector<std::shared_ptr<Typed>> args, std::shared_ptr<Typed> ret)
+      : Typed(Typed::Kind::FUNC), args(args), ret(ret) {}
+
+  std::vector<std::shared_ptr<Typed>> args;
+  std::shared_ptr<Typed> ret;
+};
+
+struct Untyped : public Ty {
+  enum Kind {
+    /* UNRESOLVED, */
+    INT,
+    FLOAT,
+  };
+
+  Untyped::Kind UntypedKind() const { return kind; }
+
+  Untyped(Untyped::Kind kind) : kind(kind), ref(nullptr) {}
+
+  Ty::Kind TyKind() const override { return Ty::UNTYPED; }
+
+  bool IsUntypedInt() const override { return kind == Untyped::Kind::INT; }
+  bool IsUntypedFloat() const override { return kind == Untyped::Kind::FLOAT; }
+
+  bool Canbe(std::shared_ptr<Ty> to) const {
+    assert(ref == nullptr);
+    switch (kind) {
+      case Untyped::Kind::INT:
+        return to->IsUntyped() || to->IsTypedNum();
+      case Untyped::Kind::FLOAT:
+        return to->IsUntypedFloat() || to->IsTypedFloat();
+    }
   }
-  bool IsUntypedFloat() const { return kind_ == Type::Kind::UNTYPED_FLOAT; }
 
-  bool IsBool() const { return kind_ == Type::Kind::BOOL; }
-  bool IsString() const { return kind_ == Type::Kind::STRING; }
-  bool IsVoid() const { return kind_ == Type::Kind::VOID; }
-  bool IsI32() const { return kind_ == Type::Kind::I32; }
-  bool IsI64() const { return kind_ == Type::Kind::I64; }
-  bool IsF32() const { return kind_ == Type::Kind::F32; }
-  bool IsF64() const { return kind_ == Type::Kind::F64; }
-  bool IsTypedInt() const { return IsI32() || IsI64(); }
-  bool IsTypedFloat() const { return IsF32() || IsF64(); }
-  bool IsNumeric() const { return IsTypedInt() || IsTypedFloat(); }
-  bool IsSolid() const { return !IsUnresolved() && !IsUntyped(); }
-
-  friend bool operator==(const Type& lhs, const Type& rhs) {
-    return lhs.kind_ == rhs.kind_;
+  void SetRef(std::shared_ptr<Ty> ty) {
+    assert(ref == nullptr);
+    ref = ty;
   }
 
-  friend bool operator!=(const Type& lhs, const Type& rhs) {
-    return !(lhs == rhs);
-  }
+  std::shared_ptr<Ty>& GetRef() { return ref; }
 
  private:
-  Type::Kind kind_;
+  Untyped::Kind kind;
+  std::shared_ptr<Ty> ref;
 };
 
-struct FuncType : public Type {
-  FuncType(std::vector<std::shared_ptr<Type>> args, std::shared_ptr<Type> ret)
-      : Type(Type::Kind::FUNC), args(std::move(args)), ret(std::move(ret)) {}
+const auto kTypeVoid = std::make_shared<Typed>(Typed::Kind::VOID);
+const auto kTypeI32 = std::make_shared<Typed>(Typed::Kind::I32);
+const auto kTypeI64 = std::make_shared<Typed>(Typed::Kind::I64);
+const auto kTypeF32 = std::make_shared<Typed>(Typed::Kind::F32);
+const auto kTypeF64 = std::make_shared<Typed>(Typed::Kind::F64);
+const auto kTypeBool = std::make_shared<Typed>(Typed::Kind::BOOL);
+const auto kTypeString = std::make_shared<Typed>(Typed::Kind::STRING);
+std::shared_ptr<Untyped> UntypedInt();
+std::shared_ptr<Untyped> UntypedFloat();
 
-  std::vector<std::shared_ptr<Type>> args;
-  std::shared_ptr<Type> ret;
-};
-
-struct UnresolvedType : public Type {
-  UnresolvedType(uint64_t id) : Type(Type::Kind::UNRESOLVED), id(id) {}
-  uint64_t id;
-};
-
-/* const auto kTypeUnresolved = std::make_shared<Type>(Type::Kind::UNRESOLVED);
- */
-const auto kTypeVoid = std::make_shared<Type>(Type::Kind::VOID);
-const auto kTypeI32 = std::make_shared<Type>(Type::Kind::I32);
-const auto kTypeI64 = std::make_shared<Type>(Type::Kind::I64);
-const auto kTypeF32 = std::make_shared<Type>(Type::Kind::F32);
-const auto kTypeF64 = std::make_shared<Type>(Type::Kind::F64);
-const auto kTypeBool = std::make_shared<Type>(Type::Kind::BOOL);
-/* const auto kTypeChar = std::make_shared<Type>(Type::Kind::CHAR); */
-const auto kTypeString = std::make_shared<Type>(Type::Kind::STRING);
-
-std::shared_ptr<Type> MakeUnresolved();
-std::shared_ptr<Type> MakeUntypedInt();
-std::shared_ptr<Type> MakeUntypedFloat();
+std::shared_ptr<Ty> FinalTy(std::shared_ptr<Ty>&);
 
 }  // namespace felis
 

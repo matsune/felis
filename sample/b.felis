@@ -3,7 +3,7 @@ fn e() -> i32 { if true { 3 } else { 4 } }
 fn c() { }
 
 fn main() -> i32 {
- var c = if true { d() } else { c() }
+ var c = if true { d() } else { 4 }
  c = if true { 4 } else if false { ret  3 } else { d() }
 
  let n = if true {

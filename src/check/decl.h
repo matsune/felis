@@ -13,14 +13,14 @@ namespace felis {
 struct Decl {
   enum Kind { EXT, FN, ARG, VAR, LET };
 
-  std::string name;
-  const std::shared_ptr<Type> type;
-  Decl::Kind kind;
+  const std::string name;
+  std::shared_ptr<Ty> type;
+  const Decl::Kind kind;
 
-  Decl(std::string name, std::shared_ptr<Type> type, Kind kind)
+  Decl(std::string name, std::shared_ptr<Ty> type, Kind kind)
       : name(name), type(type), kind(kind) {
-    assert(type != nullptr);
-    assert(!type->IsVoid());
+    /* assert(type != nullptr); */
+    /* assert(!type->IsVoid()); */
   }
 
   FuncType* AsFuncType() {

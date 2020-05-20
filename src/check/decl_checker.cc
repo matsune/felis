@@ -63,7 +63,7 @@ void DeclChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
         CheckExpr(arg);
       }
 
-      ast_decl_[call_expr.get()] = decl;
+      SetDecl(call_expr->ident, decl);
 
     } break;
 
@@ -79,7 +79,7 @@ void DeclChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
         throw LocError::Create(begin, "%s is not declared as variable",
                                ident->val.c_str());
       }
-      ast_decl_[ident.get()] = decl;
+      SetDecl(ident, decl);
     } break;
 
     case ast::Expr::Kind::UNARY: {
@@ -121,9 +121,9 @@ void DeclChecker::CheckVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
   }
   CheckExpr(stmt->expr);
   auto decl = std::make_shared<Decl>(
-      name, MakeUnresolved(), stmt->is_let ? Decl::Kind::LET : Decl::Kind::VAR);
+      name, nullptr, stmt->is_let ? Decl::Kind::LET : Decl::Kind::VAR);
   current_scope_->InsertDecl(name, decl);
-  ast_decl_[stmt.get()] = decl;
+  SetDecl(stmt->name, decl);
 }
 
 void DeclChecker::CheckAssign(const std::unique_ptr<ast::AssignStmt>& stmt) {
@@ -141,7 +141,7 @@ void DeclChecker::CheckAssign(const std::unique_ptr<ast::AssignStmt>& stmt) {
                            name.c_str());
   }
   CheckExpr(stmt->expr);
-  ast_decl_[stmt.get()] = decl;
+  SetDecl(stmt->name, decl);
 }
 
 void DeclChecker::CheckIf(const std::unique_ptr<ast::If>& stmt) {
@@ -168,11 +168,11 @@ void DeclChecker::CheckBlock(const std::unique_ptr<ast::Block>& block) {
 void DeclChecker::Check(const std::unique_ptr<ast::File>& file) {
   for (auto& ext : file->externs) {
     auto decl = InsertFnDecl(true, ext->proto);
-    ast_decl_[ext.get()] = decl;
+    SetDecl(ext->proto->name, decl);
   }
   for (auto& fn : file->fn_decls) {
     auto decl = InsertFnDecl(false, fn->proto);
-    ast_decl_[fn.get()] = decl;
+    SetDecl(fn->proto->name, decl);
   }
 
   for (auto& fn : file->fn_decls) {
@@ -181,14 +181,14 @@ void DeclChecker::Check(const std::unique_ptr<ast::File>& file) {
 }
 
 void DeclChecker::CheckFnDecl(const std::unique_ptr<ast::FnDecl>& fn) {
-  current_func_ = ast_decl_[fn.get()]->AsFuncType();
+  current_func_ = GetDecl(fn->proto->name)->AsFuncType();
   OpenScope();
   for (auto& arg : fn->proto->args->list) {
     // arg-name duplication is already checked in parser
     auto decl = std::make_shared<Decl>(arg->name->val, LookupType(arg->ty->val),
                                        Decl::Kind::ARG);
     current_scope_->InsertDecl(arg->name->val, decl);
-    ast_decl_[arg.get()] = decl;
+    SetDecl(arg->name, decl);
   }
   for (auto& stmt : fn->block->stmts) {
     CheckStmt(stmt);
@@ -203,7 +203,7 @@ std::shared_ptr<Decl> DeclChecker::InsertFnDecl(
                            proto->name->val.c_str());
   }
 
-  std::vector<std::shared_ptr<Type>> args;
+  std::vector<std::shared_ptr<Typed>> args;
   for (auto& arg : proto->args->list) {
     auto ty = LookupType(arg->ty->val);
     if (!ty) {
@@ -212,7 +212,7 @@ std::shared_ptr<Decl> DeclChecker::InsertFnDecl(
     }
     args.push_back(ty);
   }
-  std::shared_ptr<Type> ret_ty;
+  std::shared_ptr<Typed> ret_ty;
   if (proto->ret) {
     ret_ty = LookupType(proto->ret->val);
     if (!ret_ty) {
@@ -222,7 +222,7 @@ std::shared_ptr<Decl> DeclChecker::InsertFnDecl(
   } else {
     ret_ty = kTypeVoid;
   }
-  auto fn_type = std::make_shared<FuncType>(std::move(args), std::move(ret_ty));
+  auto fn_type = std::make_shared<FuncType>(args, ret_ty);
   Decl::Kind kind = is_ext ? Decl::Kind::EXT : Decl::Kind::FN;
   auto decl = std::make_shared<Decl>(proto->name->val, fn_type, kind);
   current_scope_->InsertDecl(proto->name->val, decl);
@@ -265,7 +265,7 @@ std::shared_ptr<Decl> DeclChecker::LookupDecl(std::string name) {
   return nullptr;
 }
 
-std::shared_ptr<Type> DeclChecker::LookupType(std::string name) {
+std::shared_ptr<Typed> DeclChecker::LookupType(std::string name) {
   auto scope = current_scope_;
   while (scope) {
     auto ty = scope->FindType(name);

@@ -16,15 +16,23 @@ namespace felis {
 
 class DeclChecker {
  public:
-  DeclChecker(std::map<ast::AstNode *, std::shared_ptr<Decl>> &ast_decl)
-      : current_scope_(std::make_shared<Scope>(nullptr)), ast_decl_(ast_decl){};
+  DeclChecker(std::map<ast::Ident *, std::shared_ptr<Decl>> &decl_map)
+      : current_scope_(std::make_shared<Scope>(nullptr)), decl_map_(decl_map){};
   void SetupBuiltin();
   void Check(const std::unique_ptr<ast::File> &);
 
  private:
   std::shared_ptr<Scope> current_scope_;
   FuncType *current_func_;
-  std::map<ast::AstNode *, std::shared_ptr<Decl>> &ast_decl_;
+  std::map<ast::Ident *, std::shared_ptr<Decl>> &decl_map_;
+
+  std::shared_ptr<Decl> GetDecl(std::unique_ptr<ast::Ident> &t) {
+    return decl_map_.at(t.get());
+  }
+
+  void SetDecl(std::unique_ptr<ast::Ident> &t, std::shared_ptr<Decl> decl) {
+    decl_map_[t.get()] = decl;
+  }
 
   void CheckFnDecl(const std::unique_ptr<ast::FnDecl> &);
   void CheckStmt(const std::unique_ptr<ast::Stmt> &);
@@ -41,7 +49,7 @@ class DeclChecker {
   void CloseScope();
   bool CanDecl(std::string name);
   std::shared_ptr<Decl> LookupDecl(std::string name);
-  std::shared_ptr<Type> LookupType(std::string name);
+  std::shared_ptr<Typed> LookupType(std::string name);
 
   void DebugScope();
 };

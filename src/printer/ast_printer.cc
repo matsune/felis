@@ -113,6 +113,7 @@ void AstPrinter::PrintBlock(ast::Block *block) {
       auto &stmt = block->stmts.at(i);
       PrintStmt(stmt.get());
     }
+    PrintPtr(block);
   }
   Up("}");
 }

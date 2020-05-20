@@ -26,14 +26,14 @@ class Scope {
     decl_map_.emplace(name, decl);
   }
 
-  std::shared_ptr<Type> FindType(std::string name) {
+  const std::shared_ptr<Typed> FindType(std::string name) {
     auto it = type_map_.find(name);
     if (it != type_map_.end()) return it->second;
     return nullptr;
   }
 
-  void InsertType(std::string name, std::shared_ptr<Type> type) {
-    type_map_.emplace(name, std::move(type));
+  void InsertType(std::string name, std::shared_ptr<Typed> type) {
+    type_map_.emplace(name, type);
   }
 
   std::shared_ptr<Scope> GetParent() { return parent_; }
@@ -49,7 +49,7 @@ class Scope {
  private:
   std::shared_ptr<Scope> parent_;
   std::map<std::string, std::shared_ptr<Decl>> decl_map_;
-  std::map<std::string, std::shared_ptr<Type>> type_map_;
+  std::map<std::string, std::shared_ptr<Typed>> type_map_;
 };
 
 }  // namespace felis

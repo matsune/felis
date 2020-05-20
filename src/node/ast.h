@@ -84,6 +84,7 @@ struct BinaryOp : public Operator {
 struct Stmt : public AstNode {
   enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
   virtual Stmt::Kind StmtKind() const = 0;
+  virtual bool IsTerminating() const { return false; }
 
   bool IsRet() const { return StmtKind() == Kind::RET; }
 };
@@ -102,6 +103,8 @@ struct Block : public Expr {
 
   Block(Loc begin, Loc end, unique_deque<Stmt> stmts)
       : begin(begin), end(end), stmts(std::move(stmts)) {}
+
+  virtual bool IsTerminating() const override { return HasRet(); }
 
   Expr::Kind ExprKind() const override { return Expr::Kind::BLOCK; }
 
@@ -144,6 +147,10 @@ struct If : public Expr {
       return els->ExprKind() == Expr::Kind::IF;
     else
       return false;
+  }
+
+  virtual bool IsTerminating() const override {
+    return block->IsTerminating() && HasElse() && els->IsTerminating();
   }
 
   Expr::Kind ExprKind() const override { return Expr::Kind::IF; }
@@ -241,6 +248,8 @@ struct RetStmt : public Stmt {
 
   RetStmt(Loc begin, std::unique_ptr<Expr> expr = nullptr)
       : begin(begin), expr(std::move(expr)) {}
+
+  virtual bool IsTerminating() const override { return true; }
 
   Loc Begin() const override { return begin; }
 

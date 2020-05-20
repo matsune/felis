@@ -10,20 +10,20 @@
 
 namespace felis {
 
-class HirPrinter : public Printer<hir::File> {
- public:
-  void Print(const std::unique_ptr<hir::File> &) override;
-
- private:
-  void PrintExtern(hir::Extern *);
-  void PrintFnDecl(hir::FnDecl *fn);
-  void PrintDecl(Decl *);
-  void PrintStmt(hir::Stmt *stmt);
-  void PrintExpr(hir::Expr *expr);
-  void PrintConstant(hir::Constant *);
-  void PrintBlock(hir::Block *block);
-  void PrintIndex(int idx);
-};
+// class HirPrinter : public Printer<hir::File> {
+// public:
+//  void Print(const std::unique_ptr<hir::File> &) override;
+//
+// private:
+//  void PrintExtern(hir::Extern *);
+//  void PrintFnDecl(hir::FnDecl *fn);
+//  void PrintDecl(Decl *);
+//  void PrintStmt(hir::Stmt *stmt);
+//  void PrintExpr(hir::Expr *expr);
+//  void PrintConstant(hir::Constant *);
+//  void PrintBlock(hir::Block *block);
+//  void PrintIndex(int idx);
+//};
 
 }  // namespace felis
 

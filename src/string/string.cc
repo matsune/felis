@@ -1,6 +1,8 @@
 
 #include "string.h"
 
+#include <sstream>
+
 namespace felis {
 
 std::string ToString(Token::Kind kind) {
@@ -107,28 +109,28 @@ std::string ToString(ast::BinaryOp::Op op) {
   }
 }
 
-std::string ToString(hir::Binary::Op op) {
-  switch (op) {
-    case hir::Binary::Op::LT:
-      return ">";
-    case hir::Binary::Op::LE:
-      return ">=";
-    case hir::Binary::Op::GT:
-      return "<";
-    case hir::Binary::Op::GE:
-      return "<=";
-    case hir::Binary::Op::ADD:
-      return "+";
-    case hir::Binary::Op::SUB:
-      return "-";
-    case hir::Binary::Op::MUL:
-      return "*";
-    case hir::Binary::Op::DIV:
-      return "/";
-    case hir::Binary::Op::MOD:
-      return "%";
-  }
-}
+/* std::string ToString(hir::Binary::Op op) { */
+/*   switch (op) { */
+/*     case hir::Binary::Op::LT: */
+/*       return ">"; */
+/*     case hir::Binary::Op::LE: */
+/*       return ">="; */
+/*     case hir::Binary::Op::GT: */
+/*       return "<"; */
+/*     case hir::Binary::Op::GE: */
+/*       return "<="; */
+/*     case hir::Binary::Op::ADD: */
+/*       return "+"; */
+/*     case hir::Binary::Op::SUB: */
+/*       return "-"; */
+/*     case hir::Binary::Op::MUL: */
+/*       return "*"; */
+/*     case hir::Binary::Op::DIV: */
+/*       return "/"; */
+/*     case hir::Binary::Op::MOD: */
+/*       return "%"; */
+/*   } */
+/* } */
 
 std::string ToString(Decl::Kind kind) {
   switch (kind) {
@@ -145,53 +147,83 @@ std::string ToString(Decl::Kind kind) {
   };
 }
 
-std::string ToString(Type *type) {
-  if (!type) return "NULL";
-  switch (type->TypeKind()) {
-    case Type::Kind::UNRESOLVED: {
-      auto un_type = (UnresolvedType *)type;
-      return "T" + std::to_string(un_type->id);
-
-    } break;
-    case Type::Kind::UNTYPED_INT:
-      return "UntypedInt";
-    case Type::Kind::UNTYPED_FLOAT:
-      return "UntypedFloat";
-    case Type::Kind::FUNC: {
-      auto func_type = (FuncType *)type;
-      std::string str = "func(";
-      int i = 0;
-      for (auto &arg : func_type->args) {
-        if (i++ > 0) {
-          str += ", ";
-        }
-        str += ToString(arg.get());
-      }
-      str += ")";
-      if (!func_type->ret->IsVoid()) {
-        str += " -> " + ToString(func_type->ret.get());
-      }
-      return str;
-    } break;
-    case Type::Kind::VOID:
+std::string ToString(Typed *t) {
+  switch (t->TypedKind()) {
+    case Typed::Kind::VOID:
       return "void";
-    case Type::Kind::I32:
+    case Typed::Kind::I32:
       return "i32";
-    case Type::Kind::I64:
+    case Typed::Kind::I64:
       return "i64";
-    case Type::Kind::F32:
+    case Typed::Kind::F32:
       return "f32";
-    case Type::Kind::F64:
+    case Typed::Kind::F64:
       return "f64";
-    case Type::Kind::BOOL:
+    case Typed::Kind::BOOL:
       return "bool";
-    /* case Type::Kind::CHAR: */
-    /*   return "char"; */
-    case Type::Kind::STRING:
+    case Typed::Kind::STRING:
       return "string";
+    case Typed::Kind::FUNC:
+      return ToString((FuncType *)t);
   }
-  UNREACHABLE
 }
+
+std::string ToString(FuncType *t) {
+  std::string str = "func(";
+  int i = 0;
+  for (auto &arg : t->args) {
+    if (i++ > 0) {
+      str += ", ";
+    }
+    str += ToString(arg);
+  }
+  str += ")";
+  if (!t->ret->IsVoid()) {
+    str += " -> " + ToString(t->ret);
+  }
+  return str;
+}
+
+std::string ToString(Untyped *t) {
+  std::stringstream ss;
+  switch (t->UntypedKind()) {
+    case Untyped::Kind::INT:
+      ss << "UntypedInt ref: ";
+      break;
+    case Untyped::Kind::FLOAT:
+      ss << "UntypedFloat ref: ";
+      break;
+  }
+  ss << t->GetRef();
+  return ss.str();
+}
+
+std::string ToString(std::shared_ptr<Ty> type) {
+  if (type->IsTyped()) {
+    return ToString((Typed *)type.get());
+  } else {
+    return ToString((Untyped *)type.get());
+  }
+}
+
+/* std::string ToString(std::shared_ptr<Type> type) { */
+/*   if (!type) return "NULL"; */
+
+/*   switch (type->TypeKind()) { */
+/*     case Type::Kind::UNRESOLVED: { */
+/*       /1* auto un_type = (UnresolvedType *)type; *1/ */
+/*       return "T" + std::to_string(type->id); */
+
+/*     } break; */
+/*     case Type::Kind::UNTYPED_INT: */
+/*       return "UntypedInt"; */
+/*     case Type::Kind::UNTYPED_FLOAT: */
+/*       return "UntypedFloat"; */
+/*     case Type::Kind::FUNC: { */
+/*       auto func_type = (FuncType *)type; */
+/*     } break; */
+/*   UNREACHABLE */
+/* } */
 
 std::string ToString(ast::Stmt::Kind kind) {
   switch (kind) {
@@ -206,17 +238,17 @@ std::string ToString(ast::Stmt::Kind kind) {
   }
 }
 
-std::string ToString(hir::Stmt::Kind kind) {
-  switch (kind) {
-    case hir::Stmt::Kind::ASSIGN:
-      return "ASSIGN";
-    case hir::Stmt::Kind::EXPR:
-      return "EXPR";
-    case hir::Stmt::Kind::RET:
-      return "RET";
-    case hir::Stmt::Kind::VAR_DECL:
-      return "VAR_DECL";
-  }
-}
+/* std::string ToString(hir::Stmt::Kind kind) { */
+/*   switch (kind) { */
+/*     case hir::Stmt::Kind::ASSIGN: */
+/*       return "ASSIGN"; */
+/*     case hir::Stmt::Kind::EXPR: */
+/*       return "EXPR"; */
+/*     case hir::Stmt::Kind::RET: */
+/*       return "RET"; */
+/*     case hir::Stmt::Kind::VAR_DECL: */
+/*       return "VAR_DECL"; */
+/*   } */
+/* } */
 
 }  // namespace felis

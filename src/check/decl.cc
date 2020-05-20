@@ -8,7 +8,7 @@ namespace felis {
 
 void Decl::Debug() {
   std::cout << "Decl " << name << " kind: " << ToString(kind)
-            << " type: " << ToString(type.get()) << std::endl;
+            << " type: " << ToString(type) << std::endl;
 }
 
 }  // namespace felis

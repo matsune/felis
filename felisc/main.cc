@@ -97,25 +97,28 @@ class Session {
     return felis::Parser(std::move(tokens)).Parse();
   }
 
-  std::unique_ptr<felis::hir::File> LowerAst(
-      std::unique_ptr<felis::ast::File> ast) {
-    std::map<felis::ast::AstNode *, std::shared_ptr<felis::Decl>> ast_decl;
+  // std::unique_ptr<felis::hir::File>
+  void LowerAst(std::unique_ptr<felis::ast::File> ast) {
+    std::map<felis::ast::Ident *, std::shared_ptr<felis::Decl>> decl_map;
     std::map<felis::ast::AstNode *, int> node_ty_id_;
-    felis::DeclChecker checker(ast_decl);
+    felis::DeclChecker checker(decl_map);
     checker.SetupBuiltin();
     checker.Check(ast);
-    felis::TyInfer infer(ast_decl);
+    felis::TyInfer infer(decl_map);
     infer.Infer(ast);
 
+    std::cout << "-------------" << std::endl;
     for (auto &it : infer.ty_map) {
-      std::cout << it.first << " " << ToString(it.second.get()) << std::endl;
+      auto final_ty = felis::FinalTy(it.second);
+      std::cout << "Node:" << it.first << ", Type: " << ToString(final_ty)
+                << std::endl;
     }
     std::cout << "--------------" << std::endl;
-    for (auto &it : ast_decl) {
+    for (auto &it : decl_map) {
       std::cout << it.first << " | ";
       it.second->Debug();
     }
-    return nullptr;
+    // return nullptr;
     /* return felis::Lower(ast_decl).Lowering(std::move(ast)); */
   }
 
@@ -129,40 +132,41 @@ class Session {
     return std::move(machine);
   }
 
-  std::unique_ptr<felis::Builder> Build(
-      std::unique_ptr<llvm::TargetMachine> machine,
-      std::unique_ptr<felis::hir::File> hir) {
-    auto builder = std::make_unique<felis::Builder>("felis", opts->Filepath(),
-                                                    std::move(machine));
-    builder->Build(std::move(hir));
-    return std::move(builder);
-  }
+  /* std::unique_ptr<felis::Builder> Build( */
+  /*     std::unique_ptr<llvm::TargetMachine> machine, */
+  /*     std::unique_ptr<felis::hir::File> hir) { */
+  /*   auto builder = std::make_unique<felis::Builder>("felis",
+   * opts->Filepath(), */
+  /*                                                   std::move(machine)); */
+  /*   builder->Build(std::move(hir)); */
+  /*   return std::move(builder); */
+  /* } */
 
-  void Emit(std::unique_ptr<felis::Builder> builder) {
-    if (opts->IsEmit(EmitType::LLVM_IR)) {
-      builder->EmitLLVMIR(opts->OutputName(EmitType::LLVM_IR));
-    }
-    if (opts->IsEmit(EmitType::LLVM_BC)) {
-      builder->EmitLLVMBC(opts->OutputName(EmitType::LLVM_BC));
-    }
-    if (opts->IsEmit(EmitType::ASM)) {
-      builder->EmitASM(opts->OutputName(EmitType::ASM));
-    }
-    bool emit_obj = opts->IsEmit(EmitType::OBJ);
-    bool emit_link = opts->IsEmit(EmitType::LINK);
+  /* void Emit(std::unique_ptr<felis::Builder> builder) { */
+  /*   if (opts->IsEmit(EmitType::LLVM_IR)) { */
+  /*     builder->EmitLLVMIR(opts->OutputName(EmitType::LLVM_IR)); */
+  /*   } */
+  /*   if (opts->IsEmit(EmitType::LLVM_BC)) { */
+  /*     builder->EmitLLVMBC(opts->OutputName(EmitType::LLVM_BC)); */
+  /*   } */
+  /*   if (opts->IsEmit(EmitType::ASM)) { */
+  /*     builder->EmitASM(opts->OutputName(EmitType::ASM)); */
+  /*   } */
+  /*   bool emit_obj = opts->IsEmit(EmitType::OBJ); */
+  /*   bool emit_link = opts->IsEmit(EmitType::LINK); */
 
-    bool has_obj = false;
-    std::string obj_path = opts->OutputName(EmitType::OBJ);
-    if (emit_obj || emit_link) {
-      builder->EmitOBJ(obj_path);
-      has_obj = true;
-    }
-    if (emit_link) {
-      std::string out = opts->OutputName(EmitType::LINK);
-      std::string s = "gcc " + obj_path + " -o " + out;
-      system(s.c_str());
-    }
-  }
+  /*   bool has_obj = false; */
+  /*   std::string obj_path = opts->OutputName(EmitType::OBJ); */
+  /*   if (emit_obj || emit_link) { */
+  /*     builder->EmitOBJ(obj_path); */
+  /*     has_obj = true; */
+  /*   } */
+  /*   if (emit_link) { */
+  /*     std::string out = opts->OutputName(EmitType::LINK); */
+  /*     std::string s = "gcc " + obj_path + " -o " + out; */
+  /*     system(s.c_str()); */
+  /*   } */
+  /* } */
 
   int Run() {
     int exit = 0;
@@ -172,10 +176,11 @@ class Session {
 
       if (opts->IsPrintAst()) felis::AstPrinter().Print(ast);
 
-      auto hir = LowerAst(std::move(ast));
-      if (!hir) return 1;
+      // auto hir =
+      LowerAst(std::move(ast));
+      // if (!hir) return 1;
 
-      felis::HirPrinter().Print(hir);
+      /* felis::HirPrinter().Print(hir); */
 
       /* auto machine = CreateTargetMachine(); */
       /* if (!machine) return 1; */
