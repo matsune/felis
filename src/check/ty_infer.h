@@ -10,14 +10,17 @@
 namespace felis {
 
 class TyInfer {
+  using IdentDeclMap = std::map<ast::Ident *, std::shared_ptr<Decl>>;
+  using NodeTyMap = std::map<const ast::AstNode *, std::shared_ptr<Ty>>;
+
  public:
   TyInfer(std::map<ast::Ident *, std::shared_ptr<Decl>> &decl_map)
       : decl_map_(decl_map){};
   void Infer(const std::unique_ptr<ast::File> &);
-  std::map<const ast::AstNode *, std::shared_ptr<Ty>> ty_map;
 
  private:
-  std::map<ast::Ident *, std::shared_ptr<Decl>> &decl_map_;
+  IdentDeclMap &decl_map_;
+  NodeTyMap ty_map;
   std::shared_ptr<FuncType> current_func_;
 
   std::shared_ptr<Decl> GetDecl(std::unique_ptr<ast::Ident> &t) {

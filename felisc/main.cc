@@ -99,24 +99,14 @@ class Session {
 
   // std::unique_ptr<felis::hir::File>
   void LowerAst(std::unique_ptr<felis::ast::File> ast) {
-    std::map<felis::ast::Ident *, std::shared_ptr<felis::Decl>> decl_map;
-    std::map<felis::ast::AstNode *, int> node_ty_id_;
+    felis::DeclChecker::DeclMap decl_map;
     felis::DeclChecker checker(decl_map);
-    checker.SetupBuiltin();
     checker.Check(ast);
     felis::TyInfer infer(decl_map);
     infer.Infer(ast);
 
-    std::cout << "-------------" << std::endl;
-    for (auto &it : infer.ty_map) {
-      auto final_ty = felis::FinalTy(it.second);
-      std::cout << "Node:" << it.first << ", Type: " << ToString(final_ty)
-                << std::endl;
-    }
-    std::cout << "--------------" << std::endl;
     for (auto &it : decl_map) {
-      std::cout << it.first << " | ";
-      it.second->Debug();
+      std::cout << it.first << " | " << ToString(*it.second) << std::endl;
     }
     // return nullptr;
     /* return felis::Lower(ast_decl).Lowering(std::move(ast)); */

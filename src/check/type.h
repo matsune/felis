@@ -107,7 +107,7 @@ struct Untyped : public Ty {
     ref = ty;
   }
 
-  std::shared_ptr<Ty>& GetRef() { return ref; }
+  const std::shared_ptr<Ty>& GetRef() const { return ref; }
 
  private:
   Untyped::Kind kind;
@@ -124,7 +124,7 @@ const auto kTypeString = std::make_shared<Typed>(Typed::Kind::STRING);
 std::shared_ptr<Untyped> UntypedInt();
 std::shared_ptr<Untyped> UntypedFloat();
 
-std::shared_ptr<Ty> FinalTy(std::shared_ptr<Ty>&);
+std::shared_ptr<Ty> FinalTy(const std::shared_ptr<Ty>&);
 
 }  // namespace felis
 

@@ -29,7 +29,7 @@ std::shared_ptr<Untyped> UntypedFloat() {
   return std::make_shared<Untyped>(Untyped::Kind::FLOAT);
 }
 
-std::shared_ptr<Ty> FinalTy(std::shared_ptr<Ty>& ty) {
+std::shared_ptr<Ty> FinalTy(const std::shared_ptr<Ty>& ty) {
   if (ty->IsTyped()) return ty;
   auto untyped = (std::shared_ptr<felis::Untyped>&)ty;
   if (untyped->GetRef())

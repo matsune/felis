@@ -3,10 +3,12 @@
 
 #include <assert.h>
 
+#include <map>
 #include <memory>
 #include <string>
 
 #include "check/type.h"
+#include "node/ast.h"
 
 namespace felis {
 
@@ -18,10 +20,7 @@ struct Decl {
   const Decl::Kind kind;
 
   Decl(std::string name, std::shared_ptr<Ty> type, Kind kind)
-      : name(name), type(type), kind(kind) {
-    /* assert(type != nullptr); */
-    /* assert(!type->IsVoid()); */
-  }
+      : name(name), type(type), kind(kind) {}
 
   std::shared_ptr<FuncType> AsFuncType() {
     assert(IsFunc());
@@ -48,8 +47,6 @@ struct Decl {
         return false;
     }
   }
-
-  void Debug();
 };
 
 }  // namespace felis

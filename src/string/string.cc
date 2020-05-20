@@ -5,7 +5,7 @@
 
 namespace felis {
 
-std::string ToString(Token::Kind kind) {
+std::string ToString(const Token::Kind &kind) {
   switch (kind) {
     case Token::Kind::END:
       return "END";
@@ -82,7 +82,7 @@ std::string ToString(Token::Kind kind) {
   }
 }
 
-std::string ToString(ast::BinaryOp::Op op) {
+std::string ToString(const ast::BinaryOp::Op &op) {
   switch (op) {
     case ast::BinaryOp::Op::EQEQ:
       return "==";
@@ -132,7 +132,7 @@ std::string ToString(ast::BinaryOp::Op op) {
 /*   } */
 /* } */
 
-std::string ToString(Decl::Kind kind) {
+std::string ToString(const Decl::Kind &kind) {
   switch (kind) {
     case Decl::Kind::EXT:
       return "EXT";
@@ -147,16 +147,16 @@ std::string ToString(Decl::Kind kind) {
   };
 }
 
-std::string ToString(std::shared_ptr<Ty> t) {
-  if (t->IsTyped()) {
-    return ToString(std::dynamic_pointer_cast<Typed>(t));
+std::string ToString(const Ty &t) {
+  if (t.IsTyped()) {
+    return ToString(dynamic_cast<const Typed &>(t));
   } else {
-    return ToString(std::dynamic_pointer_cast<Untyped>(t));
+    return ToString(dynamic_cast<const Untyped &>(t));
   }
 }
 
-std::string ToString(std::shared_ptr<Typed> t) {
-  switch (t->TypedKind()) {
+std::string ToString(const Typed &t) {
+  switch (t.TypedKind()) {
     case Typed::Kind::VOID:
       return "void";
     case Typed::Kind::I32:
@@ -172,29 +172,29 @@ std::string ToString(std::shared_ptr<Typed> t) {
     case Typed::Kind::STRING:
       return "string";
     case Typed::Kind::FUNC:
-      return ToString(std::dynamic_pointer_cast<FuncType>(t));
+      return ToString(dynamic_cast<const FuncType &>(t));
   }
 }
 
-std::string ToString(std::shared_ptr<FuncType> t) {
+std::string ToString(const FuncType &t) {
   std::string str = "func(";
   int i = 0;
-  for (auto &arg : t->args) {
+  for (auto &arg : t.args) {
     if (i++ > 0) {
       str += ", ";
     }
-    str += ToString(arg);
+    str += ToString(*arg);
   }
   str += ")";
-  if (!t->ret->IsVoid()) {
-    str += " -> " + ToString(t->ret);
+  if (!t.ret->IsVoid()) {
+    str += " -> " + ToString(*t.ret);
   }
   return str;
 }
 
-std::string ToString(std::shared_ptr<Untyped> t) {
+std::string ToString(const Untyped &t) {
   std::stringstream ss;
-  switch (t->UntypedKind()) {
+  switch (t.UntypedKind()) {
     case Untyped::Kind::INT:
       ss << "UntypedInt ref: ";
       break;
@@ -202,11 +202,11 @@ std::string ToString(std::shared_ptr<Untyped> t) {
       ss << "UntypedFloat ref: ";
       break;
   }
-  ss << t->GetRef();
+  ss << t.GetRef();
   return ss.str();
 }
 
-std::string ToString(ast::Stmt::Kind kind) {
+std::string ToString(const ast::Stmt::Kind &kind) {
   switch (kind) {
     case ast::Stmt::Kind::ASSIGN:
       return "ASSIGN";
@@ -217,6 +217,13 @@ std::string ToString(ast::Stmt::Kind kind) {
     case ast::Stmt::Kind::VAR_DECL:
       return "VAR_DECL";
   }
+}
+
+std::string ToString(const Decl &decl) {
+  std::stringstream ss;
+  ss << "Decl {name: " << decl.name << ", kind: " << ToString(decl.kind)
+     << ", type: " << ToString(*decl.type) << "}";
+  return ss.str();
 }
 
 /* std::string ToString(hir::Stmt::Kind kind) { */

@@ -64,7 +64,6 @@ void DeclChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
       }
 
       SetDecl(call_expr->ident, decl);
-
     } break;
 
     case ast::Expr::Kind::IDENT: {
@@ -94,10 +93,12 @@ void DeclChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
       CheckExpr(binary->lhs);
       CheckExpr(binary->rhs);
     } break;
-    case ast::Expr::Kind::IF:
-      return CheckIf((std::unique_ptr<ast::If>&)expr);
-    case ast::Expr::Kind::BLOCK:
-      return CheckBlock((std::unique_ptr<ast::Block>&)expr);
+    case ast::Expr::Kind::IF: {
+      CheckIf((std::unique_ptr<ast::If>&)expr);
+    } break;
+    case ast::Expr::Kind::BLOCK: {
+      CheckBlock((std::unique_ptr<ast::Block>&)expr);
+    } break;
   }
 }
 

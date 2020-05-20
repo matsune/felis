@@ -13,8 +13,11 @@
 namespace felis {
 
 class Scope {
+  using DeclTable = std::map<std::string, std::shared_ptr<Decl>>;
+  using TypeTable = std::map<std::string, std::shared_ptr<Typed>>;
+
  public:
-  Scope(std::shared_ptr<Scope> parent) : parent_(std::move(parent)){};
+  Scope(std::shared_ptr<Scope> parent) : parent_(parent){};
 
   std::shared_ptr<Decl> FindDecl(std::string name) {
     auto it = decl_map_.find(name);
@@ -48,8 +51,8 @@ class Scope {
 
  private:
   std::shared_ptr<Scope> parent_;
-  std::map<std::string, std::shared_ptr<Decl>> decl_map_;
-  std::map<std::string, std::shared_ptr<Typed>> type_map_;
+  DeclTable decl_map_;
+  TypeTable type_map_;
 };
 
 }  // namespace felis
