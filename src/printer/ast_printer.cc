@@ -141,12 +141,12 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
 
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR:
-      PrintExpr((ast::Expr *)stmt);
+      PrintExpr(dynamic_cast<ast::Expr *>(stmt));
       break;
     case ast::Stmt::Kind::RET:
       Down("Ret {");
       {
-        auto ret = (ast::RetStmt *)stmt;
+        auto ret = dynamic_cast<ast::RetStmt *>(stmt);
         Write("Expr: ");
         PrintExpr(ret->expr.get());
         PrintPtr(ret);
@@ -157,7 +157,7 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
     case ast::Stmt::Kind::VAR_DECL:
       Down("VarDecl {");
       {
-        auto var_decl = (ast::VarDeclStmt *)stmt;
+        auto var_decl = dynamic_cast<ast::VarDeclStmt *>(stmt);
         Writeln("Decl: %s", var_decl->is_let ? "let" : "var");
         Write("Name: ");
         PrintIdent(var_decl->name.get());
@@ -171,7 +171,7 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
     case ast::Stmt::Kind::ASSIGN:
       Down("Assign {");
       {
-        auto assign = (ast::AssignStmt *)stmt;
+        auto assign = dynamic_cast<ast::AssignStmt *>(stmt);
         Write("Name: ");
         PrintIdent(assign->name.get());
         Write("Expr: ");
@@ -195,15 +195,15 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
 
   switch (expr->ExprKind()) {
     case ast::Expr::Kind::IDENT:
-      PrintIdent((ast::Ident *)expr);
+      PrintIdent(dynamic_cast<ast::Ident *>(expr));
       break;
     case ast::Expr::Kind::LIT:
-      PrintLit((ast::Lit *)expr);
+      PrintLit(dynamic_cast<ast::Lit *>(expr));
       break;
     case ast::Expr::Kind::BINARY:
       Down("BinaryExpr {");
       {
-        auto binary = (ast::BinaryExpr *)expr;
+        auto binary = dynamic_cast<ast::BinaryExpr *>(expr);
         Write("Left: ");
         PrintExpr(binary->lhs.get());
         Writeln("Op: " + ToString(binary->op->op));
@@ -217,7 +217,7 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
     case ast::Expr::Kind::CALL:
       Down("Call {");
       {
-        auto call = (ast::CallExpr *)expr;
+        auto call = dynamic_cast<ast::CallExpr *>(expr);
         Write("Ident: ");
         PrintIdent(call->ident.get());
         Down("Args [");
@@ -237,7 +237,7 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
     case ast::Expr::Kind::UNARY:
       Down("Unary {");
       {
-        auto unary = (ast::UnaryExpr *)expr;
+        auto unary = dynamic_cast<ast::UnaryExpr *>(expr);
         std::string op = unary->op->op == ast::UnaryOp::Op::NEG ? "-" : "!";
         Writeln("op: %s", op.c_str());
         PrintExpr(unary->expr.get());
@@ -249,7 +249,7 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
     case ast::Expr::Kind::IF:
       Down("If {");
       {
-        auto if_stmt = (ast::If *)expr;
+        auto if_stmt = dynamic_cast<ast::If *>(expr);
         Write("Cond: ");
         PrintExpr(if_stmt->cond.get());
         PrintBlock(if_stmt->block.get());
@@ -261,7 +261,7 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
       Up("}");
       break;
     case ast::Expr::Kind::BLOCK:
-      PrintBlock((ast::Block *)expr);
+      PrintBlock(dynamic_cast<ast::Block *>(expr));
       break;
   }
 }
@@ -276,7 +276,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
     case ast::Lit::Kind::INT:
       Down("LitInt {");
       {
-        auto l = (ast::Lit *)lit;
+        auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("Int: " + l->val);
         PrintPtr(l);
         PrintLoc(l);
@@ -286,7 +286,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
     case ast::Lit::Kind::FLOAT:
       Down("LitFloat {");
       {
-        auto l = (ast::Lit *)lit;
+        auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("Float: " + l->val);
         PrintPtr(l);
         PrintLoc(l);
@@ -296,7 +296,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
     case ast::Lit::Kind::BOOL:
       Down("LitBool {");
       {
-        auto l = (ast::Lit *)lit;
+        auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("Bool: " + l->val);
         PrintPtr(l);
         PrintLoc(l);
@@ -306,7 +306,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
     case ast::Lit::Kind::CHAR:
       Down("LitChar {");
       {
-        auto l = (ast::Lit *)lit;
+        auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("Char: '" + l->val + "'");
         PrintPtr(l);
         PrintLoc(l);
@@ -316,7 +316,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
     case ast::Lit::Kind::STRING:
       Down("LitSTR {");
       {
-        auto l = (ast::Lit *)lit;
+        auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("literal: \"" + l->val + "\"");
         PrintPtr(l);
         PrintLoc(l);

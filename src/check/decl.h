@@ -23,9 +23,9 @@ struct Decl {
     /* assert(!type->IsVoid()); */
   }
 
-  FuncType* AsFuncType() {
+  std::shared_ptr<FuncType> AsFuncType() {
     assert(IsFunc());
-    return (FuncType*)type.get();
+    return std::dynamic_pointer_cast<FuncType>(type);
   }
 
   bool IsAssignable() {

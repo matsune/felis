@@ -26,9 +26,9 @@ std::string ToString(ast::BinaryOp::Op op);
 /* std::string ToString(hir::Binary::Op op); */
 std::string ToString(Decl::Kind);
 std::string ToString(std::shared_ptr<Ty>);
-std::string ToString(Typed*);
-std::string ToString(FuncType*);
-std::string ToString(Untyped*);
+std::string ToString(std::shared_ptr<Typed>);
+std::string ToString(std::shared_ptr<FuncType>);
+std::string ToString(std::shared_ptr<Untyped>);
 std::string ToString(ast::Stmt::Kind);
 /* std::string ToString(hir::Stmt::Kind); */
 

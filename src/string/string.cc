@@ -147,7 +147,15 @@ std::string ToString(Decl::Kind kind) {
   };
 }
 
-std::string ToString(Typed *t) {
+std::string ToString(std::shared_ptr<Ty> t) {
+  if (t->IsTyped()) {
+    return ToString(std::dynamic_pointer_cast<Typed>(t));
+  } else {
+    return ToString(std::dynamic_pointer_cast<Untyped>(t));
+  }
+}
+
+std::string ToString(std::shared_ptr<Typed> t) {
   switch (t->TypedKind()) {
     case Typed::Kind::VOID:
       return "void";
@@ -164,11 +172,11 @@ std::string ToString(Typed *t) {
     case Typed::Kind::STRING:
       return "string";
     case Typed::Kind::FUNC:
-      return ToString((FuncType *)t);
+      return ToString(std::dynamic_pointer_cast<FuncType>(t));
   }
 }
 
-std::string ToString(FuncType *t) {
+std::string ToString(std::shared_ptr<FuncType> t) {
   std::string str = "func(";
   int i = 0;
   for (auto &arg : t->args) {
@@ -184,7 +192,7 @@ std::string ToString(FuncType *t) {
   return str;
 }
 
-std::string ToString(Untyped *t) {
+std::string ToString(std::shared_ptr<Untyped> t) {
   std::stringstream ss;
   switch (t->UntypedKind()) {
     case Untyped::Kind::INT:
@@ -197,33 +205,6 @@ std::string ToString(Untyped *t) {
   ss << t->GetRef();
   return ss.str();
 }
-
-std::string ToString(std::shared_ptr<Ty> type) {
-  if (type->IsTyped()) {
-    return ToString((Typed *)type.get());
-  } else {
-    return ToString((Untyped *)type.get());
-  }
-}
-
-/* std::string ToString(std::shared_ptr<Type> type) { */
-/*   if (!type) return "NULL"; */
-
-/*   switch (type->TypeKind()) { */
-/*     case Type::Kind::UNRESOLVED: { */
-/*       /1* auto un_type = (UnresolvedType *)type; *1/ */
-/*       return "T" + std::to_string(type->id); */
-
-/*     } break; */
-/*     case Type::Kind::UNTYPED_INT: */
-/*       return "UntypedInt"; */
-/*     case Type::Kind::UNTYPED_FLOAT: */
-/*       return "UntypedFloat"; */
-/*     case Type::Kind::FUNC: { */
-/*       auto func_type = (FuncType *)type; */
-/*     } break; */
-/*   UNREACHABLE */
-/* } */
 
 std::string ToString(ast::Stmt::Kind kind) {
   switch (kind) {

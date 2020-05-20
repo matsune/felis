@@ -18,7 +18,7 @@ class TyInfer {
 
  private:
   std::map<ast::Ident *, std::shared_ptr<Decl>> &decl_map_;
-  FuncType *current_func_;
+  std::shared_ptr<FuncType> current_func_;
 
   std::shared_ptr<Decl> GetDecl(std::unique_ptr<ast::Ident> &t) {
     return decl_map_.at(t.get());
