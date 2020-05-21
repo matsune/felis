@@ -27,13 +27,34 @@ class NodeMap {
   template <typename T>
   std::shared_ptr<Ty> RecordType(const std::unique_ptr<T> &n,
                                  const std::shared_ptr<Ty> ty) {
-    ty_map[n.get()] = ty;
+    ty_map_[n.get()] = ty;
     return ty;
   }
 
   void FinalizeTypes() {
-    NodeTyMap finalized_map;
-    for (auto &it : ty_map) {
+    FinalizeDeclMapTypes();
+    FinalizeTyMapTypes();
+  }
+
+  void FinalizeDeclMapTypes() {
+    for (auto &it : decl_map_) {
+      auto final_ty = FinalTy(it.second->type);
+      if (final_ty->IsUntyped()) {
+        if (final_ty->IsUntypedInt()) {
+          final_ty = kTypeI32;
+        } else if (final_ty->IsUntypedFloat()) {
+          final_ty = kTypeF32;
+        } else {
+          UNREACHABLE
+        }
+      }
+      it.second->type = final_ty;
+    }
+  }
+
+  void FinalizeTyMapTypes() {
+    /* NodeTyMap finalized_map; */
+    for (auto &it : ty_map_) {
       auto final_ty = FinalTy(it.second);
       if (final_ty->IsUntyped()) {
         if (final_ty->IsUntypedInt()) {
@@ -44,14 +65,20 @@ class NodeMap {
           UNREACHABLE
         }
       }
-      finalized_map[it.first] = final_ty;
+      it.second = final_ty;
+      /* finalized_map[it.first] = final_ty; */
     }
-    ty_map = finalized_map;
+    /* ty_map_ = finalized_map; */
   }
 
   void Debug() {
-    std::cout << "-------------" << std::endl;
-    for (auto &it : ty_map) {
+    std::cout << "------DeclMap-------" << std::endl;
+    for (auto &it : decl_map_) {
+      std::cout << "Node: " << it.first << ", " << ToString(*it.second)
+                << std::endl;
+    }
+    std::cout << "------TyMap-------" << std::endl;
+    for (auto &it : ty_map_) {
       std::cout << "Node: " << it.first << ", Type: " << ToString(*it.second)
                 << std::endl;
     }
@@ -60,7 +87,7 @@ class NodeMap {
 
  private:
   IdentDeclMap decl_map_;
-  NodeTyMap ty_map;
+  NodeTyMap ty_map_;
 };
 
 }  // namespace felis

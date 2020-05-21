@@ -205,7 +205,6 @@ std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
   if (!is_primary(Peek()->kind)) {
     Throw("expected primary expr");
   }
-
   auto lhs = ParsePrimary();
 
   if (Peek()->kind == Token::Kind::LPAREN) {
@@ -278,27 +277,26 @@ std::unique_ptr<ast::Expr> Parser::ParsePrimary() {
     case Token::Kind::KW_IF:
       return ParseIf();
     case Token::Kind::IDENT:
-      Bump();
-      return std::make_unique<ast::Ident>(begin, token->val);
+      return std::make_unique<ast::Ident>(begin, Bump()->val);
     case Token::Kind::LIT_INT: {
-      auto val = Bump()->val;
-      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::INT, val);
+      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::INT,
+                                        Bump()->val);
     } break;
     case Token::Kind::LIT_FLOAT: {
-      auto val = Bump()->val;
-      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::FLOAT, val);
+      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::FLOAT,
+                                        Bump()->val);
     } break;
     case Token::Kind::LIT_BOOL: {
-      auto val = Bump()->val;
-      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::BOOL, val);
+      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::BOOL,
+                                        Bump()->val);
     } break;
     case Token::Kind::LIT_CHAR: {
-      auto val = Bump()->val;
-      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::CHAR, val);
+      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::CHAR,
+                                        Bump()->val);
     } break;
     case Token::Kind::LIT_STR: {
-      auto val = Bump()->val;
-      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::STRING, val);
+      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::STRING,
+                                        Bump()->val);
     } break;
     case Token::Kind::LPAREN: {
       Bump();
@@ -339,19 +337,20 @@ std::unique_ptr<ast::Stmt> Parser::ParseStmt() {
     // variable decl
     auto kw = Bump();
     bool is_let = kw->kind == Token::Kind::KW_LET;
-    Loc begin = kw->begin;
+    Loc kw_begin = kw->begin;
 
     if (Peek()->kind != Token::Kind::IDENT) {
       Throw("expected %s", ToString(Token::Kind::IDENT).c_str());
     }
-    auto name = std::make_unique<ast::Ident>(begin, Bump()->val);
+    auto ident = Bump();
+    auto name = std::make_unique<ast::Ident>(ident->begin, ident->val);
 
     if (Peek()->kind != Token::Kind::EQ) {
       Throw("expected %s", ToString(Token::Kind::EQ).c_str());
     }
     Bump();
 
-    return std::make_unique<ast::VarDeclStmt>(begin, is_let, std::move(name),
+    return std::make_unique<ast::VarDeclStmt>(kw_begin, is_let, std::move(name),
                                               ParseExpr());
   } else if (Peek()->kind == Token::Kind::IDENT) {
     if (Peek2()->kind == Token::Kind::EQ) {

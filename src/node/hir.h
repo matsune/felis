@@ -12,31 +12,30 @@ namespace felis {
 
 namespace hir {
 
-// struct Stmt : Node {
-//  enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
-//  virtual Kind StmtKind() const = 0;
-//  virtual std::shared_ptr<Type> Ty() const { return kTypeVoid; }
-//
-//  bool IsRet() const { return StmtKind() == Kind::RET; }
-//};
-//
-// struct Expr : public Stmt {
-//  Loc begin;
-//  Loc end;
-//
-//  Expr(Loc begin, Loc end) : begin(begin), end(end) {}
-//
-//  enum Kind { BINARY, VALUE, CALL, UNARY, IF, BLOCK };
-//  virtual Expr::Kind ExprKind() const = 0;
-//  virtual bool IsConstant() const { return false; }
-//
-//  // override Stmt
-//  Stmt::Kind StmtKind() const override { return Stmt::Kind::EXPR; }
-//
-//  // override Node
-//  Loc Begin() const override { return begin; }
-//  Loc End() const override { return end; }
-//};
+struct Stmt : Node {
+  enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
+  virtual Kind StmtKind() const = 0;
+};
+
+struct Expr : public Stmt {
+  Loc begin;
+  Loc end;
+  std::shared_ptr<Typed> type;
+
+  Expr(Loc begin, Loc end, std::shared_ptr<Typed> type)
+      : begin(begin), end(end), type(type) {}
+
+  enum Kind { BINARY, VALUE, CALL, UNARY, IF, BLOCK };
+  virtual Expr::Kind ExprKind() const = 0;
+  virtual bool IsConstant() const { return false; }
+
+  // override Stmt
+  Stmt::Kind StmtKind() const override { return Stmt::Kind::EXPR; }
+
+  // override Node
+  Loc Begin() const override { return begin; }
+  Loc End() const override { return end; }
+};
 //
 // struct Value : public Expr {
 //  Value(Loc begin, Loc end) : Expr(begin, end) {}
@@ -367,7 +366,7 @@ namespace hir {
 //
 //  Loc End() const override { return end; }
 //};
-//
+
 struct File {
   //  std::vector<std::unique_ptr<Extern>> externs;
   //  unique_deque<FnDecl> fn_decls;

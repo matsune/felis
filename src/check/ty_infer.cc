@@ -26,7 +26,7 @@ void TyInfer::Infer(std::unique_ptr<ast::File>& file) {
 
     auto block_ty = InferBlock(fn_decl->block);
 
-    if (!current_func_->IsVoid() && !fn_decl->block->IsTerminating()) {
+    if (!current_func_->ret->IsVoid() && !fn_decl->block->IsTerminating()) {
       // last stmt can be ret stmt
       if (!Resolve(block_ty, current_func_->ret)) {
         throw LocError::Create(fn_decl->End(), "func block type not match");
