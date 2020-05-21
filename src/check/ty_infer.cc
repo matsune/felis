@@ -38,14 +38,6 @@ void TyInfer::Infer(std::unique_ptr<ast::File>& file) {
       fn_decl->block->stmts.push_back(std::move(n));
     }
   }
-
-  std::cout << "-------------" << std::endl;
-  for (auto& it : ty_map) {
-    auto final_ty = felis::FinalTy(it.second);
-    std::cout << "Node: " << it.first << ", Type: " << ToString(*final_ty)
-              << " use count: " << it.second.use_count() << std::endl;
-  }
-  std::cout << "--------------" << std::endl;
 }
 
 std::shared_ptr<Ty> TyInfer::InferStmt(const std::unique_ptr<ast::Stmt>& stmt) {

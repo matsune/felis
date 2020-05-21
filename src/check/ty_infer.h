@@ -4,34 +4,29 @@
 #include <map>
 #include <memory>
 
+#include "check/node_map.h"
 #include "node/ast.h"
 #include "node/hir.h"
 
 namespace felis {
 
 class TyInfer {
-  using IdentDeclMap = std::map<ast::Ident *, std::shared_ptr<Decl>>;
-  using NodeTyMap = std::map<const ast::AstNode *, std::shared_ptr<Ty>>;
-
  public:
-  TyInfer(std::map<ast::Ident *, std::shared_ptr<Decl>> &decl_map)
-      : decl_map_(decl_map){};
+  TyInfer(NodeMap &node_map) : node_map_(node_map){};
   void Infer(std::unique_ptr<ast::File> &);
 
  private:
-  IdentDeclMap &decl_map_;
-  NodeTyMap ty_map;
+  NodeMap &node_map_;
   std::shared_ptr<FuncType> current_func_;
 
   std::shared_ptr<Decl> GetDecl(std::unique_ptr<ast::Ident> &t) {
-    return decl_map_.at(t.get());
+    return node_map_.GetDecl(t);
   }
 
   template <typename T>
   std::shared_ptr<Ty> RecordType(const std::unique_ptr<T> &n,
                                  std::shared_ptr<Ty> ty) {
-    ty_map[n.get()] = ty;
-    return ty;
+    return node_map_.RecordType(n, ty);
   }
 
   std::shared_ptr<Ty> InferStmt(const std::unique_ptr<ast::Stmt> &);

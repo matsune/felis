@@ -9,9 +9,7 @@
 
 #include "args.h"
 #include "builder/builder.h"
-#include "check/decl_checker.h"
 #include "check/lower.h"
-#include "check/ty_infer.h"
 #include "error/error.h"
 #include "loc.h"
 #include "printer/ast_printer.h"
@@ -97,19 +95,10 @@ class Session {
     return felis::Parser(std::move(tokens)).Parse();
   }
 
-  // std::unique_ptr<felis::hir::File>
-  void LowerAst(std::unique_ptr<felis::ast::File> ast) {
-    felis::DeclChecker::DeclMap decl_map;
-    felis::DeclChecker checker(decl_map);
-    checker.Check(ast);
-    felis::TyInfer infer(decl_map);
-    infer.Infer(ast);
-
-    for (auto &it : decl_map) {
-      std::cout << it.first << " | " << ToString(*it.second) << std::endl;
-    }
-    // return nullptr;
-    /* return felis::Lower(ast_decl).Lowering(std::move(ast)); */
+  std::unique_ptr<felis::hir::File> LowerAst(
+      std::unique_ptr<felis::ast::File> ast) {
+    felis::Lower lower;
+    return lower.Lowering(std::move(ast));
   }
 
   std::unique_ptr<llvm::TargetMachine> CreateTargetMachine() {
@@ -166,9 +155,8 @@ class Session {
 
       if (opts->IsPrintAst()) felis::AstPrinter().Print(ast);
 
-      // auto hir =
-      LowerAst(std::move(ast));
-      // if (!hir) return 1;
+      auto hir = LowerAst(std::move(ast));
+      if (!hir) return 1;
 
       /* felis::HirPrinter().Print(hir); */
 

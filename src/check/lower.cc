@@ -47,32 +47,37 @@ namespace felis {
 //
 //}  // namespace
 //
-// std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file) {
-//  auto hir_file = std::make_unique<hir::File>();
-//  while (!file->externs.empty()) {
-//    auto ext = file->externs.move_front();
-//    auto decl = ast_decl_.at(ext.get());
-//    hir_file->externs.push_back(
-//        std::make_unique<hir::Extern>(ext->Begin(), ext->End(), decl));
-//  }
-//  while (!file->fn_decls.empty()) {
-//    auto fn = file->fn_decls.move_front();
-//    auto decl = ast_decl_.at(fn.get());
-//    current_func_ = decl->AsFuncType();
-//
-//    std::deque<std::shared_ptr<Decl>> args;
-//    for (auto& arg : fn->proto->args->list) {
-//      args.push_back(ast_decl_.at(arg.get()));
-//    }
-//    auto block = LowerBlock(std::move(fn->block));
-//    block = unique_cast<hir::Block>(
-//        MatchBlockType(std::move(block), current_func_->ret));
-//
-//    hir_file->fn_decls.push_back(std::make_unique<hir::FnDecl>(
-//        fn->Begin(), decl, args, std::move(block)));
-//  }
-//  return std::move(hir_file);
-//}
+std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file) {
+  decl_checker_.Check(file);
+  ty_infer_.Infer(file);
+
+  node_map_.Debug();
+
+  auto hir_file = std::make_unique<hir::File>();
+  //  while (!file->externs.empty()) {
+  //    auto ext = file->externs.move_front();
+  //    auto decl = ast_decl_.at(ext.get());
+  //    hir_file->externs.push_back(
+  //        std::make_unique<hir::Extern>(ext->Begin(), ext->End(), decl));
+  //  }
+  //  while (!file->fn_decls.empty()) {
+  //    auto fn = file->fn_decls.move_front();
+  //    auto decl = ast_decl_.at(fn.get());
+  //    current_func_ = decl->AsFuncType();
+  //
+  //    std::deque<std::shared_ptr<Decl>> args;
+  //    for (auto& arg : fn->proto->args->list) {
+  //      args.push_back(ast_decl_.at(arg.get()));
+  //    }
+  //    auto block = LowerBlock(std::move(fn->block));
+  //    block = unique_cast<hir::Block>(
+  //        MatchBlockType(std::move(block), current_func_->ret));
+  //
+  //    hir_file->fn_decls.push_back(std::make_unique<hir::FnDecl>(
+  //        fn->Begin(), decl, args, std::move(block)));
+  //  }
+  return std::move(hir_file);
+}
 //
 // std::unique_ptr<hir::Stmt> Lower::LowerStmt(std::unique_ptr<ast::Stmt> stmt)
 // {

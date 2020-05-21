@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "check/decl.h"
+#include "check/node_map.h"
 #include "check/scope.h"
 #include "check/type.h"
 #include "node/ast.h"
@@ -16,10 +17,8 @@ namespace felis {
 
 class DeclChecker {
  public:
-  using DeclMap = std::map<ast::Ident *, std::shared_ptr<Decl>>;
-
-  DeclChecker(DeclMap &decl_map)
-      : current_scope_(std::make_shared<Scope>(nullptr)), decl_map_(decl_map) {
+  DeclChecker(NodeMap &node_map)
+      : current_scope_(std::make_shared<Scope>(nullptr)), node_map_(node_map) {
     SetupBuiltin();
   };
   void Check(const std::unique_ptr<ast::File> &);
@@ -27,16 +26,17 @@ class DeclChecker {
  private:
   std::shared_ptr<Scope> current_scope_;
   std::shared_ptr<FuncType> current_func_;
-  DeclMap &decl_map_;
+  NodeMap &node_map_;
 
   void SetupBuiltin();
 
-  std::shared_ptr<Decl> GetDecl(std::unique_ptr<ast::Ident> &t) {
-    return decl_map_.at(t.get());
+  std::shared_ptr<Decl> GetDecl(const std::unique_ptr<ast::Ident> &t) const {
+    return node_map_.GetDecl(t);
   }
 
-  void SetDecl(std::unique_ptr<ast::Ident> &t, std::shared_ptr<Decl> decl) {
-    decl_map_[t.get()] = decl;
+  void SetDecl(const std::unique_ptr<ast::Ident> &t,
+               std::shared_ptr<Decl> decl) {
+    node_map_.SetDecl(t, decl);
   }
 
   void CheckFnDecl(const std::unique_ptr<ast::FnDecl> &);

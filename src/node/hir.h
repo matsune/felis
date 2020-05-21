@@ -368,10 +368,10 @@ namespace hir {
 //  Loc End() const override { return end; }
 //};
 //
-// struct File {
-//  std::vector<std::unique_ptr<Extern>> externs;
-//  unique_deque<FnDecl> fn_decls;
-//};
+struct File {
+  //  std::vector<std::unique_ptr<Extern>> externs;
+  //  unique_deque<FnDecl> fn_decls;
+};
 
 }  // namespace hir
 
