@@ -31,12 +31,29 @@ class NodeMap {
     return ty;
   }
 
+  void FinalizeTypes() {
+    NodeTyMap finalized_map;
+    for (auto &it : ty_map) {
+      auto final_ty = FinalTy(it.second);
+      if (final_ty->IsUntyped()) {
+        if (final_ty->IsUntypedInt()) {
+          final_ty = kTypeI32;
+        } else if (final_ty->IsUntypedFloat()) {
+          final_ty = kTypeF32;
+        } else {
+          UNREACHABLE
+        }
+      }
+      finalized_map[it.first] = final_ty;
+    }
+    ty_map = finalized_map;
+  }
+
   void Debug() {
     std::cout << "-------------" << std::endl;
     for (auto &it : ty_map) {
-      auto final_ty = felis::FinalTy(it.second);
-      std::cout << "Node: " << it.first << ", Type: " << ToString(*final_ty)
-                << " use count: " << it.second.use_count() << std::endl;
+      std::cout << "Node: " << it.first << ", Type: " << ToString(*it.second)
+                << std::endl;
     }
     std::cout << "--------------" << std::endl;
   }

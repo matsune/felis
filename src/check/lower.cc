@@ -51,6 +51,7 @@ std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file) {
   decl_checker_.Check(file);
   ty_infer_.Infer(file);
 
+  node_map_.FinalizeTypes();
   node_map_.Debug();
 
   auto hir_file = std::make_unique<hir::File>();
