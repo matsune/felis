@@ -31,44 +31,14 @@ class NodeMap {
     return ty;
   }
 
+  template <typename T>
+  std::shared_ptr<Typed> GetType(const std::unique_ptr<T> &n) {
+    return std::dynamic_pointer_cast<Typed>(ty_map_.at(n.get()));
+  }
+
   void FinalizeTypes() {
     FinalizeDeclMapTypes();
     FinalizeTyMapTypes();
-  }
-
-  void FinalizeDeclMapTypes() {
-    for (auto &it : decl_map_) {
-      auto final_ty = FinalTy(it.second->type);
-      if (final_ty->IsUntyped()) {
-        if (final_ty->IsUntypedInt()) {
-          final_ty = kTypeI32;
-        } else if (final_ty->IsUntypedFloat()) {
-          final_ty = kTypeF32;
-        } else {
-          UNREACHABLE
-        }
-      }
-      it.second->type = final_ty;
-    }
-  }
-
-  void FinalizeTyMapTypes() {
-    /* NodeTyMap finalized_map; */
-    for (auto &it : ty_map_) {
-      auto final_ty = FinalTy(it.second);
-      if (final_ty->IsUntyped()) {
-        if (final_ty->IsUntypedInt()) {
-          final_ty = kTypeI32;
-        } else if (final_ty->IsUntypedFloat()) {
-          final_ty = kTypeF32;
-        } else {
-          UNREACHABLE
-        }
-      }
-      it.second = final_ty;
-      /* finalized_map[it.first] = final_ty; */
-    }
-    /* ty_map_ = finalized_map; */
   }
 
   void Debug() {
@@ -88,6 +58,38 @@ class NodeMap {
  private:
   IdentDeclMap decl_map_;
   NodeTyMap ty_map_;
+
+  void FinalizeDeclMapTypes() {
+    for (auto &it : decl_map_) {
+      auto final_ty = FinalTy(it.second->type);
+      if (final_ty->IsUntyped()) {
+        if (final_ty->IsUntypedInt()) {
+          final_ty = kTypeI32;
+        } else if (final_ty->IsUntypedFloat()) {
+          final_ty = kTypeF32;
+        } else {
+          UNREACHABLE
+        }
+      }
+      it.second->type = final_ty;
+    }
+  }
+
+  void FinalizeTyMapTypes() {
+    for (auto &it : ty_map_) {
+      auto final_ty = FinalTy(it.second);
+      if (final_ty->IsUntyped()) {
+        if (final_ty->IsUntypedInt()) {
+          final_ty = kTypeI32;
+        } else if (final_ty->IsUntypedFloat()) {
+          final_ty = kTypeF32;
+        } else {
+          UNREACHABLE
+        }
+      }
+      it.second = final_ty;
+    }
+  }
 };
 
 }  // namespace felis

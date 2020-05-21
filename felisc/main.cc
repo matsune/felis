@@ -158,7 +158,7 @@ class Session {
       auto hir = LowerAst(std::move(ast));
       if (!hir) return 1;
 
-      /* felis::HirPrinter().Print(hir); */
+      felis::HirPrinter().Print(hir);
 
       /* auto machine = CreateTargetMachine(); */
       /* if (!machine) return 1; */

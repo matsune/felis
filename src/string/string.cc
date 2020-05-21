@@ -109,28 +109,32 @@ std::string ToString(const ast::BinaryOp::Op &op) {
   }
 }
 
-/* std::string ToString(hir::Binary::Op op) { */
-/*   switch (op) { */
-/*     case hir::Binary::Op::LT: */
-/*       return ">"; */
-/*     case hir::Binary::Op::LE: */
-/*       return ">="; */
-/*     case hir::Binary::Op::GT: */
-/*       return "<"; */
-/*     case hir::Binary::Op::GE: */
-/*       return "<="; */
-/*     case hir::Binary::Op::ADD: */
-/*       return "+"; */
-/*     case hir::Binary::Op::SUB: */
-/*       return "-"; */
-/*     case hir::Binary::Op::MUL: */
-/*       return "*"; */
-/*     case hir::Binary::Op::DIV: */
-/*       return "/"; */
-/*     case hir::Binary::Op::MOD: */
-/*       return "%"; */
-/*   } */
-/* } */
+std::string ToString(const hir::Binary::Op &op) {
+  switch (op) {
+    case hir::Binary::Op::EQEQ:
+      return "==";
+    case hir::Binary::Op::NEQ:
+      return "!=";
+    case hir::Binary::Op::LT:
+      return ">";
+    case hir::Binary::Op::LE:
+      return ">=";
+    case hir::Binary::Op::GT:
+      return "<";
+    case hir::Binary::Op::GE:
+      return "<=";
+    case hir::Binary::Op::ADD:
+      return "+";
+    case hir::Binary::Op::SUB:
+      return "-";
+    case hir::Binary::Op::MUL:
+      return "*";
+    case hir::Binary::Op::DIV:
+      return "/";
+    case hir::Binary::Op::MOD:
+      return "%";
+  }
+}
 
 std::string ToString(const Decl::Kind &kind) {
   switch (kind) {
@@ -225,18 +229,5 @@ std::string ToString(const Decl &decl) {
      << ", type: " << ToString(*decl.type) << "}";
   return ss.str();
 }
-
-/* std::string ToString(hir::Stmt::Kind kind) { */
-/*   switch (kind) { */
-/*     case hir::Stmt::Kind::ASSIGN: */
-/*       return "ASSIGN"; */
-/*     case hir::Stmt::Kind::EXPR: */
-/*       return "EXPR"; */
-/*     case hir::Stmt::Kind::RET: */
-/*       return "RET"; */
-/*     case hir::Stmt::Kind::VAR_DECL: */
-/*       return "VAR_DECL"; */
-/*   } */
-/* } */
 
 }  // namespace felis
