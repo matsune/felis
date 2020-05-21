@@ -16,7 +16,7 @@ class TyInfer {
  public:
   TyInfer(std::map<ast::Ident *, std::shared_ptr<Decl>> &decl_map)
       : decl_map_(decl_map){};
-  void Infer(const std::unique_ptr<ast::File> &);
+  void Infer(std::unique_ptr<ast::File> &);
 
  private:
   IdentDeclMap &decl_map_;

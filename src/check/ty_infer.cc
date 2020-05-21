@@ -19,19 +19,23 @@ bool Resolve(std::shared_ptr<Ty> ty, std::shared_ptr<Ty> to) {
   return false;
 }
 
-void TyInfer::Infer(const std::unique_ptr<ast::File>& file) {
+void TyInfer::Infer(std::unique_ptr<ast::File>& file) {
   for (auto& fn_decl : file->fn_decls) {
     auto decl = GetDecl(fn_decl->proto->name)->AsFuncType();
     current_func_ = decl;
 
     auto block_ty = InferBlock(fn_decl->block);
 
-    if (fn_decl->block->IsTerminating()) continue;
-
-    if (current_func_->ret->IsVoid()) continue;
-
-    if (!Resolve(block_ty, current_func_->ret)) {
-      throw LocError::Create(fn_decl->End(), "func block type not match");
+    if (!current_func_->IsVoid() && !fn_decl->block->IsTerminating()) {
+      // last stmt can be ret stmt
+      if (!Resolve(block_ty, current_func_->ret)) {
+        throw LocError::Create(fn_decl->End(), "func block type not match");
+      }
+      assert(fn_decl->block->stmts.back()->StmtKind() == ast::Stmt::Kind::EXPR);
+      auto last = unique_cast<ast::Expr>(fn_decl->block->stmts.move_back());
+      auto n = std::make_unique<ast::RetStmt>(last->Begin(), last->End(),
+                                              std::move(last));
+      fn_decl->block->stmts.push_back(std::move(n));
     }
   }
 

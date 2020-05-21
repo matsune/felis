@@ -244,21 +244,17 @@ struct UnaryExpr : public Expr {
 
 struct RetStmt : public Stmt {
   Loc begin;
+  Loc end;
   std::unique_ptr<Expr> expr;
 
-  RetStmt(Loc begin, std::unique_ptr<Expr> expr = nullptr)
-      : begin(begin), expr(std::move(expr)) {}
+  RetStmt(Loc begin, Loc end, std::unique_ptr<Expr> expr = nullptr)
+      : begin(begin), end(end), expr(std::move(expr)) {}
 
   virtual bool IsTerminating() const override { return true; }
 
   Loc Begin() const override { return begin; }
 
-  Loc End() const override {
-    if (expr)
-      return expr->End();
-    else
-      return begin + 2;
-  }
+  Loc End() const override { return end; }
 
   Stmt::Kind StmtKind() const override { return Stmt::Kind::RET; }
 };

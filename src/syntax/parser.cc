@@ -72,12 +72,9 @@ inline ast::BinaryOp::Op binop_from_tok(Token::Kind kind) {
   }
 }
 
-const Token* Parser::Peek() const { return tokens_.front().get(); }
+const std::unique_ptr<Token>& Parser::Peek() const { return tokens_.front(); }
 
-const Token* Parser::Peek2() const {
-  if (tokens_.size() < 2) return nullptr;
-  return tokens_[1].get();
-}
+const std::unique_ptr<Token>& Parser::Peek2() const { return tokens_[1]; }
 
 std::unique_ptr<Token> Parser::Bump() { return tokens_.move_front(); }
 
@@ -258,7 +255,7 @@ std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
     if (!is_bin_op(Peek()->kind)) {
       return lhs;
     }
-    auto peek = Peek();
+    auto& peek = Peek();
     ast::BinaryOp::Op op = binop_from_tok(peek->kind);
     Loc begin = peek->begin;
     auto bin_op = std::make_unique<ast::BinaryOp>(begin, op);
@@ -273,7 +270,7 @@ std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
 }  // namespace felis
 
 std::unique_ptr<ast::Expr> Parser::ParsePrimary() {
-  auto token = Peek();
+  auto& token = Peek();
   Loc begin = token->begin;
   switch (token->kind) {
     case Token::Kind::LBRACE:
@@ -283,25 +280,26 @@ std::unique_ptr<ast::Expr> Parser::ParsePrimary() {
     case Token::Kind::IDENT:
       Bump();
       return std::make_unique<ast::Ident>(begin, token->val);
-    case Token::Kind::LIT_INT:
-      Bump();
-      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::INT, token->val);
-    case Token::Kind::LIT_FLOAT:
-      Bump();
-      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::FLOAT,
-                                        token->val);
-    case Token::Kind::LIT_BOOL:
-      Bump();
-      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::BOOL,
-                                        token->val);
-    case Token::Kind::LIT_CHAR:
-      Bump();
-      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::CHAR,
-                                        token->val);
-    case Token::Kind::LIT_STR:
-      Bump();
-      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::STRING,
-                                        token->val);
+    case Token::Kind::LIT_INT: {
+      auto val = Bump()->val;
+      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::INT, val);
+    } break;
+    case Token::Kind::LIT_FLOAT: {
+      auto val = Bump()->val;
+      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::FLOAT, val);
+    } break;
+    case Token::Kind::LIT_BOOL: {
+      auto val = Bump()->val;
+      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::BOOL, val);
+    } break;
+    case Token::Kind::LIT_CHAR: {
+      auto val = Bump()->val;
+      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::CHAR, val);
+    } break;
+    case Token::Kind::LIT_STR: {
+      auto val = Bump()->val;
+      return std::make_unique<ast::Lit>(begin, ast::Lit::Kind::STRING, val);
+    } break;
     case Token::Kind::LPAREN: {
       Bump();
       auto expr = ParseExpr();
@@ -320,15 +318,21 @@ std::unique_ptr<ast::Expr> Parser::ParsePrimary() {
 std::unique_ptr<ast::Stmt> Parser::ParseStmt() {
   if (Peek()->kind == Token::Kind::KW_RET) {
     // Ret
-    Loc begin = Bump()->begin;
+    auto& ret = Peek();
+    Loc ret_begin = ret->begin;
+    Loc ret_end = ret->end;
+    Bump();
+
     if (Peek()->kind == Token::Kind::SEMI) {
       Bump();
-      return std::make_unique<ast::RetStmt>(begin);
+      return std::make_unique<ast::RetStmt>(ret_begin, ret_end);
     }
     if (Peek()->nl) {
-      return std::make_unique<ast::RetStmt>(begin);
+      return std::make_unique<ast::RetStmt>(ret_begin, ret_end);
     }
-    return std::make_unique<ast::RetStmt>(begin, ParseExpr());
+    auto expr = ParseExpr();
+    ret_end = expr->End();
+    return std::make_unique<ast::RetStmt>(ret_begin, ret_end, std::move(expr));
 
   } else if (Peek()->kind == Token::Kind::KW_LET ||
              Peek()->kind == Token::Kind::KW_VAR) {

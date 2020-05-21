@@ -191,8 +191,16 @@ void DeclChecker::CheckFnDecl(const std::unique_ptr<ast::FnDecl>& fn) {
     current_scope_->InsertDecl(arg->name->val, decl);
     SetDecl(arg->name, decl);
   }
-  for (auto& stmt : fn->block->stmts) {
+
+  for (auto it = fn->block->stmts.begin(); it != fn->block->stmts.end(); it++) {
+    bool is_end = std::next(it) == fn->block->stmts.end();
+    auto& stmt = *it;
     CheckStmt(stmt);
+
+    if (!is_end && stmt->IsTerminating()) {
+      auto next = std::next(it);
+      throw LocError::Create((*next)->Begin(), "unreachable code");
+    }
   }
   CloseScope();
 }

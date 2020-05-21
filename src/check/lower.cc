@@ -2,7 +2,6 @@
 
 #include <assert.h>
 
-#include "check/constant.h"
 #include "error/error.h"
 #include "unique.h"
 
