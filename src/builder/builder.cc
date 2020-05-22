@@ -181,22 +181,28 @@ llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
 
 void Builder::BuildBlock(std::unique_ptr<hir::Block> block,
                          llvm::AllocaInst* into, llvm::BasicBlock* after_bb) {
-  llvm::Value* v;
+  assert(after_bb);
+
+  llvm::Value* value;
   while (!block->stmts.empty()) {
     auto stmt = block->stmts.move_front();
-    v = BuildStmt(std::move(stmt));
+    value = BuildStmt(std::move(stmt));
   }
-  if (v && into) {
-    builder_.CreateStore(v, into);
+
+  if (value && into) {
+    builder_.CreateStore(value, into);
   }
-  if (after_bb && !builder_.GetInsertBlock()->getTerminator()) {
+
+  if (!builder_.GetInsertBlock()->getTerminator()) {
     builder_.CreateBr(after_bb);
-    builder_.SetInsertPoint(after_bb);
+    /* builder_.SetInsertPoint(after_bb); */
   }
 }
 
 void Builder::BuildIf(std::unique_ptr<hir::If> if_stmt, llvm::AllocaInst* into,
                       llvm::BasicBlock* after_bb) {
+  assert(after_bb);
+
   auto has_else = if_stmt->HasElse();
   auto cond_val = BuildExpr(std::move(if_stmt->cond));
   llvm::BasicBlock* then_bb =
@@ -205,10 +211,15 @@ void Builder::BuildIf(std::unique_ptr<hir::If> if_stmt, llvm::AllocaInst* into,
   if (has_else) {
     llvm::BasicBlock* else_bb =
         llvm::BasicBlock::Create(ctx_, "else", current_func_, after_bb);
-
     builder_.CreateCondBr(cond_val, then_bb, else_bb);
-
     builder_.SetInsertPoint(then_bb);
+    //   br cond_val, then_bb, after_bb
+    // then_bb:
+    //   <- InsertPoint
+    //
+    // else_bb:
+    //
+    // after_bb:
     BuildBlock(std::move(if_stmt->block), into, after_bb);
 
     builder_.SetInsertPoint(else_bb);
@@ -221,6 +232,11 @@ void Builder::BuildIf(std::unique_ptr<hir::If> if_stmt, llvm::AllocaInst* into,
   } else {
     builder_.CreateCondBr(cond_val, then_bb, after_bb);
     builder_.SetInsertPoint(then_bb);
+    //   br cond_val, then_bb, after_bb
+    // then_bb:
+    //   <- InsertPoint
+    //
+    // after_bb:
     BuildBlock(std::move(if_stmt->block), into, after_bb);
   }
 }
@@ -260,43 +276,31 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
       /* auto unary = (hir::Unary*)expr; */
       UNIMPLEMENTED
     } break;
-    case hir::Expr::IF: {
-      llvm::AllocaInst* alloca = nullptr;
-
-      auto expr_type = LLVMType(expr->Type());
-      if (!expr_type->isVoidTy()) {
-        alloca = builder_.CreateAlloca(expr_type);
-      }
-
-      auto after_bb = llvm::BasicBlock::Create(
-          ctx_, "end", current_func_, builder_.GetInsertBlock()->getNextNode());
-      BuildIf(unique_cast<hir::If>(std::move(expr)), alloca, after_bb);
-
-      builder_.SetInsertPoint(after_bb);
-
-      if (alloca) {
-        return builder_.CreateLoad(expr_type, alloca);
-      }
-      return nullptr;
-    } break;
+    case hir::Expr::IF:
     case hir::Expr::BLOCK: {
-      llvm::AllocaInst* alloca = nullptr;
-
       auto expr_type = LLVMType(expr->Type());
-      if (!expr_type->isVoidTy()) {
+      auto as_expr = !expr_type->isVoidTy();
+
+      llvm::AllocaInst* alloca = nullptr;
+      if (as_expr) {
         alloca = builder_.CreateAlloca(expr_type);
       }
 
       auto after_bb = llvm::BasicBlock::Create(
           ctx_, "end", current_func_, builder_.GetInsertBlock()->getNextNode());
-      BuildBlock(unique_cast<hir::Block>(std::move(expr)), alloca, after_bb);
-
+      if (expr->ExprKind() == hir::Expr::Kind::IF) {
+        BuildIf(unique_cast<hir::If>(std::move(expr)), alloca, after_bb);
+      } else {
+        BuildBlock(unique_cast<hir::Block>(std::move(expr)), alloca, after_bb);
+      }
       builder_.SetInsertPoint(after_bb);
 
-      if (alloca) {
+      if (as_expr) {
         return builder_.CreateLoad(expr_type, alloca);
+      } else {
+        return nullptr;
       }
-      return nullptr;
+
     } break;
   }
 }

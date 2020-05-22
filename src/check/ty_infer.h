@@ -30,15 +30,15 @@ class TyInfer {
   }
 
   std::shared_ptr<Ty> InferStmt(const std::unique_ptr<ast::Stmt> &,
-                                bool as_value);
+                                bool as_expr);
   std::shared_ptr<Ty> InferExpr(const std::unique_ptr<ast::Expr> &,
-                                bool as_value);
+                                bool as_expr);
   void InferRet(const std::unique_ptr<ast::RetStmt> &);
   void InferVarDecl(const std::unique_ptr<ast::VarDeclStmt> &);
   void InferAssign(const std::unique_ptr<ast::AssignStmt> &);
-  std::shared_ptr<Ty> InferIf(const std::unique_ptr<ast::If> &, bool as_value);
+  std::shared_ptr<Ty> InferIf(const std::unique_ptr<ast::If> &, bool as_expr);
   std::shared_ptr<Ty> InferBlock(const std::unique_ptr<ast::Block> &,
-                                 bool as_value);
+                                 bool as_expr);
 };
 
 }  // namespace felis

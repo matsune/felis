@@ -31,16 +31,36 @@ void TyInfer::Infer(std::unique_ptr<ast::File>& file) {
   }
 }
 
+//
+// Infer a type of `ast::Stmt`.
+// `as_expr` means whether the statement would be used as a value
+// for other statement. For example, block is a kind of expressions
+// but it consists of a list of statements, and the last statement
+// may be a value of the block.
+//
+// ```
+// hoge()
+//
+// let a = {
+//    let b = 2
+//    fuga(b)
+// }
+// ```
+// In this case, `hoge()` is just a statement because result value
+// won't be used. However, `fuga(b)` is a statement but also a value
+// of block, this means the result value will be assigned into
+// variable `a`.
+//
 std::shared_ptr<Ty> TyInfer::InferStmt(const std::unique_ptr<ast::Stmt>& stmt,
                                        bool as_expr) {
-  switch (stmt->StmtKind()) {
-    case ast::Stmt::Kind::VAR_DECL:
-    case ast::Stmt::Kind::ASSIGN:
-      if (as_expr) {
-        throw LocError::Create(stmt->Begin(), "cannot use this stmt as rvalue");
-      }
-    default:
-      break;
+  if (as_expr) {
+    switch (stmt->StmtKind()) {
+      case ast::Stmt::Kind::VAR_DECL:
+      case ast::Stmt::Kind::ASSIGN:
+        throw LocError::Create(stmt->Begin(), "not value return statement");
+      default:
+        break;
+    }
   }
 
   switch (stmt->StmtKind()) {
@@ -87,7 +107,7 @@ void TyInfer::InferAssign(const std::unique_ptr<ast::AssignStmt>& stmt) {
 }
 
 std::shared_ptr<Ty> TyInfer::InferExpr(const std::unique_ptr<ast::Expr>& expr,
-                                       bool as_value) {
+                                       bool as_expr) {
   switch (expr->ExprKind()) {
     case ast::Expr::Kind::LIT: {
       auto& lit = (std::unique_ptr<ast::Lit>&)expr;
@@ -177,78 +197,74 @@ std::shared_ptr<Ty> TyInfer::InferExpr(const std::unique_ptr<ast::Expr>& expr,
       }
     } break;
     case ast::Expr::Kind::IF:
-      return InferIf((std::unique_ptr<ast::If>&)expr, as_value);
+      return InferIf((std::unique_ptr<ast::If>&)expr, as_expr);
     case ast::Expr::Kind::BLOCK:
-      return InferBlock((std::unique_ptr<ast::Block>&)expr, as_value);
+      return InferBlock((std::unique_ptr<ast::Block>&)expr, as_expr);
   }
 }
 
 std::shared_ptr<Ty> TyInfer::InferIf(const std::unique_ptr<ast::If>& e,
-                                     bool as_value) {
+                                     bool as_expr) {
   auto cond_ty = InferExpr(e->cond, true);
   if (!Resolve(cond_ty, kTypeBool)) {
-    throw LocError::Create(e->cond->Begin(), "not bool type");
+    throw LocError::Create(e->cond->Begin(), "if condition must be bool type");
   }
 
-  auto block_ty = InferBlock(e->block, as_value);
+  auto block_ty = InferBlock(e->block, as_expr);
 
-  std::shared_ptr<Ty> all_ty;
+  std::shared_ptr<Ty> whole_ty = kTypeVoid;
 
   if (e->HasElse()) {
     auto is_then_terminating = e->block->IsTerminating();
     auto is_else_terminating = e->els->IsTerminating();
-    if (as_value && is_then_terminating && is_else_terminating) {
-      throw LocError::Create(e->Begin(), "returning in all branch");
-    }
 
     std::shared_ptr<Ty> els_ty;
     if (e->IsElseIf()) {
-      els_ty = InferIf((std::unique_ptr<ast::If>&)e->els, as_value);
+      els_ty = InferIf((std::unique_ptr<ast::If>&)e->els, as_expr);
     } else {
-      els_ty = InferBlock((std::unique_ptr<ast::Block>&)e->els, as_value);
+      els_ty = InferBlock((std::unique_ptr<ast::Block>&)e->els, as_expr);
     }
 
-    if (is_then_terminating) {
-      all_ty = els_ty;
-    } else if (is_else_terminating) {
-      all_ty = block_ty;
-    } else {
-      if (Resolve(block_ty, els_ty)) {
-        all_ty = els_ty;
-      } else if (Resolve(els_ty, block_ty)) {
-        all_ty = block_ty;
+    if (as_expr) {
+      if (is_then_terminating && is_else_terminating) {
+        // Cannot infer type like this
+        //
+        // ```
+        // let a = if true {
+        //    ret 3
+        //  } else {
+        //    ret 4
+        //  }
+        // ```
+        //
+        throw LocError::Create(e->Begin(), "returning in all branch");
+      } else if (is_then_terminating) {
+        whole_ty = els_ty;
+      } else if (is_else_terminating) {
+        whole_ty = block_ty;
       } else {
-        throw LocError::Create(e->Begin(), "unmatched if branches types");
+        // Both of then block and else block should be same type
+        if (Resolve(block_ty, els_ty)) {
+          whole_ty = els_ty;
+        } else if (Resolve(els_ty, block_ty)) {
+          whole_ty = block_ty;
+        } else {
+          throw LocError::Create(e->Begin(), "unmatched if branches types");
+        }
       }
     }
   } else {
-    if (as_value) {
+    if (as_expr) {
       // No else if-statement can't be used as value
       //
       // ex) let a = if true { 4 }
       //
-      throw LocError::Create(e->Begin(), "incomplete if stmt");
+      throw LocError::Create(e->Begin(), "incomplete if statement");
     }
-    all_ty = kTypeVoid;
   }
-  return RecordType(e, all_ty);
+  return RecordType(e, whole_ty);
 }
 
-//
-// rvalue Block
-// ```
-// let a = {
-//  ...
-// }
-// ```
-//
-// non-rvalue Block
-// ```
-// {
-//  let b = ...
-// }
-// ```
-//
 std::shared_ptr<Ty> TyInfer::InferBlock(const std::unique_ptr<ast::Block>& e,
                                         bool as_expr) {
   std::shared_ptr<Ty> ty = kTypeVoid;
@@ -259,9 +275,9 @@ std::shared_ptr<Ty> TyInfer::InferBlock(const std::unique_ptr<ast::Block>& e,
     // and `b` will be a value of whole this block.
     //
     // ```
-    // let a = {
+    // let a = {  // block is expr for `let a`
     //  let b = 2
-    //  b
+    //  b         // last statement substitutes expr for block
     // }
     // ```
     bool is_last = std::next(it) == e->stmts.end();
