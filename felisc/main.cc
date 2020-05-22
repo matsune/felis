@@ -105,47 +105,41 @@ class Session {
     std::string err;
     auto machine = createTargetMachine(err);
     if (!machine) {
-      std::cerr << opts->Filepath() << ":" << err << std::endl;
-      return nullptr;
+      throw std::runtime_error(err);
     }
     return std::move(machine);
   }
 
-  /* std::unique_ptr<felis::Builder> Build( */
-  /*     std::unique_ptr<llvm::TargetMachine> machine, */
-  /*     std::unique_ptr<felis::hir::File> hir) { */
-  /*   auto builder = std::make_unique<felis::Builder>("felis",
-   * opts->Filepath(), */
-  /*                                                   std::move(machine)); */
-  /*   builder->Build(std::move(hir)); */
-  /*   return std::move(builder); */
-  /* } */
+  void Build(std::unique_ptr<llvm::TargetMachine> machine,
+             std::unique_ptr<felis::hir::File> hir) {
+    auto builder = std::make_unique<felis::Builder>("felis", opts->Filepath(),
+                                                    std::move(machine));
+    builder->Build(std::move(hir));
 
-  /* void Emit(std::unique_ptr<felis::Builder> builder) { */
-  /*   if (opts->IsEmit(EmitType::LLVM_IR)) { */
-  /*     builder->EmitLLVMIR(opts->OutputName(EmitType::LLVM_IR)); */
-  /*   } */
-  /*   if (opts->IsEmit(EmitType::LLVM_BC)) { */
-  /*     builder->EmitLLVMBC(opts->OutputName(EmitType::LLVM_BC)); */
-  /*   } */
-  /*   if (opts->IsEmit(EmitType::ASM)) { */
-  /*     builder->EmitASM(opts->OutputName(EmitType::ASM)); */
-  /*   } */
-  /*   bool emit_obj = opts->IsEmit(EmitType::OBJ); */
-  /*   bool emit_link = opts->IsEmit(EmitType::LINK); */
+    if (opts->IsEmit(EmitType::LLVM_IR)) {
+      builder->EmitLLVMIR(opts->OutputName(EmitType::LLVM_IR));
+    }
+    if (opts->IsEmit(EmitType::LLVM_BC)) {
+      builder->EmitLLVMBC(opts->OutputName(EmitType::LLVM_BC));
+    }
+    if (opts->IsEmit(EmitType::ASM)) {
+      builder->EmitASM(opts->OutputName(EmitType::ASM));
+    }
+    bool emit_obj = opts->IsEmit(EmitType::OBJ);
+    bool emit_link = opts->IsEmit(EmitType::LINK);
 
-  /*   bool has_obj = false; */
-  /*   std::string obj_path = opts->OutputName(EmitType::OBJ); */
-  /*   if (emit_obj || emit_link) { */
-  /*     builder->EmitOBJ(obj_path); */
-  /*     has_obj = true; */
-  /*   } */
-  /*   if (emit_link) { */
-  /*     std::string out = opts->OutputName(EmitType::LINK); */
-  /*     std::string s = "gcc " + obj_path + " -o " + out; */
-  /*     system(s.c_str()); */
-  /*   } */
-  /* } */
+    bool has_obj = false;
+    std::string obj_path = opts->OutputName(EmitType::OBJ);
+    if (emit_obj || emit_link) {
+      builder->EmitOBJ(obj_path);
+      has_obj = true;
+    }
+    if (emit_link) {
+      std::string out = opts->OutputName(EmitType::LINK);
+      std::string s = "gcc " + obj_path + " -o " + out;
+      system(s.c_str());
+    }
+  }
 
   int Run() {
     int exit = 0;
@@ -158,15 +152,9 @@ class Session {
       auto hir = LowerAst(std::move(ast));
       if (!hir) return 1;
 
-      felis::HirPrinter().Print(hir);
+      if (opts->IsPrintHir()) felis::HirPrinter().Print(hir);
 
-      /* auto machine = CreateTargetMachine(); */
-      /* if (!machine) return 1; */
-
-      /* auto builder = Build(std::move(machine), std::move(hir)); */
-      /* if (!builder) return 1; */
-
-      /* Emit(std::move(builder)); */
+      Build(CreateTargetMachine(), std::move(hir));
 
     } catch (felis::LocError &err) {
       exit = Report(err);

@@ -116,13 +116,13 @@ std::string ToString(const hir::Binary::Op &op) {
     case hir::Binary::Op::NEQ:
       return "!=";
     case hir::Binary::Op::LT:
-      return ">";
-    case hir::Binary::Op::LE:
-      return ">=";
-    case hir::Binary::Op::GT:
       return "<";
-    case hir::Binary::Op::GE:
+    case hir::Binary::Op::LE:
       return "<=";
+    case hir::Binary::Op::GT:
+      return ">";
+    case hir::Binary::Op::GE:
+      return ">=";
     case hir::Binary::Op::ADD:
       return "+";
     case hir::Binary::Op::SUB:

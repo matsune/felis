@@ -59,8 +59,6 @@ class Printer {
   }
 
   void PrintPtr(Node *ptr) { Writeln("Address: %p", ptr); }
-
-  void PrintLoc(Node *n) { Writeln("Loc: %d-%d", n->Begin(), n->End()); }
 };
 
 }  // namespace felis

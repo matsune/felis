@@ -1,6 +1,7 @@
 #ifndef FELIS_NODE_AST_H_
 #define FELIS_NODE_AST_H_
 
+#include <cassert>
 #include <memory>
 #include <string>
 #include <vector>
@@ -13,7 +14,10 @@ namespace felis {
 
 namespace ast {
 
-struct AstNode : public Node {};
+struct AstNode : public Node {
+  virtual Loc Begin() const = 0;
+  virtual Loc End() const = 0;
+};
 
 struct Operator : public AstNode {
   enum Kind { UNARY, BINARY };
@@ -86,7 +90,7 @@ struct Stmt : public AstNode {
   virtual Stmt::Kind StmtKind() const = 0;
   virtual bool IsTerminating() const { return false; }
 
-  bool IsRet() const { return StmtKind() == Kind::RET; }
+  /* bool IsRet() const { return StmtKind() == Kind::RET; } */
 };
 
 struct Expr : public Stmt {
@@ -104,20 +108,18 @@ struct Block : public Expr {
   Block(Loc begin, Loc end, unique_deque<Stmt> stmts)
       : begin(begin), end(end), stmts(std::move(stmts)) {}
 
-  virtual bool IsTerminating() const override { return HasRet(); }
+  virtual bool IsTerminating() const override {
+    for (auto &stmt : stmts) {
+      if (stmt->IsTerminating()) return true;
+    }
+    return false;
+  }
 
   Expr::Kind ExprKind() const override { return Expr::Kind::BLOCK; }
 
   Loc Begin() const override { return begin; }
 
   Loc End() const override { return end; }
-
-  bool HasRet() const {
-    for (auto &stmt : stmts) {
-      if (stmt->IsRet()) return true;
-    }
-    return false;
-  }
 };
 
 struct If : public Expr {
@@ -135,14 +137,8 @@ struct If : public Expr {
 
   inline bool HasElse() const { return els != nullptr; }
 
-  inline bool IsElseBlock() const {
-    if (els)
-      return els->ExprKind() == Expr::Kind::BLOCK;
-    else
-      return false;
-  }
-
   inline bool IsElseIf() const {
+    assert(HasElse());
     if (els)
       return els->ExprKind() == Expr::Kind::IF;
     else

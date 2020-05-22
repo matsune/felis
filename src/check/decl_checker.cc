@@ -15,7 +15,6 @@ void DeclChecker::SetupBuiltin() {
   current_scope_->InsertType("f32", kTypeF32);
   current_scope_->InsertType("f64", kTypeF64);
   current_scope_->InsertType("bool", kTypeBool);
-  /* current_scope_->InsertType("char", kTypeChar); */
   current_scope_->InsertType("string", kTypeString);
 }
 
@@ -152,7 +151,7 @@ void DeclChecker::CheckIf(const std::unique_ptr<ast::If>& stmt) {
   if (stmt->HasElse()) {
     if (stmt->IsElseIf()) {
       CheckIf((std::unique_ptr<ast::If>&)stmt->els);
-    } else if (stmt->IsElseBlock()) {
+    } else {
       CheckBlock((std::unique_ptr<ast::Block>&)stmt->els);
     }
   }

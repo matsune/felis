@@ -1,5 +1,5 @@
-fn d() -> i32 { 3 }
-fn e() -> i32 { if true { 3 } else { 4 } }
+fn d() -> i32 { ret 3 }
+fn e() -> i32 { ret if true { 3 } else { 4 } }
 fn c() { }
 
 fn main() -> i32 {
@@ -12,10 +12,19 @@ fn main() -> i32 {
    ret 5
  }
 
+ c = {
+   if true {
+     14
+   } else {
+      23
+   }
+ }
+
   let b = 4
-  if true {
+  if false {
    ret b
   } else {
     5
   }
+  ret c
 }

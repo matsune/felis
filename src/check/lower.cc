@@ -60,13 +60,10 @@ std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file) {
   while (!file->externs.empty()) {
     auto ext = file->externs.move_front();
     auto decl = node_map_.GetDecl(ext->proto->name);
-    hir_file->externs.push_back(
-        std::make_unique<hir::Extern>(ext->Begin(), ext->End(), decl));
+    hir_file->externs.push_back(std::make_unique<hir::Extern>(decl));
   }
   while (!file->fn_decls.empty()) {
     auto fn = file->fn_decls.move_front();
-    auto begin = fn->Begin();
-    auto end = fn->End();
     auto decl = node_map_.GetDecl(fn->proto->name);
 
     std::deque<std::shared_ptr<Decl>> args;
@@ -76,8 +73,8 @@ std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file) {
     }
     auto block = LowerBlock(std::move(fn->block));
 
-    hir_file->fn_decls.push_back(std::make_unique<hir::FnDecl>(
-        begin, end, decl, args, std::move(block)));
+    hir_file->fn_decls.push_back(
+        std::make_unique<hir::FnDecl>(decl, args, std::move(block)));
   }
   return std::move(hir_file);
 }
@@ -97,32 +94,25 @@ std::unique_ptr<hir::Stmt> Lower::LowerStmt(std::unique_ptr<ast::Stmt> stmt) {
 
 std::unique_ptr<hir::RetStmt> Lower::LowerRet(
     std::unique_ptr<ast::RetStmt> stmt) {
-  auto begin = stmt->Begin();
-  auto end = stmt->End();
   if (stmt->expr) {
-    return std::make_unique<hir::RetStmt>(begin, end,
-                                          LowerExpr(std::move(stmt->expr)));
+    return std::make_unique<hir::RetStmt>(LowerExpr(std::move(stmt->expr)));
   } else {
-    return std::make_unique<hir::RetStmt>(begin, end);
+    return std::make_unique<hir::RetStmt>();
   }
 }
 
 std::unique_ptr<hir::VarDeclStmt> Lower::LowerVarDecl(
     std::unique_ptr<ast::VarDeclStmt> stmt) {
-  auto begin = stmt->Begin();
-  auto end = stmt->End();
   auto decl = node_map_.GetDecl(stmt->name);
   auto expr = LowerExpr(std::move(stmt->expr));
-  return std::make_unique<hir::VarDeclStmt>(begin, end, decl, std::move(expr));
+  return std::make_unique<hir::VarDeclStmt>(decl, std::move(expr));
 }
 
 std::unique_ptr<hir::AssignStmt> Lower::LowerAssign(
     std::unique_ptr<ast::AssignStmt> stmt) {
-  auto begin = stmt->Begin();
-  auto end = stmt->End();
   auto decl = node_map_.GetDecl(stmt->name);
   auto expr = LowerExpr(std::move(stmt->expr));
-  return std::make_unique<hir::AssignStmt>(begin, end, decl, std::move(expr));
+  return std::make_unique<hir::AssignStmt>(decl, std::move(expr));
 }
 
 std::unique_ptr<hir::Expr> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
@@ -132,8 +122,6 @@ std::unique_ptr<hir::Expr> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
 
     case ast::Expr::Kind::CALL: {
       auto call = unique_cast<ast::CallExpr>(std::move(expr));
-      auto begin = call->Begin();
-      auto end = call->End();
       auto decl = node_map_.GetDecl(call->ident);
       auto func_decl = decl->AsFuncType();
       unique_deque<hir::Expr> args;
@@ -141,35 +129,29 @@ std::unique_ptr<hir::Expr> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
         auto arg = call->args.move_front();
         args.push_back(LowerExpr(std::move(arg)));
       }
-      return std::make_unique<hir::Call>(begin, end, decl, std::move(args));
+      return std::make_unique<hir::Call>(decl, std::move(args));
     } break;
 
     case ast::Expr::Kind::IDENT: {
       auto ident = unique_cast<ast::Ident>(std::move(expr));
-      auto begin = ident->Begin();
-      auto end = ident->End();
       auto decl = node_map_.GetDecl(ident);
-      return std::make_unique<hir::Variable>(begin, end, decl);
+      return std::make_unique<hir::Variable>(decl);
     } break;
 
     case ast::Expr::Kind::UNARY: {
       auto unary = unique_cast<ast::UnaryExpr>(std::move(expr));
-      auto begin = unary->Begin();
-      auto end = unary->End();
       auto op = un_op_ast_to_hir(unary->op->op);
       auto expr = LowerExpr(std::move(unary->expr));
-      return std::make_unique<hir::Unary>(begin, end, op, std::move(expr));
+      return std::make_unique<hir::Unary>(op, std::move(expr));
     } break;
 
     case ast::Expr::Kind::BINARY: {
       auto ty = node_map_.GetType(expr);
       auto binary = unique_cast<ast::BinaryExpr>(std::move(expr));
-      auto begin = binary->Begin();
-      auto end = binary->End();
       auto op = bin_op_ast_to_hir(binary->op->op);
       auto lhs = LowerExpr(std::move(binary->lhs));
       auto rhs = LowerExpr(std::move(binary->rhs));
-      return std::make_unique<hir::Binary>(begin, end, ty, op, std::move(lhs),
+      return std::make_unique<hir::Binary>(ty, op, std::move(lhs),
                                            std::move(rhs));
     } break;
     case ast::Expr::Kind::IF:
@@ -180,12 +162,10 @@ std::unique_ptr<hir::Expr> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
 }
 
 std::unique_ptr<hir::If> Lower::LowerIf(std::unique_ptr<ast::If> expr) {
-  auto begin = expr->Begin();
-  auto end = expr->End();
   auto ty = node_map_.GetType(expr);
   auto cond = LowerExpr(std::move(expr->cond));
   auto block = LowerBlock(std::move(expr->block));
-  std::unique_ptr<hir::Expr> els;
+  std::unique_ptr<hir::Expr> els = nullptr;
   if (expr->HasElse()) {
     if (expr->IsElseIf()) {
       els = LowerIf(unique_cast<ast::If>(std::move(expr->els)));
@@ -193,27 +173,23 @@ std::unique_ptr<hir::If> Lower::LowerIf(std::unique_ptr<ast::If> expr) {
       els = LowerBlock(unique_cast<ast::Block>(std::move(expr->els)));
     }
   }
-  return std::make_unique<hir::If>(begin, end, ty, std::move(cond),
-                                   std::move(block), std::move(els));
+  return std::make_unique<hir::If>(ty, std::move(cond), std::move(block),
+                                   std::move(els));
 }
 
 std::unique_ptr<hir::Block> Lower::LowerBlock(
     std::unique_ptr<ast::Block> block) {
   auto ty = node_map_.GetType(block);
-  auto begin = block->Begin();
-  auto end = block->End();
   unique_deque<hir::Stmt> stmts;
   while (!block->stmts.empty()) {
     stmts.push_back(LowerStmt(block->stmts.move_front()));
   }
-  return std::make_unique<hir::Block>(begin, end, ty, std::move(stmts));
+  return std::make_unique<hir::Block>(ty, std::move(stmts));
 }
 
 std::unique_ptr<hir::Value> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
   switch (lit->LitKind()) {
     case ast::Lit::Kind::CHAR: {
-      auto begin = lit->Begin();
-      auto end = lit->End();
       auto ty = node_map_.GetType(lit);
 
       std::stringstream ss(lit->val);
@@ -222,10 +198,10 @@ std::unique_ptr<hir::Value> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
       switch (ty->TypedKind()) {
         case Typed::Kind::I32:
         case Typed::Kind::I64:
-          return std::make_unique<hir::IntConstant>(begin, end, ty, r);
+          return std::make_unique<hir::IntConstant>(ty, r);
         case Typed::Kind::F32:
         case Typed::Kind::F64:
-          return std::make_unique<hir::FloatConstant>(begin, end, ty, r);
+          return std::make_unique<hir::FloatConstant>(ty, r);
         default:
           UNREACHABLE
       }
@@ -237,24 +213,17 @@ std::unique_ptr<hir::Value> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
       return ParseFloat(std::move(lit));
     } break;
     case ast::Lit::Kind::BOOL: {
-      auto begin = lit->Begin();
-      auto end = lit->End();
       auto ty = node_map_.GetType(lit);
-      return std::make_unique<hir::BoolConstant>(begin, end, ty,
-                                                 lit->val == "true");
+      return std::make_unique<hir::BoolConstant>(ty, lit->val == "true");
     } break;
     case ast::Lit::Kind::STRING: {
-      auto begin = lit->Begin();
-      auto end = lit->End();
       auto ty = node_map_.GetType(lit);
-      return std::make_unique<hir::StringConstant>(begin, end, ty, lit->val);
+      return std::make_unique<hir::StringConstant>(ty, lit->val);
     } break;
   }
 }
 
 std::unique_ptr<hir::Value> Lower::ParseInt(std::unique_ptr<ast::Lit> lit) {
-  auto begin = lit->Begin();
-  auto end = lit->End();
   try {
     int64_t n = stoll(lit->val);
     auto ty = node_map_.GetType(lit);
@@ -264,25 +233,23 @@ std::unique_ptr<hir::Value> Lower::ParseInt(std::unique_ptr<ast::Lit> lit) {
           throw LocError::Create(lit->Begin(), "overflow int32");
         }
       case Typed::Kind::I64:
-        return std::make_unique<hir::IntConstant>(begin, end, ty, n);
+        return std::make_unique<hir::IntConstant>(ty, n);
       case Typed::Kind::F32:
       case Typed::Kind::F64:
-        return std::make_unique<hir::FloatConstant>(begin, end, ty, n);
+        return std::make_unique<hir::FloatConstant>(ty, n);
       default:
         UNREACHABLE
     }
 
   } catch (std::out_of_range e) {
-    throw LocError::Create(begin, "out of range");
+    throw LocError::Create(lit->Begin(), "out of range");
   } catch (std::invalid_argument e) {
-    throw LocError::Create(begin, "invalid or unimplemented");
+    throw LocError::Create(lit->Begin(), "invalid or unimplemented");
   }
 }
 
 std::unique_ptr<hir::FloatConstant> Lower::ParseFloat(
     std::unique_ptr<ast::Lit> lit) {
-  auto begin = lit->Begin();
-  auto end = lit->End();
   try {
     // TODO: parse float
     double n = stod(lit->val);
@@ -294,11 +261,11 @@ std::unique_ptr<hir::FloatConstant> Lower::ParseFloat(
       default:
         UNREACHABLE
     }
-    return std::make_unique<hir::FloatConstant>(begin, end, ty, n);
+    return std::make_unique<hir::FloatConstant>(ty, n);
   } catch (std::out_of_range e) {
-    throw LocError::Create(begin, "out of range");
+    throw LocError::Create(lit->Begin(), "out of range");
   } catch (std::invalid_argument e) {
-    throw LocError::Create(begin, "invalid or unimplemented");
+    throw LocError::Create(lit->Begin(), "invalid or unimplemented");
   }
 }
 

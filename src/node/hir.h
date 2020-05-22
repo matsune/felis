@@ -12,25 +12,14 @@ namespace felis {
 
 namespace hir {
 
-struct HirNode : public Node {
-  Loc begin;
-  Loc end;
-  HirNode(Loc begin, Loc end) : begin(begin), end(end) {}
-
-  Loc Begin() const override { return begin; }
-  Loc End() const override { return end; }
-};
+struct HirNode : public Node {};
 
 struct Stmt : HirNode {
   enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
   virtual Kind StmtKind() const = 0;
-
-  Stmt(Loc begin, Loc end) : HirNode(begin, end) {}
 };
 
 struct Expr : public Stmt {
-  Expr(Loc begin, Loc end) : Stmt(begin, end) {}
-
   enum Kind { BINARY, VALUE, CALL, UNARY, IF, BLOCK };
   virtual Expr::Kind ExprKind() const = 0;
   virtual std::shared_ptr<Typed> Type() const = 0;
@@ -40,8 +29,6 @@ struct Expr : public Stmt {
 };
 
 struct Value : public Expr {
-  Value(Loc begin, Loc end) : Expr(begin, end) {}
-
   enum Kind { CONSTANT, VARIABLE };
   virtual Value::Kind ValueKind() const = 0;
 
@@ -52,8 +39,7 @@ struct Value : public Expr {
 struct Variable : public Value {
   std::shared_ptr<Decl> decl;
 
-  Variable(Loc begin, Loc end, std::shared_ptr<Decl> decl)
-      : Value(begin, end), decl(decl){};
+  Variable(std::shared_ptr<Decl> decl) : decl(decl){};
 
   // override Value
   Value::Kind ValueKind() const override { return Value::Kind::VARIABLE; }
@@ -64,13 +50,13 @@ struct Variable : public Value {
   }
 };
 
-template <typename T>
 struct Constant : public Value {
+  enum Kind { INT, FLOAT, BOOL, STRING };
   std::shared_ptr<Typed> type;
-  T val;
 
-  Constant(Loc begin, Loc end, std::shared_ptr<Typed> type, T val)
-      : Value(begin, end), type(type), val(val) {}
+  Constant(std::shared_ptr<Typed> type) : type(type) {}
+
+  virtual Constant::Kind ConstantKind() = 0;
 
   // override Value
   Value::Kind ValueKind() const override { return Value::Kind::CONSTANT; }
@@ -79,17 +65,44 @@ struct Constant : public Value {
   std::shared_ptr<Typed> Type() const override { return type; }
 };
 
-using IntConstant = Constant<int64_t>;
-using FloatConstant = Constant<double>;
-using BoolConstant = Constant<bool>;
-using StringConstant = Constant<std::string>;
+struct IntConstant : public Constant {
+  int64_t val;
+  IntConstant(std::shared_ptr<Typed> type, int64_t val)
+      : Constant(type), val(val) {}
+
+  Constant::Kind ConstantKind() override { return Constant::Kind::INT; }
+};
+
+struct FloatConstant : public Constant {
+  double val;
+  FloatConstant(std::shared_ptr<Typed> type, double val)
+      : Constant(type), val(val) {}
+
+  Constant::Kind ConstantKind() override { return Constant::Kind::FLOAT; }
+};
+
+struct BoolConstant : public Constant {
+  bool val;
+  BoolConstant(std::shared_ptr<Typed> type, bool val)
+      : Constant(type), val(val) {}
+
+  Constant::Kind ConstantKind() override { return Constant::Kind::BOOL; }
+};
+
+struct StringConstant : public Constant {
+  std::string val;
+  StringConstant(std::shared_ptr<Typed> type, std::string val)
+      : Constant(type), val(val) {}
+
+  Constant::Kind ConstantKind() override { return Constant::Kind::STRING; }
+};
 
 struct Call : public Expr {
   std::shared_ptr<Decl> decl;
   unique_deque<Expr> args;
 
-  Call(Loc begin, Loc end, std::shared_ptr<Decl> decl, unique_deque<Expr> args)
-      : Expr(begin, end), decl(decl), args(std::move(args)) {}
+  Call(std::shared_ptr<Decl> decl, unique_deque<Expr> args)
+      : Expr(), decl(decl), args(std::move(args)) {}
 
   // override Expr
   Expr::Kind ExprKind() const override { return Expr::Kind::CALL; }
@@ -106,8 +119,8 @@ struct Unary : public Expr {
   Unary::Op op;
   std::unique_ptr<Expr> expr;
 
-  Unary(Loc begin, Loc end, Unary::Op op, std::unique_ptr<Expr> expr)
-      : Expr(begin, end), op(op), expr(std::move(expr)) {}
+  Unary(Unary::Op op, std::unique_ptr<Expr> expr)
+      : Expr(), op(op), expr(std::move(expr)) {}
 
   // override Expr
   Expr::Kind ExprKind() const override { return Expr::Kind::UNARY; }
@@ -136,13 +149,9 @@ struct Binary : public Expr {
   std::unique_ptr<Expr> lhs;
   std::unique_ptr<Expr> rhs;
 
-  Binary(Loc begin, Loc end, std::shared_ptr<Typed> type, Binary::Op op,
-         std::unique_ptr<Expr> lhs, std::unique_ptr<Expr> rhs)
-      : Expr(begin, end),
-        type(type),
-        op(op),
-        lhs(std::move(lhs)),
-        rhs(std::move(rhs)) {}
+  Binary(std::shared_ptr<Typed> type, Binary::Op op, std::unique_ptr<Expr> lhs,
+         std::unique_ptr<Expr> rhs)
+      : Expr(), type(type), op(op), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
   // override Expr
   Expr::Kind ExprKind() const override { return Expr::Kind::BINARY; }
@@ -154,9 +163,8 @@ struct Block : public Expr {
   std::shared_ptr<Typed> type;
   unique_deque<Stmt> stmts;
 
-  Block(Loc begin, Loc end, std::shared_ptr<Typed> type,
-        unique_deque<Stmt> stmts)
-      : Expr(begin, end), type(type), stmts(std::move(stmts)) {}
+  Block(std::shared_ptr<Typed> type, unique_deque<Stmt> stmts)
+      : Expr(), type(type), stmts(std::move(stmts)) {}
 
   // override Expr
   Expr::Kind ExprKind() const override { return Expr::Kind::BLOCK; }
@@ -167,8 +175,8 @@ struct Block : public Expr {
 struct RetStmt : public Stmt {
   std::unique_ptr<Expr> expr;
 
-  RetStmt(Loc begin, Loc end, std::unique_ptr<Expr> expr = nullptr)
-      : Stmt(begin, end), expr(std::move(expr)) {}
+  RetStmt(std::unique_ptr<Expr> expr = nullptr)
+      : Stmt(), expr(std::move(expr)) {}
 
   // override Stmt
   Kind StmtKind() const override { return Stmt::Kind::RET; }
@@ -178,9 +186,8 @@ struct VarDeclStmt : public Stmt {
   std::shared_ptr<Decl> decl;
   std::unique_ptr<Expr> expr;
 
-  VarDeclStmt(Loc begin, Loc end, std::shared_ptr<Decl> decl,
-              std::unique_ptr<Expr> expr)
-      : Stmt(begin, end), decl(decl), expr(std::move(expr)) {}
+  VarDeclStmt(std::shared_ptr<Decl> decl, std::unique_ptr<Expr> expr)
+      : Stmt(), decl(decl), expr(std::move(expr)) {}
 
   // override Stmt
   Kind StmtKind() const override { return Stmt::Kind::VAR_DECL; }
@@ -190,9 +197,8 @@ struct AssignStmt : public Stmt {
   std::shared_ptr<Decl> decl;
   std::unique_ptr<Expr> expr;
 
-  AssignStmt(Loc begin, Loc end, std::shared_ptr<Decl> decl,
-             std::unique_ptr<Expr> expr)
-      : Stmt(begin, end), decl(decl), expr(std::move(expr)) {}
+  AssignStmt(std::shared_ptr<Decl> decl, std::unique_ptr<Expr> expr)
+      : Stmt(), decl(decl), expr(std::move(expr)) {}
 
   // override Stmt
   Kind StmtKind() const override { return Stmt::Kind::ASSIGN; }
@@ -202,18 +208,25 @@ struct If : public Expr {
   std::shared_ptr<Typed> type;
   std::unique_ptr<Expr> cond;
   std::unique_ptr<Block> block;
-  std::unique_ptr<Expr> els;  // null or Block or If
+  std::unique_ptr<Expr> els;
+  bool as_stmt;
 
-  If(Loc begin, Loc end, std::shared_ptr<Typed> type,
-     std::unique_ptr<Expr> cond, std::unique_ptr<Block> block,
-     std::unique_ptr<Expr> els)
-      : Expr(begin, end),
+  If(std::shared_ptr<Typed> type, std::unique_ptr<Expr> cond,
+     std::unique_ptr<Block> block, std::unique_ptr<Expr> els)
+      : Expr(),
         type(type),
         cond(std::move(cond)),
         block(std::move(block)),
         els(std::move(els)) {}
 
   std::shared_ptr<Typed> Type() const override { return type; }
+
+  inline bool HasElse() const { return els != nullptr; }
+
+  inline bool IfElseIf() const {
+    assert(els);
+    return els->ExprKind() == Expr::Kind::IF;
+  }
 
   // override Expr
   Expr::Kind ExprKind() const override { return Expr::Kind::IF; }
@@ -224,20 +237,19 @@ struct FnDecl : public HirNode {
   std::deque<std::shared_ptr<Decl>> args;
   std::unique_ptr<Block> block;
 
-  FnDecl(Loc begin, Loc end, std::shared_ptr<Decl> decl,
-         std::deque<std::shared_ptr<Decl>> args, std::unique_ptr<Block> block)
-      : HirNode(begin, end), decl(decl), args(args), block(std::move(block)) {}
+  FnDecl(std::shared_ptr<Decl> decl, std::deque<std::shared_ptr<Decl>> args,
+         std::unique_ptr<Block> block)
+      : decl(decl), args(args), block(std::move(block)) {}
 };
 
 struct Extern : public HirNode {
   std::shared_ptr<Decl> decl;
 
-  Extern(Loc begin, Loc end, std::shared_ptr<Decl> decl)
-      : HirNode(begin, end), decl(decl) {}
+  Extern(std::shared_ptr<Decl> decl) : decl(decl) {}
 };
 
 struct File {
-  std::vector<std::unique_ptr<Extern>> externs;
+  unique_deque<Extern> externs;
   unique_deque<FnDecl> fn_decls;
 };
 

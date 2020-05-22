@@ -25,6 +25,10 @@ class AstPrinter : public Printer<ast::File> {
   void PrintProto(ast::FnProto *);
   void PrintFnArg(ast::FnArg *);
   void PrintFnDecl(ast::FnDecl *fn);
+
+  void PrintLoc(ast::AstNode *n) {
+    Writeln("Loc: %d-%d", n->Begin(), n->End());
+  }
 };
 
 }  // namespace felis

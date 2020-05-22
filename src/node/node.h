@@ -5,10 +5,7 @@
 
 namespace felis {
 
-struct Node {
-  virtual Loc Begin() const = 0;
-  virtual Loc End() const = 0;
-};
+struct Node {};
 
 }  // namespace felis
 

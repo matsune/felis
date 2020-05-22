@@ -16,8 +16,8 @@ struct Decl {
   enum Kind { EXT, FN, ARG, VAR, LET };
 
   const std::string name;
-  std::shared_ptr<Ty> type;
   const Decl::Kind kind;
+  std::shared_ptr<Ty> type;
 
   Decl(std::string name, std::shared_ptr<Ty> type, Kind kind)
       : name(name), type(type), kind(kind) {}

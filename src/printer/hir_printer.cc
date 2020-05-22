@@ -42,6 +42,7 @@ void HirPrinter::PrintFnDecl(hir::FnDecl *fn) {
     Up("]");
 
     PrintBlock(fn->block.get());
+    PrintPtr(fn);
   }
   Up("}");
 }
@@ -54,6 +55,7 @@ void HirPrinter::PrintBlock(hir::Block *block) {
 
   Down("Block {");
   {
+    PrintPtr(block);
     for (int i = 0; i < block->stmts.size(); i++) {
       PrintIndex(i);
       auto &stmt = block->stmts.at(i);
@@ -71,12 +73,13 @@ void HirPrinter::PrintStmt(hir::Stmt *stmt) {
 
   switch (stmt->StmtKind()) {
     case hir::Stmt::Kind::EXPR:
-      PrintExpr((hir::Expr *)stmt);
+      PrintExpr(dynamic_cast<hir::Expr *>(stmt));
       break;
     case hir::Stmt::Kind::RET:
       Down("Ret {");
       {
-        auto ret = (hir::RetStmt *)stmt;
+        auto ret = dynamic_cast<hir::RetStmt *>(stmt);
+        PrintPtr(ret);
         PrintExpr(ret->expr.get());
       }
       Up("}");
@@ -84,7 +87,8 @@ void HirPrinter::PrintStmt(hir::Stmt *stmt) {
     case hir::Stmt::Kind::VAR_DECL:
       Down("VarDecl {");
       {
-        auto var_decl = (hir::VarDeclStmt *)stmt;
+        auto var_decl = dynamic_cast<hir::VarDeclStmt *>(stmt);
+        PrintPtr(var_decl);
         Writeln(ToString(*var_decl->decl));
         PrintExpr(var_decl->expr.get());
       }
@@ -93,7 +97,8 @@ void HirPrinter::PrintStmt(hir::Stmt *stmt) {
     case hir::Stmt::Kind::ASSIGN:
       Down("Assign {");
       {
-        auto assign = (hir::AssignStmt *)stmt;
+        auto assign = dynamic_cast<hir::AssignStmt *>(stmt);
+        PrintPtr(assign);
         Writeln(ToString(*assign->decl));
         PrintExpr(assign->expr.get());
       }
@@ -112,53 +117,56 @@ void HirPrinter::PrintExpr(hir::Expr *expr) {
     case hir::Expr::Kind::BINARY:
       Down("BinaryExpr {");
       {
-        auto binary = (hir::Binary *)expr;
+        auto binary = dynamic_cast<hir::Binary *>(expr);
         Write("Left: ");
         PrintExpr(binary->lhs.get());
         Writeln("Op: " + ToString(binary->op));
         Write("Right: ");
         PrintExpr(binary->rhs.get());
+        PrintPtr(binary);
       }
       Up("}");
       break;
 
     case hir::Expr::Kind::VALUE: {
-      auto value = (hir::Value *)expr;
+      auto value = dynamic_cast<hir::Value *>(expr);
       switch (value->ValueKind()) {
         case hir::Value::Kind::CONSTANT: {
+          Down("Value {");
           {
-            auto int_cons = dynamic_cast<hir::IntConstant *>(value);
-            if (int_cons) {
-              Writeln("CONSTANT %s: %d", ToString(*int_cons->Type()).c_str(),
-                      int_cons->val);
+            auto cons = dynamic_cast<hir::Constant *>(value);
+            PrintPtr(cons);
+            switch (cons->ConstantKind()) {
+              case hir::Constant::Kind::INT: {
+                auto int_cons = dynamic_cast<hir::IntConstant *>(cons);
+                Writeln("CONSTANT %s: %d", ToString(*int_cons->Type()).c_str(),
+                        int_cons->val);
+              } break;
+              case hir::Constant::Kind::FLOAT: {
+                auto float_cons = dynamic_cast<hir::FloatConstant *>(cons);
+                Writeln("CONSTANT %s: %f",
+                        ToString(*float_cons->Type()).c_str(), float_cons->val);
+              } break;
+              case hir::Constant::Kind::BOOL: {
+                auto bool_cons = dynamic_cast<hir::BoolConstant *>(cons);
+                const char *v = bool_cons->val ? "true" : "false";
+                Writeln("CONSTANT %s: %s", ToString(*bool_cons->Type()).c_str(),
+                        v);
+              } break;
+              case hir::Constant::Kind::STRING: {
+                auto str_cons = dynamic_cast<hir::StringConstant *>(cons);
+                Writeln("CONSTANT %s: %s", ToString(*str_cons->Type()).c_str(),
+                        str_cons->val.c_str());
+              } break;
             }
           }
-          {
-            auto float_cons = dynamic_cast<hir::FloatConstant *>(value);
-            if (float_cons) {
-              Writeln("CONSTANT %s: %f", ToString(*float_cons->Type()).c_str(),
-                      float_cons->val);
-            }
-          }
-          {
-            auto bool_cons = dynamic_cast<hir::BoolConstant *>(value);
-            if (bool_cons) {
-              Writeln("CONSTANT %s: %s", ToString(*bool_cons->Type()).c_str(),
-                      bool_cons->val ? "true" : "false");
-            }
-          }
-          {
-            auto str_cons = dynamic_cast<hir::StringConstant *>(value);
-            if (str_cons) {
-              Writeln("CONSTANT %s: %s", ToString(*str_cons->Type()).c_str(),
-                      str_cons->val.c_str());
-            }
-          }
+          Up("}");
         } break;
         case hir::Value::Kind::VARIABLE:
           Down("Variable {");
           {
-            auto var = (hir::Variable *)value;
+            auto var = dynamic_cast<hir::Variable *>(value);
+            PrintPtr(var);
             Writeln(ToString(*var->decl));
           }
           Up("}");
@@ -169,7 +177,8 @@ void HirPrinter::PrintExpr(hir::Expr *expr) {
     case hir::Expr::Kind::CALL:
       Down("Call {");
       {
-        auto call = (hir::Call *)expr;
+        auto call = dynamic_cast<hir::Call *>(expr);
+        PrintPtr(call);
         Writeln(ToString(*call->decl));
         Down("Args [");
         {
@@ -187,10 +196,11 @@ void HirPrinter::PrintExpr(hir::Expr *expr) {
     case hir::Expr::Kind::UNARY:
       Down("Unary {");
       {
-        auto unary = (hir::Unary *)expr;
+        auto unary = dynamic_cast<hir::Unary *>(expr);
         std::string op = unary->op == hir::Unary::Op::NEG ? "-" : "!";
         Writeln("op: %s", op.c_str());
         PrintExpr(unary->expr.get());
+        PrintPtr(unary);
       }
       Up("}");
       break;
@@ -198,7 +208,8 @@ void HirPrinter::PrintExpr(hir::Expr *expr) {
     case hir::Expr::Kind::IF:
       Down("If {");
       {
-        auto if_stmt = (hir::If *)expr;
+        auto if_stmt = dynamic_cast<hir::If *>(expr);
+        PrintPtr(if_stmt);
         Write("Cond: ");
         PrintExpr(if_stmt->cond.get());
         PrintBlock(if_stmt->block.get());
@@ -208,7 +219,7 @@ void HirPrinter::PrintExpr(hir::Expr *expr) {
       Up("}");
       break;
     case hir::Expr::Kind::BLOCK:
-      PrintBlock((hir::Block *)expr);
+      PrintBlock(dynamic_cast<hir::Block *>(expr));
       break;
   }
 }
