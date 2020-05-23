@@ -21,9 +21,11 @@ class Parser {
 
  private:
   unique_deque<Token> tokens_;
-  const std::unique_ptr<Token> &Peek() const;
-  const std::unique_ptr<Token> &Peek2() const;
-  std::unique_ptr<Token> Bump();
+  inline const std::unique_ptr<Token> &Peek() const;
+  inline const std::unique_ptr<Token> &Peek2() const;
+  inline std::unique_ptr<Token> Bump();
+  inline bool Match(Token::Kind);
+
   std::unique_ptr<ast::Extern> ParseExtern();
   std::unique_ptr<ast::FnDecl> ParseFnDecl();
   std::unique_ptr<ast::FnProto> ParseFnProto();
