@@ -68,7 +68,7 @@ inline ast::BinaryOp::Op binop_from_tok(Token::Kind kind) {
     case Token::Kind::NEQ:
       return ast::BinaryOp::NEQ;
     default:
-      assert(false);
+      UNREACHABLE
   }
 }
 
@@ -249,7 +249,7 @@ std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
         end, unique_cast<ast::Ident>(std::move(lhs)), std::move(args));
   }
   if (un_op) {
-    return std::make_unique<ast::UnaryExpr>(std::move(un_op), std::move(lhs));
+    lhs = std::make_unique<ast::UnaryExpr>(std::move(un_op), std::move(lhs));
   }
 
   if (Peek()->nl) {
@@ -308,7 +308,7 @@ std::unique_ptr<ast::Expr> Parser::ParsePrimary() {
       Bump();
       auto expr = ParseExpr();
       if (!Match(Token::Kind::RPAREN)) {
-        Throw("expected %s", ToString(Token::Kind::RPAREN).c_str());
+        Throw("expected )");
       }
       Bump();
       return expr;

@@ -76,8 +76,7 @@ void Builder::Build(std::unique_ptr<hir::File> file) {
     }
 
     while (!fn_decl->block->stmts.empty()) {
-      auto stmt = fn_decl->block->stmts.move_front();
-      BuildStmt(std::move(stmt));
+      BuildStmt(fn_decl->block->stmts.move_front());
     }
 
     /* std::string str; */
@@ -141,7 +140,7 @@ void Builder::BuildAssignStmt(std::unique_ptr<hir::AssignStmt> stmt) {
 
 llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
   auto ty = binary->Type();
-  auto is_float = ty->IsTypedFloat();
+  auto is_float = binary->lhs->Type()->IsTypedFloat();
   auto lhs = BuildExpr(std::move(binary->lhs));
   auto rhs = BuildExpr(std::move(binary->rhs));
 
@@ -277,8 +276,21 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
       return builder_.CreateCall(fn_type, arg_values);
     } break;
     case hir::Expr::Kind::UNARY: {
-      /* auto unary = (hir::Unary*)expr; */
-      UNIMPLEMENTED
+      auto unary = unique_cast<hir::Unary>(std::move(expr));
+      bool is_float = unary->Type()->IsTypedFloat();
+      auto expr = BuildExpr(std::move(unary->expr));
+      switch (unary->op) {
+        case hir::Unary::Op::NEG:
+          return is_float
+                     ? builder_.CreateFMul(
+                           llvm::ConstantFP::get(expr->getType(), -1), expr)
+
+                     : builder_.CreateMul(
+                           llvm::ConstantInt::getSigned(expr->getType(), -1),
+                           expr);
+        case hir::Unary::Op::NOT:
+          return builder_.CreateXor(expr, llvm::ConstantInt::getTrue(ctx_));
+      }
     } break;
     case hir::Expr::IF:
     case hir::Expr::BLOCK: {
