@@ -96,8 +96,13 @@ void TyInfer::InferVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
   if (expr_ty->IsVoid()) {
     throw LocError::Create(stmt->Begin(), "cannot decl void type var");
   }
-  assert(decl->type == nullptr);
-  decl->type = expr_ty;
+  if (decl->type) {
+    if (!Resolve(expr_ty, decl->type)) {
+      throw LocError::Create(stmt->expr->Begin(), "mismatched decl type");
+    }
+  } else {
+    decl->type = expr_ty;
+  }
 }
 
 void TyInfer::InferAssign(const std::unique_ptr<ast::AssignStmt>& stmt) {

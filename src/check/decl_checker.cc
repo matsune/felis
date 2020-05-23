@@ -121,9 +121,17 @@ void DeclChecker::CheckVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
   if (!CanDecl(name)) {
     throw LocError::Create(stmt->Begin(), "redeclared var %s", name.c_str());
   }
+  std::shared_ptr<Ty> ty;
+  if (stmt->ty_name) {
+    ty = LookupType(stmt->ty_name->val);
+    if (!ty) {
+      throw LocError::Create(stmt->ty_name->Begin(), "unknown arg type %s",
+                             stmt->ty_name->val.c_str());
+    }
+  }
   CheckExpr(stmt->expr);
   auto decl = std::make_shared<Decl>(
-      name, nullptr, stmt->is_let ? Decl::Kind::LET : Decl::Kind::VAR);
+      name, ty, stmt->is_let ? Decl::Kind::LET : Decl::Kind::VAR);
   current_scope_->InsertDecl(name, decl);
   SetDecl(stmt->name, decl);
 }

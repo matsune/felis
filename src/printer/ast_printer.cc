@@ -161,6 +161,8 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
         Writeln("Decl: %s", var_decl->is_let ? "let" : "var");
         Write("Name: ");
         PrintIdent(var_decl->name.get());
+        Write("Ty: ");
+        PrintIdent(var_decl->ty_name.get());
         Write("Expr: ");
         PrintExpr(var_decl->expr.get());
         PrintPtr(var_decl);

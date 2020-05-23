@@ -345,13 +345,23 @@ std::unique_ptr<ast::Stmt> Parser::ParseStmt() {
     auto ident = Bump();
     auto name = std::make_unique<ast::Ident>(ident->begin, ident->val);
 
+    std::unique_ptr<ast::Ident> ty_name;
+    if (Peek()->kind == Token::Kind::COLON) {
+      // let a: i32 = ...
+      Bump();
+      if (Peek()->kind != Token::Kind::IDENT) {
+        Throw("expected %s", ToString(Token::Kind::IDENT).c_str());
+      }
+      auto ty_ident = Bump();
+      ty_name = std::make_unique<ast::Ident>(ty_ident->begin, ty_ident->val);
+    }
     if (Peek()->kind != Token::Kind::EQ) {
       Throw("expected %s", ToString(Token::Kind::EQ).c_str());
     }
     Bump();
 
     return std::make_unique<ast::VarDeclStmt>(kw_begin, is_let, std::move(name),
-                                              ParseExpr());
+                                              std::move(ty_name), ParseExpr());
   } else if (Peek()->kind == Token::Kind::IDENT) {
     if (Peek2()->kind == Token::Kind::EQ) {
       // assign stmt

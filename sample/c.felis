@@ -2,7 +2,7 @@ fn c() -> i8 { ret 4 }
 
 fn main() -> i32 {
   let b = c()
-  let c = 32 + b
+  let c: i8 = 125
   ret if c > 0 {
     4
   } else {

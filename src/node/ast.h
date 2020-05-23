@@ -259,13 +259,17 @@ struct VarDeclStmt : public Stmt {
   Loc begin;
   bool is_let;
   std::unique_ptr<Ident> name;
+  std::unique_ptr<Ident> ty_name;
   std::unique_ptr<Expr> expr;
 
   VarDeclStmt(Loc begin, bool is_let, std::unique_ptr<Ident> name,
+              std::unique_ptr<Ident> ty_name,
+
               std::unique_ptr<Expr> expr)
       : begin(begin),
         is_let(is_let),
         name(std::move(name)),
+        ty_name(std::move(ty_name)),
         expr(std::move(expr)) {}
 
   Loc Begin() const override { return begin; }
