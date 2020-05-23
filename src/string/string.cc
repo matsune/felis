@@ -163,6 +163,10 @@ std::string ToString(const Typed &t) {
   switch (t.TypedKind()) {
     case Typed::Kind::VOID:
       return "void";
+    case Typed::Kind::I8:
+      return "i8";
+    case Typed::Kind::I16:
+      return "i16";
     case Typed::Kind::I32:
       return "i32";
     case Typed::Kind::I64:

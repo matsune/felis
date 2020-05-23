@@ -10,6 +10,8 @@ void DeclChecker::SetupBuiltin() {
   assert(current_scope_->IsTop());
   // insert basic types into global scope
   current_scope_->InsertType("void", kTypeVoid);
+  current_scope_->InsertType("i8", kTypeI8);
+  current_scope_->InsertType("i16", kTypeI16);
   current_scope_->InsertType("i32", kTypeI32);
   current_scope_->InsertType("i64", kTypeI64);
   current_scope_->InsertType("f32", kTypeF32);

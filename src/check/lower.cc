@@ -50,6 +50,7 @@ hir::Binary::Op bin_op_ast_to_hir(ast::BinaryOp::Op op) {
 std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file) {
   // Type Checks
   decl_checker_.Check(file);
+  std::cout << ">>Done DeclCheck" << std::endl;
   ty_infer_.Infer(file);
 
   node_map_.FinalizeTypes();
@@ -228,10 +229,21 @@ std::unique_ptr<hir::Value> Lower::ParseInt(std::unique_ptr<ast::Lit> lit) {
     int64_t n = stoll(lit->val);
     auto ty = node_map_.GetType(lit);
     switch (ty->TypedKind()) {
+      case Typed::Kind::I8:
+        if (n < INT8_MIN || n > INT8_MAX) {
+          throw LocError::Create(lit->Begin(), "overflow int8");
+        }
+        return std::make_unique<hir::IntConstant>(ty, n);
+      case Typed::Kind::I16:
+        if (n < INT16_MIN || n > INT16_MAX) {
+          throw LocError::Create(lit->Begin(), "overflow int16");
+        }
+        return std::make_unique<hir::IntConstant>(ty, n);
       case Typed::Kind::I32:
-        if (n > INT32_MAX) {
+        if (n < INT32_MIN || n > INT32_MAX) {
           throw LocError::Create(lit->Begin(), "overflow int32");
         }
+        return std::make_unique<hir::IntConstant>(ty, n);
       case Typed::Kind::I64:
         return std::make_unique<hir::IntConstant>(ty, n);
       case Typed::Kind::F32:

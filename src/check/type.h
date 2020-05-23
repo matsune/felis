@@ -22,6 +22,8 @@ struct Ty {
   virtual bool IsBool() const { return false; }
   virtual bool IsString() const { return false; }
   virtual bool IsVoid() const { return false; }
+  virtual bool IsI8() const { return false; }
+  virtual bool IsI16() const { return false; }
   virtual bool IsI32() const { return false; }
   virtual bool IsI64() const { return false; }
   virtual bool IsF32() const { return false; }
@@ -40,6 +42,8 @@ struct Typed : public Ty {
     FUNC,
     // BasicType
     VOID,
+    I8,
+    I16,
     I32,
     I64,
     F32,
@@ -59,11 +63,15 @@ struct Typed : public Ty {
   bool IsBool() const override { return kind == Typed::Kind::BOOL; }
   bool IsString() const override { return kind == Typed::Kind::STRING; }
   bool IsVoid() const override { return kind == Typed::Kind::VOID; }
+  bool IsI8() const override { return kind == Typed::Kind::I8; }
+  bool IsI16() const override { return kind == Typed::Kind::I16; }
   bool IsI32() const override { return kind == Typed::Kind::I32; }
   bool IsI64() const override { return kind == Typed::Kind::I64; }
   bool IsF32() const override { return kind == Typed::Kind::F32; }
   bool IsF64() const override { return kind == Typed::Kind::F64; }
-  bool IsTypedInt() const override { return IsI32() || IsI64(); }
+  bool IsTypedInt() const override {
+    return IsI8() || IsI16() || IsI32() || IsI64();
+  }
   bool IsTypedFloat() const override { return IsF32() || IsF64(); }
   bool IsTypedNum() const override { return IsTypedInt() || IsTypedFloat(); }
 };
@@ -115,6 +123,8 @@ struct Untyped : public Ty {
 };
 
 const auto kTypeVoid = std::make_shared<Typed>(Typed::Kind::VOID);
+const auto kTypeI8 = std::make_shared<Typed>(Typed::Kind::I8);
+const auto kTypeI16 = std::make_shared<Typed>(Typed::Kind::I16);
 const auto kTypeI32 = std::make_shared<Typed>(Typed::Kind::I32);
 const auto kTypeI64 = std::make_shared<Typed>(Typed::Kind::I64);
 const auto kTypeF32 = std::make_shared<Typed>(Typed::Kind::F32);

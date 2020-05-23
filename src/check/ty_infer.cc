@@ -27,6 +27,7 @@ void TyInfer::Infer(std::unique_ptr<ast::File>& file) {
     if (!current_func_->ret->IsVoid() && !fn_decl->block->IsTerminating()) {
       throw LocError::Create(fn_decl->End(), "func block needs ret stmt");
     }
+    std::cout << "[Infer] " << fn_decl->proto->name->val << std::endl;
     InferBlock(fn_decl->block, false);
   }
 }
@@ -63,6 +64,7 @@ std::shared_ptr<Ty> TyInfer::InferStmt(const std::unique_ptr<ast::Stmt>& stmt,
     }
   }
 
+  std::cout << "[Infer] Stmt " << stmt->StmtKind() << std::endl;
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR:
       return InferExpr((std::unique_ptr<ast::Expr>&)stmt, as_expr);

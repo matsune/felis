@@ -22,6 +22,11 @@ fn o() {
 }
 
 fn main() ->i32 {
+  if true {
+    let b = 4
+  } else {
+    32
+  }
   var a = 'a';
   let c = b() + '4';
   let d = 関数1(a)

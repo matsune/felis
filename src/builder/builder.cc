@@ -13,6 +13,10 @@ llvm::Type* Builder::LLVMType(const std::shared_ptr<Typed>& ty) {
   switch (ty->TypedKind()) {
     case Typed::Kind::BOOL:
       return llvm::Type::getInt1Ty(ctx_);
+    case Typed::Kind::I8:
+      return llvm::Type::getInt8Ty(ctx_);
+    case Typed::Kind::I16:
+      return llvm::Type::getInt16Ty(ctx_);
     case Typed::Kind::I32:
       return llvm::Type::getInt32Ty(ctx_);
     case Typed::Kind::I64:
