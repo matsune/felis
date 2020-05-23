@@ -27,6 +27,7 @@ class Builder {
         machine_(std::move(machine)) {
     module_.setSourceFileName(file_name);
     module_.setDataLayout(machine_->createDataLayout());
+    module_.setTargetTriple(machine_->getTargetTriple().str());
   };
 
   void Build(std::unique_ptr<hir::File>);
