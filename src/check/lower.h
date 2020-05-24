@@ -16,7 +16,8 @@ class Lower {
   Lower()
       : decl_checker_(DeclChecker(node_map_)), ty_infer_(TyInfer(node_map_)){};
 
-  std::unique_ptr<hir::File> Lowering(std::unique_ptr<ast::File>);
+  std::unique_ptr<hir::File> Lowering(std::unique_ptr<ast::File>,
+                                      bool is_32bit);
 
  private:
   NodeMap node_map_;

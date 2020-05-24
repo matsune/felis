@@ -1,14 +1,10 @@
-#include <llvm/ADT/StringMap.h>
-#include <llvm/MC/SubtargetFeature.h>
-#include <llvm/Support/TargetRegistry.h>
-#include <llvm/Support/TargetSelect.h>
-
 #include <fstream>
 #include <iostream>
 #include <string>
 
 #include "args.h"
 #include "builder/builder.h"
+#include "builder/target.h"
 #include "check/lower.h"
 #include "error/error.h"
 #include "loc.h"
@@ -17,33 +13,6 @@
 #include "syntax/lexer.h"
 #include "syntax/parser.h"
 #include "unique.h"
-
-std::string getHostCPUFeatures() {
-  llvm::SubtargetFeatures Features;
-  llvm::StringMap<bool> HostFeatures;
-
-  if (llvm::sys::getHostCPUFeatures(HostFeatures))
-    for (auto &F : HostFeatures) Features.AddFeature(F.first(), F.second);
-
-  return Features.getString();
-}
-
-std::unique_ptr<llvm::TargetMachine> createTargetMachine(std::string &err) {
-  if (llvm::InitializeNativeTarget()) return nullptr;
-  if (llvm::InitializeNativeTargetAsmPrinter()) return nullptr;
-
-  std::string triple = llvm::sys::getDefaultTargetTriple();
-  std::string cpu = llvm::sys::getHostCPUName();
-  std::string features = getHostCPUFeatures();
-  const llvm::Target *target = llvm::TargetRegistry::lookupTarget(triple, err);
-  if (!target) {
-    return nullptr;
-  }
-
-  llvm::TargetOptions opt;
-  return std::unique_ptr<llvm::TargetMachine>(
-      target->createTargetMachine(triple, cpu, features, opt, llvm::None));
-}
 
 class Session {
  public:
@@ -96,14 +65,15 @@ class Session {
   }
 
   std::unique_ptr<felis::hir::File> LowerAst(
-      std::unique_ptr<felis::ast::File> ast) {
+      std::unique_ptr<felis::ast::File> ast, bool is_32bit) {
     felis::Lower lower;
-    return lower.Lowering(std::move(ast));
+    return lower.Lowering(std::move(ast), is_32bit);
   }
 
   std::unique_ptr<llvm::TargetMachine> CreateTargetMachine() {
     std::string err;
-    auto machine = createTargetMachine(err);
+    std::unique_ptr<llvm::TargetMachine> machine =
+        felis::CreateTargetMachine(opts->Target(), err);
     if (!machine) {
       throw std::runtime_error(err);
     }
@@ -144,17 +114,22 @@ class Session {
   int Run() {
     int exit = 0;
     try {
+      auto machine = CreateTargetMachine();
+      if (!machine) return 1;
+
+      bool is_32bit = machine->getTargetTriple().isArch32Bit();
+
       auto ast = ParseAst();
       if (!ast) return 1;
 
       if (opts->IsPrintAst()) felis::AstPrinter().Print(ast);
 
-      auto hir = LowerAst(std::move(ast));
+      auto hir = LowerAst(std::move(ast), is_32bit);
       if (!hir) return 1;
 
       if (opts->IsPrintHir()) felis::HirPrinter().Print(hir);
 
-      Build(CreateTargetMachine(), std::move(hir));
+      Build(std::move(machine), std::move(hir));
 
     } catch (felis::LocError &err) {
       exit = Report(err);

@@ -46,10 +46,11 @@ std::string extOfEmit(EmitType emit) {
 
 class Opts {
  public:
-  Opts(std::string filepath, std::string output, bool print_ast, bool print_hir,
-       Emits emits)
+  Opts(std::string filepath, std::string output, std::string target,
+       bool print_ast, bool print_hir, Emits emits)
       : filepath_(filepath),
         output_(output),
+        target_(target),
         print_ast_(print_ast),
         print_hir_(print_hir),
         emits_(emits){};
@@ -65,7 +66,9 @@ class Opts {
     }
   }
 
-  std::string Filepath() { return filepath_; }
+  std::string &Filepath() { return filepath_; }
+
+  std::string &Target() { return target_; }
 
   bool IsPrintAst() { return print_ast_; }
 
@@ -82,6 +85,7 @@ class Opts {
  private:
   std::string filepath_;
   std::string output_;
+  std::string target_;
   bool print_ast_;
   bool print_hir_;
   Emits emits_;

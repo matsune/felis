@@ -47,7 +47,8 @@ hir::Binary::Op bin_op_ast_to_hir(ast::BinaryOp::Op op) {
 
 }  // namespace
 
-std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file) {
+std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file,
+                                           bool is_32bit) {
   // Type Checks
   decl_checker_.Check(file);
   std::cout << ">>Done DeclCheck" << std::endl;
