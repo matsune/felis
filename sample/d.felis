@@ -1,0 +1,4 @@
+fn main() -> i32 {
+  let arr: [i32, 4] = [if true {1} else {2}, 2, 3, 4]
+
+}

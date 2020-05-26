@@ -53,6 +53,8 @@ struct Token {
     RPAREN,  // )
     LBRACE,  // {
     RBRACE,  // }
+    LBRACK,  // [
+    RBRACK,  // ]
     EQ,      // =
     SEMI,    // ;
     COLON,   // :

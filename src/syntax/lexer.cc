@@ -255,6 +255,10 @@ std::unique_ptr<Token> Lexer::Next() {
       tok->kind = Token::Kind::LBRACE;
     } else if (BumpIf('}')) {
       tok->kind = Token::Kind::RBRACE;
+    } else if (BumpIf('[')) {
+      tok->kind = Token::Kind::LBRACK;
+    } else if (BumpIf(']')) {
+      tok->kind = Token::Kind::RBRACK;
     } else if (BumpIf(':')) {
       tok->kind = Token::Kind::COLON;
     } else if (BumpIf('=')) {

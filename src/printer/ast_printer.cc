@@ -78,7 +78,7 @@ void AstPrinter::PrintProto(ast::FnProto *proto) {
   }
   Up("]");
   if (proto->ret) {
-    PrintIdent(proto->ret.get());
+    PrintType(proto->ret.get());
   }
 }
 
@@ -93,7 +93,7 @@ void AstPrinter::PrintFnArg(ast::FnArg *arg) {
     Write("Name: ");
     PrintIdent(arg->name.get());
     Write("Ty: ");
-    PrintIdent(arg->ty.get());
+    PrintType(arg->type_name.get());
     PrintPtr(arg);
     PrintLoc(arg);
   }
@@ -133,6 +133,35 @@ void AstPrinter::PrintIdent(ast::Ident *ident) {
   Up("}");
 }
 
+void AstPrinter::PrintType(ast::Type *ty) {
+  if (!ty) {
+    Writeln("null");
+    return;
+  }
+
+  Down("Type {");
+  {
+    switch (ty->TypeKind()) {
+      case ast::Type::Kind::IDENT: {
+        auto ident = dynamic_cast<ast::TypeIdent *>(ty);
+        Writeln("Name: " + ident->val);
+        PrintPtr(ident);
+        PrintLoc(ident);
+      } break;
+      case ast::Type::Kind::ARRAY: {
+        auto array = dynamic_cast<ast::ArrayType *>(ty);
+        Write("Elem: ");
+        PrintType(array->elem.get());
+        Write("Size: ");
+        PrintLit(array->size_lit.get());
+      } break;
+    }
+    PrintPtr(ty);
+    PrintLoc(ty);
+  }
+  Up("}");
+}
+
 void AstPrinter::PrintStmt(ast::Stmt *stmt) {
   if (!stmt) {
     Writeln("null");
@@ -162,7 +191,7 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
         Write("Name: ");
         PrintIdent(var_decl->name.get());
         Write("Ty: ");
-        PrintIdent(var_decl->ty_name.get());
+        PrintType(var_decl->type_name.get());
         Write("Expr: ");
         PrintExpr(var_decl->expr.get());
         PrintPtr(var_decl);
@@ -265,6 +294,17 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
     case ast::Expr::Kind::BLOCK:
       PrintBlock(dynamic_cast<ast::Block *>(expr));
       break;
+    case ast::Expr::Kind::ARRAY:
+      Down("Array [");
+      {
+        auto array = dynamic_cast<ast::ArrayExpr *>(expr);
+        for (int i = 0; i < array->exprs.size(); i++) {
+          PrintIndex(i);
+          auto expr = array->exprs.at(i).get();
+          PrintExpr(expr);
+        }
+      }
+      Up("]");
   }
 }
 

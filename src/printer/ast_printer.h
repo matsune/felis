@@ -16,6 +16,7 @@ class AstPrinter : public Printer<ast::File> {
 
  private:
   void PrintIdent(ast::Ident *ident);
+  void PrintType(ast::Type *ty);
   void PrintStmt(ast::Stmt *stmt);
   void PrintExpr(ast::Expr *expr);
   void PrintLit(ast::Lit *lit);

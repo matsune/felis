@@ -67,6 +67,10 @@ std::string ToString(const Token::Kind &kind) {
       return "{";
     case Token::Kind::RBRACE:
       return "}";
+    case Token::Kind::LBRACK:
+      return "[";
+    case Token::Kind::RBRACK:
+      return "]";
     case Token::Kind::EQ:
       return "=";
     case Token::Kind::SEMI:
@@ -77,9 +81,8 @@ std::string ToString(const Token::Kind &kind) {
       return ",";
     case Token::Kind::ARROW:
       return "->";
-    default:
-      return "unknown";
   }
+  UNREACHABLE
 }
 
 std::string ToString(const ast::BinaryOp::Op &op) {

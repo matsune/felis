@@ -92,7 +92,7 @@ struct Stmt : public AstNode {
 };
 
 struct Expr : public Stmt {
-  enum Kind { IDENT, BINARY, LIT, CALL, UNARY, BLOCK, IF };
+  enum Kind { IDENT, BINARY, LIT, CALL, UNARY, BLOCK, IF, ARRAY };
   virtual Expr::Kind ExprKind() const = 0;
 
   Stmt::Kind StmtKind() const override { return Stmt::Kind::EXPR; }
@@ -191,6 +191,44 @@ struct Lit : public Expr {
   Expr::Kind ExprKind() const override { return Expr::Kind::LIT; }
 };
 
+struct Type : public AstNode {
+  enum Kind { IDENT, ARRAY };
+  virtual Type::Kind TypeKind() const = 0;
+};
+
+struct TypeIdent : public Type {
+  const Loc begin;
+  std::string val;
+
+  TypeIdent(Loc begin, std::string val) : begin(begin), val(val) {}
+
+  Type::Kind TypeKind() const override { return Type::Kind::IDENT; }
+
+  const Loc Begin() const override { return begin; }
+
+  const Loc End() const override { return begin + val.size(); }
+};
+
+struct ArrayType : public Type {
+  const Loc begin;
+  const Loc end;
+  std::unique_ptr<Type> elem;
+  std::unique_ptr<Lit> size_lit;
+
+  ArrayType(Loc begin, Loc end, std::unique_ptr<Type> elem,
+            std::unique_ptr<Lit> size_lit)
+      : begin(begin),
+        end(end),
+        elem(std::move(elem)),
+        size_lit(std::move(size_lit)) {}
+
+  const Loc Begin() const override { return begin; }
+
+  const Loc End() const override { return end; }
+
+  Type::Kind TypeKind() const override { return Type::Kind::ARRAY; }
+};
+
 struct BinaryExpr : public Expr {
   std::unique_ptr<Expr> lhs;
   std::unique_ptr<Expr> rhs;
@@ -236,6 +274,20 @@ struct UnaryExpr : public Expr {
   Expr::Kind ExprKind() const override { return Expr::Kind::UNARY; }
 };
 
+struct ArrayExpr : public Expr {
+  Loc begin, end;
+  std::vector<std::unique_ptr<Expr>> exprs;
+
+  ArrayExpr(Loc begin, Loc end, std::vector<std::unique_ptr<Expr>> exprs)
+      : begin(begin), end(end), exprs(std::move(exprs)) {}
+
+  const Loc Begin() const override { return begin; }
+
+  const Loc End() const override { return end; }
+
+  Expr::Kind ExprKind() const override { return Expr::Kind::ARRAY; }
+};
+
 struct RetStmt : public Stmt {
   const Loc begin;
   const Loc end;
@@ -257,17 +309,17 @@ struct VarDeclStmt : public Stmt {
   const Loc begin;
   const bool is_let;
   std::unique_ptr<Ident> name;
-  std::unique_ptr<Ident> ty_name;
+  std::unique_ptr<Type> type_name;
   std::unique_ptr<Expr> expr;
 
   VarDeclStmt(Loc begin, bool is_let, std::unique_ptr<Ident> name,
-              std::unique_ptr<Ident> ty_name,
+              std::unique_ptr<Type> type_name,
 
               std::unique_ptr<Expr> expr)
       : begin(begin),
         is_let(is_let),
         name(std::move(name)),
-        ty_name(std::move(ty_name)),
+        type_name(std::move(type_name)),
         expr(std::move(expr)) {}
 
   const Loc Begin() const override { return begin; }
@@ -292,19 +344,19 @@ struct AssignStmt : public Stmt {
 };
 
 struct FnArg : public AstNode {
-  std::unique_ptr<Ident> ty;
+  std::unique_ptr<Type> type_name;
   std::unique_ptr<Ident> name;
 
-  FnArg(std::unique_ptr<Ident> ty, std::unique_ptr<Ident> name = nullptr)
-      : ty(std::move(ty)), name(std::move(name)) {}
+  FnArg(std::unique_ptr<Type> type_name, std::unique_ptr<Ident> name = nullptr)
+      : type_name(std::move(type_name)), name(std::move(name)) {}
 
   bool WithName() const { return name != nullptr; }
 
   const Loc Begin() const override {
-    return WithName() ? name->Begin() : ty->Begin();
+    return WithName() ? name->Begin() : type_name->Begin();
   }
 
-  const Loc End() const override { return ty->End(); }
+  const Loc End() const override { return type_name->End(); }
 };
 
 struct FnArgs : public AstNode {
@@ -324,10 +376,10 @@ struct FnProto : public AstNode {
   const Loc begin;
   std::unique_ptr<Ident> name;
   std::unique_ptr<FnArgs> args;
-  std::unique_ptr<Ident> ret;
+  std::unique_ptr<Type> ret;
 
   FnProto(Loc begin, std::unique_ptr<Ident> name, std::unique_ptr<FnArgs> args,
-          std::unique_ptr<Ident> ret = nullptr)
+          std::unique_ptr<Type> ret = nullptr)
       : begin(begin),
         name(std::move(name)),
         args(std::move(args)),

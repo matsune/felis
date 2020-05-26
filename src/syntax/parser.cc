@@ -16,11 +16,11 @@ inline bool is_lit(Token::Kind kind) {
          kind == Token::Kind::LIT_BOOL;
 }
 
-inline bool is_primary(Token::Kind kind) {
-  return kind == Token::Kind::LBRACE || kind == Token::Kind::KW_IF ||
-         kind == Token::Kind::LPAREN || kind == Token::Kind::IDENT ||
-         is_lit(kind);
-}
+/* inline bool is_primary(Token::Kind kind) { */
+/*   return kind == Token::Kind::LBRACK || kind == Token::Kind::LBRACE || */
+/*          kind == Token::Kind::KW_IF || kind == Token::Kind::LPAREN || */
+/*          kind == Token::Kind::IDENT || is_lit(kind); */
+/* } */
 
 bool is_bin_op(Token::Kind kind) {
   switch (kind) {
@@ -115,13 +115,9 @@ std::unique_ptr<ast::FnProto> Parser::ParseFnProto() {
 
   if (Match(Token::Kind::ARROW)) {
     Bump();
-    if (!Match(Token::Kind::IDENT)) {
-      Throw("expected ident");
-    }
-    auto ty_tok = Bump();
-    auto ty = std::make_unique<ast::Ident>(ty_tok->begin, ty_tok->val);
-    return std::make_unique<ast::FnProto>(fn_begin, std::move(name),
-                                          std::move(fn_args), std::move(ty));
+    auto ret_ty = ParseType();
+    return std::make_unique<ast::FnProto>(
+        fn_begin, std::move(name), std::move(fn_args), std::move(ret_ty));
   } else {
     return std::make_unique<ast::FnProto>(fn_begin, std::move(name),
                                           std::move(fn_args));
@@ -180,23 +176,51 @@ std::unique_ptr<ast::FnArg> Parser::ParseFnArg() {
   auto name_or_ty_tok = Bump();
 
   if (Match(Token::Kind::COLON)) {
+    /// name: type
     Bump();
 
-    if (!Match(Token::Kind::IDENT)) {
-      Throw("expected ident");
-    }
+    auto type_name = ParseType();
 
     auto name = std::make_unique<ast::Ident>(name_or_ty_tok->begin,
                                              name_or_ty_tok->val);
-    auto ty_tok = Bump();
-    return std::make_unique<ast::FnArg>(
-        std::make_unique<ast::Ident>(ty_tok->begin, ty_tok->val),
-        std::move(name));
+    return std::make_unique<ast::FnArg>(std::move(type_name), std::move(name));
   } else {
-    return std::make_unique<ast::FnArg>(std::make_unique<ast::Ident>(
+    // only type
+    return std::make_unique<ast::FnArg>(std::make_unique<ast::TypeIdent>(
         name_or_ty_tok->begin, name_or_ty_tok->val));
   }
 }
+
+std::unique_ptr<ast::Type> Parser::ParseType() {
+  if (Match(Token::Kind::LBRACK)) {
+    auto begin = Bump()->begin;
+    auto elem = ParseType();
+    if (!Match(Token::Kind::COMMA)) {
+      Throw("expected ,");
+    }
+    Bump();
+
+    if (!Match(Token::Kind::LIT_INT)) {
+      Throw("expected int literal");
+    }
+    auto size_tok = Bump();
+    auto size = std::make_unique<ast::Lit>(size_tok->begin, ast::Lit::Kind::INT,
+                                           size_tok->val);
+
+    if (!Match(Token::Kind::RBRACK)) {
+      Throw("expected ]");
+    }
+    auto end = Bump()->end;
+    return std::make_unique<ast::ArrayType>(begin, end, std::move(elem),
+                                            std::move(size));
+  } else {
+    if (!Match(Token::Kind::IDENT)) {
+      Throw("expected ident");
+    }
+    auto ident = Bump();
+    return std::make_unique<ast::TypeIdent>(ident->begin, ident->val);
+  }
+};
 
 std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
   std::unique_ptr<ast::UnaryOp> un_op;
@@ -208,9 +232,9 @@ std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
     un_op = std::make_unique<ast::UnaryOp>(begin, ast::UnaryOp::Op::NOT);
   }
 
-  if (!is_primary(Peek()->kind)) {
-    Throw("expected primary expr");
-  }
+  /* if (!is_primary(Peek()->kind)) { */
+  /*   Throw("expected primary expr"); */
+  /* } */
   auto lhs = ParsePrimary();
 
   if (Match(Token::Kind::LPAREN)) {
@@ -312,11 +336,28 @@ std::unique_ptr<ast::Expr> Parser::ParsePrimary() {
       }
       Bump();
       return expr;
-    }
+    } break;
+    case Token::Kind::LBRACK: {
+      auto begin = Bump()->begin;
+      std::vector<std::unique_ptr<ast::Expr>> exprs;
+      while (true) {
+        exprs.push_back(ParseExpr());
+        if (Match(Token::Kind::COMMA)) {
+          Bump();
+        } else {
+          break;
+        }
+      }
+      if (!Match(Token::Kind::RBRACK)) {
+        Throw("expected ]");
+      }
+      auto end = Bump()->end;
+      return std::make_unique<ast::ArrayExpr>(begin, end, std::move(exprs));
+    } break;
     default:
-      std::fprintf(stderr, "parsing unknown primary");
-      std::terminate();
+      Throw("unknown primary token");
   }
+  UNREACHABLE
 }
 
 std::unique_ptr<ast::Stmt> Parser::ParseStmt() {
@@ -351,23 +392,19 @@ std::unique_ptr<ast::Stmt> Parser::ParseStmt() {
     auto ident = Bump();
     auto name = std::make_unique<ast::Ident>(ident->begin, ident->val);
 
-    std::unique_ptr<ast::Ident> ty_name;
+    std::unique_ptr<ast::Type> type_name = nullptr;
     if (Match(Token::Kind::COLON)) {
       // let a: i32 = ...
       Bump();
-      if (!Match(Token::Kind::IDENT)) {
-        Throw("expected %s", ToString(Token::Kind::IDENT).c_str());
-      }
-      auto ty_ident = Bump();
-      ty_name = std::make_unique<ast::Ident>(ty_ident->begin, ty_ident->val);
+      type_name = ParseType();
     }
     if (!Match(Token::Kind::EQ)) {
       Throw("expected %s", ToString(Token::Kind::EQ).c_str());
     }
     Bump();
 
-    return std::make_unique<ast::VarDeclStmt>(kw_begin, is_let, std::move(name),
-                                              std::move(ty_name), ParseExpr());
+    return std::make_unique<ast::VarDeclStmt>(
+        kw_begin, is_let, std::move(name), std::move(type_name), ParseExpr());
   } else if (Match(Token::Kind::IDENT)) {
     if (Peek2()->kind == Token::Kind::EQ) {
       // assign stmt

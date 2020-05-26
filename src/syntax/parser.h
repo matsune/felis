@@ -31,6 +31,7 @@ class Parser {
   std::unique_ptr<ast::FnProto> ParseFnProto();
   std::unique_ptr<ast::FnArgs> ParseFnArgs();
   std::unique_ptr<ast::FnArg> ParseFnArg();
+  std::unique_ptr<ast::Type> ParseType();
   std::unique_ptr<ast::Expr> ParseExpr(uint8_t prec = 0);
   std::unique_ptr<ast::Expr> ParsePrimary();
   std::unique_ptr<ast::If> ParseIf();

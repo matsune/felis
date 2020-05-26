@@ -37,14 +37,16 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
 
     decl_ck.OpenScope();
 
-    for (auto& arg : fn->proto->args->list) {
-      // arg-name duplication is already checked in parser
-      auto arg_decl = std::make_shared<Decl>(
-          arg->name->val, decl_ck.LookupType(arg->ty->val), DeclKind::ARG);
-      RecordDecl(arg->name, arg_decl);
+    // TODO
+    /* for (auto& arg : fn->proto->args->list) { */
+    /*   // arg-name duplication is already checked in parser */
+    /*   auto arg_decl = std::make_shared<Decl>( */
+    /*       arg->name->val, decl_ck.LookupType(arg->ty->val), DeclKind::ARG);
+     */
+    /*   RecordDecl(arg->name, arg_decl); */
 
-      decl_ck.InsertDecl(arg->name->val, arg_decl);
-    }
+    /*   decl_ck.InsertDecl(arg->name->val, arg_decl); */
+    /* } */
 
     std::shared_ptr<Type> block_ty = kTypeVoid;
     for (auto it = fn->block->stmts.begin(); it != fn->block->stmts.end();
@@ -142,14 +144,16 @@ void TypeChecker::InferVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
     throw LocError::Create(stmt->Begin(), "redeclared var %s", name.c_str());
   }
   std::shared_ptr<Type> decl_ty = Unresolved();
-  if (stmt->ty_name) {
-    // has type constraint
-    decl_ty = decl_ck.LookupType(stmt->ty_name->val);
-    if (!decl_ty) {
-      throw LocError::Create(stmt->ty_name->Begin(), "unknown decl type %s",
-                             stmt->ty_name->val.c_str());
-    }
-  }
+  // TODO
+  /* if (stmt->ty_name) { */
+  /*   // has type constraint */
+  /*   decl_ty = decl_ck.LookupType(stmt->ty_name->val); */
+  /*   if (!decl_ty) { */
+  /*     throw LocError::Create(stmt->ty_name->Begin(), "unknown decl type %s",
+   */
+  /*                            stmt->ty_name->val.c_str()); */
+  /*   } */
+  /* } */
 
   auto expr_ty = InferExpr(stmt->expr, true);
   if (expr_ty->IsVoid()) {
