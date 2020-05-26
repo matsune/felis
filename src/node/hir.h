@@ -3,8 +3,6 @@
 
 #include "check/decl.h"
 #include "check/type.h"
-#include "macro.h"
-#include "node/ast.h"
 #include "node/node.h"
 #include "syntax/rune.h"
 
@@ -17,12 +15,13 @@ struct HirNode : public Node {};
 struct Stmt : HirNode {
   enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
   virtual Kind StmtKind() const = 0;
+  virtual bool IsTerminating() const { return false; }
 };
 
 struct Expr : public Stmt {
   enum Kind { BINARY, VALUE, CALL, UNARY, IF, BLOCK };
   virtual Expr::Kind ExprKind() const = 0;
-  virtual std::shared_ptr<Typed> Type() const = 0;
+  virtual std::shared_ptr<FixedType> Type() const = 0;
 
   // override Stmt
   Stmt::Kind StmtKind() const override { return Stmt::Kind::EXPR; }
@@ -45,16 +44,16 @@ struct Variable : public Value {
   Value::Kind ValueKind() const override { return Value::Kind::VARIABLE; }
 
   // override Expr
-  std::shared_ptr<Typed> Type() const override {
-    return std::dynamic_pointer_cast<Typed>(decl->type);
+  std::shared_ptr<FixedType> Type() const override {
+    return std::dynamic_pointer_cast<FixedType>(decl->type);
   }
 };
 
 struct Constant : public Value {
   enum Kind { INT, FLOAT, BOOL, STRING };
-  std::shared_ptr<Typed> type;
+  std::shared_ptr<FixedType> type;
 
-  Constant(std::shared_ptr<Typed> type) : type(type) {}
+  Constant(std::shared_ptr<FixedType> type) : type(type) {}
 
   virtual Constant::Kind ConstantKind() = 0;
 
@@ -62,28 +61,28 @@ struct Constant : public Value {
   Value::Kind ValueKind() const override { return Value::Kind::CONSTANT; }
 
   // override Expr
-  std::shared_ptr<Typed> Type() const override { return type; }
+  std::shared_ptr<FixedType> Type() const override { return type; }
 };
 
 struct IntConstant : public Constant {
-  int64_t val;
-  IntConstant(std::shared_ptr<Typed> type, int64_t val)
+  const int64_t val;
+  IntConstant(std::shared_ptr<FixedType> type, int64_t val)
       : Constant(type), val(val) {}
 
   Constant::Kind ConstantKind() override { return Constant::Kind::INT; }
 };
 
 struct FloatConstant : public Constant {
-  double val;
-  FloatConstant(std::shared_ptr<Typed> type, double val)
+  const double val;
+  FloatConstant(std::shared_ptr<FixedType> type, double val)
       : Constant(type), val(val) {}
 
   Constant::Kind ConstantKind() override { return Constant::Kind::FLOAT; }
 };
 
 struct BoolConstant : public Constant {
-  bool val;
-  BoolConstant(std::shared_ptr<Typed> type, bool val)
+  const bool val;
+  BoolConstant(std::shared_ptr<FixedType> type, bool val)
       : Constant(type), val(val) {}
 
   Constant::Kind ConstantKind() override { return Constant::Kind::BOOL; }
@@ -91,7 +90,7 @@ struct BoolConstant : public Constant {
 
 struct StringConstant : public Constant {
   std::string val;
-  StringConstant(std::shared_ptr<Typed> type, std::string val)
+  StringConstant(std::shared_ptr<FixedType> type, std::string val)
       : Constant(type), val(val) {}
 
   Constant::Kind ConstantKind() override { return Constant::Kind::STRING; }
@@ -108,15 +107,15 @@ struct Call : public Expr {
   Expr::Kind ExprKind() const override { return Expr::Kind::CALL; }
 
   // override Expr
-  std::shared_ptr<Typed> Type() const override {
-    return std::dynamic_pointer_cast<Typed>(decl->AsFuncType()->ret);
+  std::shared_ptr<FixedType> Type() const override {
+    return std::dynamic_pointer_cast<FixedType>(decl->AsFuncType()->ret);
   }
 };
 
 struct Unary : public Expr {
   enum Op { NEG, NOT };
 
-  Unary::Op op;
+  const Unary::Op op;
   std::unique_ptr<Expr> expr;
 
   Unary(Unary::Op op, std::unique_ptr<Expr> expr)
@@ -125,7 +124,7 @@ struct Unary : public Expr {
   // override Expr
   Expr::Kind ExprKind() const override { return Expr::Kind::UNARY; }
 
-  std::shared_ptr<Typed> Type() const override { return expr->Type(); }
+  std::shared_ptr<FixedType> Type() const override { return expr->Type(); }
 };
 
 struct Binary : public Expr {
@@ -144,32 +143,39 @@ struct Binary : public Expr {
     MOD
   };
 
-  std::shared_ptr<Typed> type;
-  Binary::Op op;
+  std::shared_ptr<FixedType> type;
+  const Binary::Op op;
   std::unique_ptr<Expr> lhs;
   std::unique_ptr<Expr> rhs;
 
-  Binary(std::shared_ptr<Typed> type, Binary::Op op, std::unique_ptr<Expr> lhs,
-         std::unique_ptr<Expr> rhs)
+  Binary(std::shared_ptr<FixedType> type, Binary::Op op,
+         std::unique_ptr<Expr> lhs, std::unique_ptr<Expr> rhs)
       : Expr(), type(type), op(op), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
   // override Expr
   Expr::Kind ExprKind() const override { return Expr::Kind::BINARY; }
 
-  std::shared_ptr<Typed> Type() const override { return type; }
+  std::shared_ptr<FixedType> Type() const override { return type; }
 };
 
 struct Block : public Expr {
-  std::shared_ptr<Typed> type;
+  std::shared_ptr<FixedType> type;
   unique_deque<Stmt> stmts;
 
-  Block(std::shared_ptr<Typed> type, unique_deque<Stmt> stmts)
+  Block(std::shared_ptr<FixedType> type, unique_deque<Stmt> stmts)
       : Expr(), type(type), stmts(std::move(stmts)) {}
 
   // override Expr
   Expr::Kind ExprKind() const override { return Expr::Kind::BLOCK; }
 
-  std::shared_ptr<Typed> Type() const override { return type; }
+  std::shared_ptr<FixedType> Type() const override { return type; }
+
+  virtual bool IsTerminating() const override {
+    for (auto &stmt : stmts) {
+      if (stmt->IsTerminating()) return true;
+    }
+    return false;
+  }
 };
 
 struct RetStmt : public Stmt {
@@ -180,6 +186,8 @@ struct RetStmt : public Stmt {
 
   // override Stmt
   Kind StmtKind() const override { return Stmt::Kind::RET; }
+
+  virtual bool IsTerminating() const override { return true; }
 };
 
 struct VarDeclStmt : public Stmt {
@@ -205,13 +213,13 @@ struct AssignStmt : public Stmt {
 };
 
 struct If : public Expr {
-  std::shared_ptr<Typed> type;
+  std::shared_ptr<FixedType> type;
   std::unique_ptr<Expr> cond;
   std::unique_ptr<Block> block;
   std::unique_ptr<Expr> els;
-  bool as_stmt;
+  /* bool as_stmt; */
 
-  If(std::shared_ptr<Typed> type, std::unique_ptr<Expr> cond,
+  If(std::shared_ptr<FixedType> type, std::unique_ptr<Expr> cond,
      std::unique_ptr<Block> block, std::unique_ptr<Expr> els)
       : Expr(),
         type(type),
@@ -219,7 +227,7 @@ struct If : public Expr {
         block(std::move(block)),
         els(std::move(els)) {}
 
-  std::shared_ptr<Typed> Type() const override { return type; }
+  std::shared_ptr<FixedType> Type() const override { return type; }
 
   inline bool HasElse() const { return els != nullptr; }
 
@@ -230,6 +238,10 @@ struct If : public Expr {
 
   // override Expr
   Expr::Kind ExprKind() const override { return Expr::Kind::IF; }
+
+  virtual bool IsTerminating() const override {
+    return block->IsTerminating() && HasElse() && els->IsTerminating();
+  }
 };
 
 struct FnDecl : public HirNode {

@@ -17,8 +17,6 @@
 namespace felis {
 
 class Builder {
-  using DeclValueMap = std::map<Decl *, llvm::Value *>;
-
  public:
   Builder(std::string module_name, std::string file_name,
           std::unique_ptr<llvm::TargetMachine> machine)
@@ -43,9 +41,9 @@ class Builder {
   llvm::IRBuilder<> builder_;
   std::unique_ptr<llvm::TargetMachine> machine_;
   llvm::Function *current_func_;
-  DeclValueMap decl_map_;
+  std::map<Decl *, llvm::Value *> decl_map_;
 
-  llvm::Type *LLVMType(const std::shared_ptr<Typed> &);
+  llvm::Type *LLVMType(const std::shared_ptr<Type> &);
 
   void RecordValue(std::shared_ptr<Decl> &t, llvm::Value *value) {
     decl_map_[t.get()] = value;

@@ -4,8 +4,7 @@
 #include <map>
 #include <memory>
 
-#include "check/decl_checker.h"
-#include "check/ty_infer.h"
+#include "check/type_checker.h"
 #include "node/ast.h"
 #include "node/hir.h"
 
@@ -13,16 +12,25 @@ namespace felis {
 
 class Lower {
  public:
-  Lower()
-      : decl_checker_(DeclChecker(node_map_)), ty_infer_(TyInfer(node_map_)){};
+  Lower(IdentDeclMap& ident_decl_map, ExprTypeMap& expr_type_map)
+      : ident_decl_map_(ident_decl_map), expr_type_map_(expr_type_map) {}
 
-  std::unique_ptr<hir::File> Lowering(std::unique_ptr<ast::File>,
-                                      bool is_32bit);
+  std::unique_ptr<hir::File> Lowering(std::unique_ptr<ast::File>);
 
  private:
-  NodeMap node_map_;
-  DeclChecker decl_checker_;
-  TyInfer ty_infer_;
+  const IdentDeclMap& ident_decl_map_;
+  const ExprTypeMap& expr_type_map_;
+
+  auto& GetDecl(const std::unique_ptr<ast::Ident>& t) const {
+    std::cout << "GetDecl " << t.get() << std::endl;
+    return ident_decl_map_.at(t.get());
+  }
+
+  template <typename K>
+  std::shared_ptr<FixedType> GetType(const std::unique_ptr<K>& n) const {
+    std::cout << "GetType of expr " << n.get() << std::endl;
+    return std::dynamic_pointer_cast<FixedType>(expr_type_map_.at(n.get()));
+  }
 
   std::unique_ptr<hir::Stmt> LowerStmt(std::unique_ptr<ast::Stmt>);
   std::unique_ptr<hir::RetStmt> LowerRet(std::unique_ptr<ast::RetStmt>);
@@ -38,6 +46,8 @@ class Lower {
   std::unique_ptr<hir::Value> ParseInt(std::unique_ptr<ast::Lit>);
   std::unique_ptr<hir::FloatConstant> ParseFloat(std::unique_ptr<ast::Lit>);
 };
+
+std::unique_ptr<hir::File> Lowering(std::unique_ptr<ast::File>, bool is_32bit);
 
 }  // namespace felis
 

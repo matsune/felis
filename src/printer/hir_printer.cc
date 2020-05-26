@@ -23,20 +23,20 @@ void HirPrinter::PrintIndex(int idx) { Write("[%d] ", idx); }
 
 void HirPrinter::PrintExtern(hir::Extern *ext) {
   Down("Extern {");
-  { Writeln(ToString(*ext->decl)); }
+  { Writeln(ToString(ext->decl)); }
   Up("}");
 }
 
 void HirPrinter::PrintFnDecl(hir::FnDecl *fn) {
   Down("FnDecl {");
   {
-    Writeln(ToString(*fn->decl));
+    Writeln(ToString(fn->decl));
 
     Down("FnArgs [");
     {
       for (int i = 0; i < fn->args.size(); i++) {
         PrintIndex(i);
-        Writeln(ToString(*fn->args.at(i)));
+        Writeln(ToString(fn->args.at(i)));
       }
     }
     Up("]");
@@ -89,7 +89,7 @@ void HirPrinter::PrintStmt(hir::Stmt *stmt) {
       {
         auto var_decl = dynamic_cast<hir::VarDeclStmt *>(stmt);
         PrintPtr(var_decl);
-        Writeln(ToString(*var_decl->decl));
+        Writeln(ToString(var_decl->decl));
         PrintExpr(var_decl->expr.get());
       }
       Up("}");
@@ -99,7 +99,7 @@ void HirPrinter::PrintStmt(hir::Stmt *stmt) {
       {
         auto assign = dynamic_cast<hir::AssignStmt *>(stmt);
         PrintPtr(assign);
-        Writeln(ToString(*assign->decl));
+        Writeln(ToString(assign->decl));
         PrintExpr(assign->expr.get());
       }
       Up("}");
@@ -139,23 +139,23 @@ void HirPrinter::PrintExpr(hir::Expr *expr) {
             switch (cons->ConstantKind()) {
               case hir::Constant::Kind::INT: {
                 auto int_cons = dynamic_cast<hir::IntConstant *>(cons);
-                Writeln("CONSTANT %s: %d", ToString(*int_cons->Type()).c_str(),
+                Writeln("CONSTANT %s: %d", ToString(int_cons->Type()).c_str(),
                         int_cons->val);
               } break;
               case hir::Constant::Kind::FLOAT: {
                 auto float_cons = dynamic_cast<hir::FloatConstant *>(cons);
-                Writeln("CONSTANT %s: %f",
-                        ToString(*float_cons->Type()).c_str(), float_cons->val);
+                Writeln("CONSTANT %s: %f", ToString(float_cons->Type()).c_str(),
+                        float_cons->val);
               } break;
               case hir::Constant::Kind::BOOL: {
                 auto bool_cons = dynamic_cast<hir::BoolConstant *>(cons);
                 const char *v = bool_cons->val ? "true" : "false";
-                Writeln("CONSTANT %s: %s", ToString(*bool_cons->Type()).c_str(),
+                Writeln("CONSTANT %s: %s", ToString(bool_cons->Type()).c_str(),
                         v);
               } break;
               case hir::Constant::Kind::STRING: {
                 auto str_cons = dynamic_cast<hir::StringConstant *>(cons);
-                Writeln("CONSTANT %s: %s", ToString(*str_cons->Type()).c_str(),
+                Writeln("CONSTANT %s: %s", ToString(str_cons->Type()).c_str(),
                         str_cons->val.c_str());
               } break;
             }
@@ -167,7 +167,7 @@ void HirPrinter::PrintExpr(hir::Expr *expr) {
           {
             auto var = dynamic_cast<hir::Variable *>(value);
             PrintPtr(var);
-            Writeln(ToString(*var->decl));
+            Writeln(ToString(var->decl));
           }
           Up("}");
           break;
@@ -179,7 +179,7 @@ void HirPrinter::PrintExpr(hir::Expr *expr) {
       {
         auto call = dynamic_cast<hir::Call *>(expr);
         PrintPtr(call);
-        Writeln(ToString(*call->decl));
+        Writeln(ToString(call->decl));
         Down("Args [");
         {
           for (int i = 0; i < call->args.size(); i++) {

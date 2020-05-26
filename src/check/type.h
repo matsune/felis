@@ -6,41 +6,63 @@
 #include <string>
 #include <vector>
 
+#include "macro.h"
+
 namespace felis {
 
-struct Ty {
-  enum Kind { UNTYPED, TYPED };
-  virtual Ty::Kind TyKind() const = 0;
+struct Type {
+  enum Kind { FIXED, UNTYPED };
+  virtual inline Type::Kind TypeKind() const = 0;
 
-  bool IsTyped() const { return TyKind() == Kind::TYPED; }
-  bool IsUntyped() const { return TyKind() == Kind::UNTYPED; }
+  virtual inline bool IsPrim() const { return false; }
+  virtual inline bool IsFunc() const { return false; }
 
-  bool operator==(const Ty& other);
-  bool operator!=(const Ty& other) { return !(*this == other); }
+  virtual inline bool IsUnresolved() const { return false; }
+  virtual inline bool IsUntypedInt() const { return false; }
+  virtual inline bool IsUntypedFloat() const { return false; }
 
-  virtual bool IsFunc() const { return false; }
-  virtual bool IsBool() const { return false; }
-  virtual bool IsString() const { return false; }
-  virtual bool IsVoid() const { return false; }
-  virtual bool IsI8() const { return false; }
-  virtual bool IsI16() const { return false; }
-  virtual bool IsI32() const { return false; }
-  virtual bool IsI64() const { return false; }
-  virtual bool IsF32() const { return false; }
-  virtual bool IsF64() const { return false; }
-  virtual bool IsTypedInt() const { return false; }
-  virtual bool IsTypedFloat() const { return false; }
-  virtual bool IsTypedNum() const { return false; }
+  virtual inline bool IsVoid() const { return false; }
+  virtual inline bool IsI8() const { return false; }
+  virtual inline bool IsI16() const { return false; }
+  virtual inline bool IsI32() const { return false; }
+  virtual inline bool IsI64() const { return false; }
+  virtual inline bool IsF32() const { return false; }
+  virtual inline bool IsF64() const { return false; }
+  virtual inline bool IsBool() const { return false; }
+  virtual inline bool IsString() const { return false; }
 
-  virtual bool IsUntypedInt() const { return false; }
-  virtual bool IsUntypedFloat() const { return false; }
+  inline bool IsFixed() const { return TypeKind() == Kind::FIXED; }
+  inline bool IsUntyped() const { return TypeKind() == Kind::UNTYPED; }
+
+  bool operator==(const Type& other) const;
+  bool operator!=(const Type& other) const { return !(*this == other); }
+
+  inline bool IsFixedInt() const {
+    return IsI8() || IsI16() || IsI32() || IsI64();
+  }
+  inline bool IsFixedFloat() const { return IsF32() || IsF64(); }
+  inline bool IsFixedNumeric() const { return IsFixedInt() || IsFixedFloat(); }
 };
 
-struct Typed : public Ty {
+struct FixedType : public Type {
+  enum Kind { PRIM, FUNC };
+  virtual inline FixedType::Kind FixedKind() const = 0;
+
+  inline Type::Kind TypeKind() const override { return Type::Kind::FIXED; }
+
+  bool operator==(const FixedType& other) const;
+
+  inline bool IsPrim() const override {
+    return FixedKind() == FixedType::Kind::PRIM;
+  }
+
+  inline bool IsFunc() const override {
+    return FixedKind() == FixedType::Kind::FUNC;
+  }
+};
+
+struct PrimType : public FixedType {
   enum Kind {
-    // FuncType
-    FUNC,
-    // BasicType
     VOID,
     I8,
     I16,
@@ -51,42 +73,58 @@ struct Typed : public Ty {
     BOOL,
     STRING,
   };
-  Typed::Kind kind;
+  PrimType::Kind kind;
 
-  Typed::Kind TypedKind() const { return kind; }
+  PrimType::Kind TypedKind() const { return kind; }
 
-  Typed(Typed::Kind kind) : kind(kind) {}
+  PrimType(PrimType::Kind kind) : kind(kind) {}
 
-  Ty::Kind TyKind() const override { return Ty::TYPED; }
+  bool operator==(const PrimType& other) const { return kind == other.kind; }
 
-  bool IsFunc() const override { return kind == Typed::Kind::FUNC; }
-  bool IsBool() const override { return kind == Typed::Kind::BOOL; }
-  bool IsString() const override { return kind == Typed::Kind::STRING; }
-  bool IsVoid() const override { return kind == Typed::Kind::VOID; }
-  bool IsI8() const override { return kind == Typed::Kind::I8; }
-  bool IsI16() const override { return kind == Typed::Kind::I16; }
-  bool IsI32() const override { return kind == Typed::Kind::I32; }
-  bool IsI64() const override { return kind == Typed::Kind::I64; }
-  bool IsF32() const override { return kind == Typed::Kind::F32; }
-  bool IsF64() const override { return kind == Typed::Kind::F64; }
-  bool IsTypedInt() const override {
-    return IsI8() || IsI16() || IsI32() || IsI64();
+  inline virtual FixedType::Kind FixedKind() const override {
+    return FixedType::Kind::PRIM;
   }
-  bool IsTypedFloat() const override { return IsF32() || IsF64(); }
-  bool IsTypedNum() const override { return IsTypedInt() || IsTypedFloat(); }
+
+  inline bool IsVoid() const override { return kind == PrimType::Kind::VOID; }
+  inline bool IsI8() const override { return kind == PrimType::Kind::I8; }
+  inline bool IsI16() const override { return kind == PrimType::Kind::I16; }
+  inline bool IsI32() const override { return kind == PrimType::Kind::I32; }
+  inline bool IsI64() const override { return kind == PrimType::Kind::I64; }
+  inline bool IsF32() const override { return kind == PrimType::Kind::F32; }
+  inline bool IsF64() const override { return kind == PrimType::Kind::F64; }
+  inline bool IsBool() const override { return kind == PrimType::Kind::BOOL; }
+  inline bool IsString() const override {
+    return kind == PrimType::Kind::STRING;
+  }
 };
 
-struct FuncType : public Typed {
-  FuncType(std::vector<std::shared_ptr<Typed>> args, std::shared_ptr<Typed> ret)
-      : Typed(Typed::Kind::FUNC), args(args), ret(ret) {}
+struct FuncType : public FixedType {
+  FuncType(std::vector<std::shared_ptr<Type>> args, std::shared_ptr<Type> ret)
+      : args(args), ret(ret) {}
 
-  std::vector<std::shared_ptr<Typed>> args;
-  std::shared_ptr<Typed> ret;
+  bool operator==(const FuncType& other) const {
+    if (args.size() != other.args.size()) return false;
+    for (auto i = 0; i < args.size(); i++) {
+      if (*args.at(i) != *other.args.at(i)) return false;
+    }
+    if (ret) {
+      if (!other.ret) return false;
+      return *ret == *other.ret;
+    } else {
+      if (other.ret) return false;
+      return true;
+    }
+  }
+
+  FixedType::Kind FixedKind() const override { return FixedType::Kind::FUNC; }
+
+  std::vector<std::shared_ptr<Type>> args;
+  std::shared_ptr<Type> ret;
 };
 
-struct Untyped : public Ty {
+struct Untyped : public Type {
   enum Kind {
-    /* UNRESOLVED, */
+    UNRESOLVED,
     INT,
     FLOAT,
   };
@@ -95,46 +133,98 @@ struct Untyped : public Ty {
 
   Untyped(Untyped::Kind kind) : kind(kind), ref(nullptr) {}
 
-  Ty::Kind TyKind() const override { return Ty::UNTYPED; }
+  Type::Kind TypeKind() const override { return Type::Kind::UNTYPED; }
 
-  bool IsUntypedInt() const override { return kind == Untyped::Kind::INT; }
-  bool IsUntypedFloat() const override { return kind == Untyped::Kind::FLOAT; }
+  inline bool IsUnresolved() const override {
+    return kind == Untyped::Kind::UNRESOLVED;
+  }
 
-  bool Canbe(std::shared_ptr<Ty> to) const {
+  inline bool IsUntypedInt() const override {
+    return kind == Untyped::Kind::INT;
+  }
+
+  inline bool IsUntypedFloat() const override {
+    return kind == Untyped::Kind::FLOAT;
+  }
+
+  // To check a type can be another type implicitly.
+  //
+  // ex.) let a = 4 + 3.2
+  //
+  // `4` will be parsed as untyped int and `3.2` will be parsed
+  // as untyped float. As lhs and rhs should be same type under
+  // the binary expression rule, 4 and 3.2 will be same type.
+  // Untyped float cannot be int type implicitly but int type
+  // can be float.
+  bool Canbe(std::shared_ptr<Type> to) const {
     assert(ref == nullptr);
     switch (kind) {
+      case Untyped::Kind::UNRESOLVED:
+        return true;
       case Untyped::Kind::INT:
-        return to->IsUntyped() || to->IsTypedNum();
+        return to->IsUntyped() || to->IsFixedNumeric();
       case Untyped::Kind::FLOAT:
-        return to->IsUntypedFloat() || to->IsTypedFloat();
+        return to->IsUntypedFloat() || to->IsFixedFloat();
     }
   }
 
-  void SetRef(std::shared_ptr<Ty> ty) {
+  bool TryResolve(std::shared_ptr<Type> ty) {
     assert(ref == nullptr);
-    ref = ty;
+    if (Canbe(ty)) {
+      ref = ty;
+      return true;
+    }
+    return false;
   }
 
-  const std::shared_ptr<Ty>& GetRef() const { return ref; }
+  const std::shared_ptr<Type>& Ref() const { return ref; }
 
  private:
   Untyped::Kind kind;
-  std::shared_ptr<Ty> ref;
+
+  // `ref` means that this type depends on ref's type.
+  //
+  // ex.)
+  //  let a = 4
+  //  let b: i64 = a
+  //
+  // First of all, we put unknown types `T` for each expression.
+  //  4 : T1
+  //  a : T2
+  //  b : T3
+  //
+  // Since an VarDecl statement should have a same type for left and right
+  // expressions, it assures T2 = T1. In other words, T1 is untyped int but
+  // it depends on T2 so we set T2 into T1's ref.
+  // The second statement also assures T2's ref is T3. But T3 type is declared
+  // as concrete type `i64` explicitly. As a result, we can infer all of these
+  // types T1 = T2 = T3 = i64.
+  //
+  std::shared_ptr<Type> ref;
 };
 
-const auto kTypeVoid = std::make_shared<Typed>(Typed::Kind::VOID);
-const auto kTypeI8 = std::make_shared<Typed>(Typed::Kind::I8);
-const auto kTypeI16 = std::make_shared<Typed>(Typed::Kind::I16);
-const auto kTypeI32 = std::make_shared<Typed>(Typed::Kind::I32);
-const auto kTypeI64 = std::make_shared<Typed>(Typed::Kind::I64);
-const auto kTypeF32 = std::make_shared<Typed>(Typed::Kind::F32);
-const auto kTypeF64 = std::make_shared<Typed>(Typed::Kind::F64);
-const auto kTypeBool = std::make_shared<Typed>(Typed::Kind::BOOL);
-const auto kTypeString = std::make_shared<Typed>(Typed::Kind::STRING);
+/* struct Aliased : public Type { */
+/*   Type::Kind TypeKind() const override { return Type::Kind::ALIASED; } */
+
+/*  private: */
+/*   std::shared_ptr<Type> ref; */
+/* }; */
+
+const auto kTypeVoid = std::make_shared<PrimType>(PrimType::Kind::VOID);
+const auto kTypeI8 = std::make_shared<PrimType>(PrimType::Kind::I8);
+const auto kTypeI16 = std::make_shared<PrimType>(PrimType::Kind::I16);
+const auto kTypeI32 = std::make_shared<PrimType>(PrimType::Kind::I32);
+const auto kTypeI64 = std::make_shared<PrimType>(PrimType::Kind::I64);
+const auto kTypeF32 = std::make_shared<PrimType>(PrimType::Kind::F32);
+const auto kTypeF64 = std::make_shared<PrimType>(PrimType::Kind::F64);
+const auto kTypeBool = std::make_shared<PrimType>(PrimType::Kind::BOOL);
+const auto kTypeString = std::make_shared<PrimType>(PrimType::Kind::STRING);
+std::shared_ptr<Untyped> Unresolved();
 std::shared_ptr<Untyped> UntypedInt();
 std::shared_ptr<Untyped> UntypedFloat();
+std::shared_ptr<PrimType> ArchInt(bool is_32bit);
 
-std::shared_ptr<Ty> FinalTy(const std::shared_ptr<Ty>&);
+std::shared_ptr<Type> Underlying(std::shared_ptr<Type> ty);
 
 }  // namespace felis
 

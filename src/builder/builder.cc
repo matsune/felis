@@ -9,37 +9,29 @@
 
 namespace felis {
 
-llvm::Type* Builder::LLVMType(const std::shared_ptr<Typed>& ty) {
-  switch (ty->TypedKind()) {
-    case Typed::Kind::BOOL:
-      return llvm::Type::getInt1Ty(ctx_);
-    case Typed::Kind::I8:
-      return llvm::Type::getInt8Ty(ctx_);
-    case Typed::Kind::I16:
-      return llvm::Type::getInt16Ty(ctx_);
-    case Typed::Kind::I32:
-      return llvm::Type::getInt32Ty(ctx_);
-    case Typed::Kind::I64:
-      return llvm::Type::getInt64Ty(ctx_);
-    case Typed::Kind::F32:
-      return llvm::Type::getFloatTy(ctx_);
-    case Typed::Kind::F64:
-      return llvm::Type::getDoubleTy(ctx_);
-    case Typed::Kind::STRING:
-      return llvm::Type::getInt8PtrTy(ctx_);
-    case Typed::Kind::FUNC: {
-      auto func_type = std::dynamic_pointer_cast<FuncType>(ty);
-      std::vector<llvm::Type*> args;
-      for (auto& arg : func_type->args) {
-        args.push_back(LLVMType(arg));
-      }
-      return llvm::FunctionType::get(LLVMType(func_type->ret), args, false);
-    } break;
-    case Typed::Kind::VOID:
-      return llvm::Type::getVoidTy(ctx_);
-    default:
-      UNREACHABLE
+llvm::Type* Builder::LLVMType(const std::shared_ptr<Type>& ty) {
+  if (ty->IsBool()) return llvm::Type::getInt1Ty(ctx_);
+  if (ty->IsI8()) return llvm::Type::getInt8Ty(ctx_);
+  if (ty->IsI16()) return llvm::Type::getInt16Ty(ctx_);
+  if (ty->IsI32()) return llvm::Type::getInt32Ty(ctx_);
+  if (ty->IsI64()) return llvm::Type::getInt64Ty(ctx_);
+  if (ty->IsF32()) return llvm::Type::getFloatTy(ctx_);
+  if (ty->IsF64()) return llvm::Type::getDoubleTy(ctx_);
+  if (ty->IsString()) return llvm::Type::getInt8PtrTy(ctx_);
+  if (ty->IsFunc()) {
+    auto func_type = std::dynamic_pointer_cast<FuncType>(ty);
+    std::vector<llvm::Type*> args;
+    for (auto& arg : func_type->args) {
+      args.push_back(LLVMType(std::dynamic_pointer_cast<FixedType>(arg)));
+    }
+    return llvm::FunctionType::get(
+        LLVMType(std::dynamic_pointer_cast<FixedType>(func_type->ret)), args,
+        false);
   }
+  if (ty->IsVoid()) return llvm::Type::getVoidTy(ctx_);
+
+  std::cout << ToString(ty) << std::endl;
+  UNREACHABLE
 }
 
 void Builder::Build(std::unique_ptr<hir::File> file) {
@@ -75,7 +67,9 @@ void Builder::Build(std::unique_ptr<hir::File> file) {
       builder_.CreateRetVoid();
     }
 
+    int i = 0;
     while (!fn_decl->block->stmts.empty()) {
+      std::cout << "BuildStmt " << i++ << std::endl;
       BuildStmt(fn_decl->block->stmts.move_front());
     }
 
@@ -90,8 +84,7 @@ void Builder::Build(std::unique_ptr<hir::File> file) {
 };
 
 llvm::Function* Builder::BuildFnProto(std::shared_ptr<Decl>& decl) {
-  auto typed = std::dynamic_pointer_cast<Typed>(decl->type);
-  auto ty = (llvm::FunctionType*)LLVMType(typed);
+  auto ty = (llvm::FunctionType*)LLVMType(decl->type);
   return llvm::Function::Create(ty, llvm::GlobalValue::ExternalLinkage,
                                 decl->name, module_);
 }
@@ -126,7 +119,7 @@ void Builder::BuildRetStmt(std::unique_ptr<hir::RetStmt> stmt) {
 void Builder::BuildVarDeclStmt(std::unique_ptr<hir::VarDeclStmt> stmt) {
   auto decl = stmt->decl;
   auto value = BuildExpr(std::move(stmt->expr));
-  auto ty = LLVMType(std::dynamic_pointer_cast<Typed>(decl->type));
+  auto ty = LLVMType(decl->type);
   llvm::AllocaInst* alloca = builder_.CreateAlloca(ty, nullptr, decl->name);
   builder_.CreateStore(value, alloca);
   RecordValue(decl, alloca);
@@ -140,7 +133,7 @@ void Builder::BuildAssignStmt(std::unique_ptr<hir::AssignStmt> stmt) {
 
 llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
   auto ty = binary->Type();
-  auto is_float = binary->lhs->Type()->IsTypedFloat();
+  auto is_float = binary->lhs->Type()->IsFixedFloat();
   auto lhs = BuildExpr(std::move(binary->lhs));
   auto rhs = BuildExpr(std::move(binary->rhs));
 
@@ -184,8 +177,8 @@ llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
 
 void Builder::BuildBlock(std::unique_ptr<hir::Block> block,
                          llvm::AllocaInst* into, llvm::BasicBlock* after_bb) {
-  assert(after_bb);
-
+  std::cout << "BuildBlock " << block.get() << " into: " << into << " after_bb "
+            << after_bb << std::endl;
   llvm::Value* value;
   while (!block->stmts.empty()) {
     auto stmt = block->stmts.move_front();
@@ -204,8 +197,8 @@ void Builder::BuildBlock(std::unique_ptr<hir::Block> block,
 
 void Builder::BuildIf(std::unique_ptr<hir::If> if_stmt, llvm::AllocaInst* into,
                       llvm::BasicBlock* after_bb) {
-  assert(after_bb);
-
+  std::cout << "BuildIf " << if_stmt.get() << " into: " << into << " after_bb"
+            << after_bb << std::endl;
   auto has_else = if_stmt->HasElse();
   auto cond_val = BuildExpr(std::move(if_stmt->cond));
   llvm::BasicBlock* then_bb =
@@ -277,7 +270,7 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
     } break;
     case hir::Expr::Kind::UNARY: {
       auto unary = unique_cast<hir::Unary>(std::move(expr));
-      bool is_float = unary->Type()->IsTypedFloat();
+      bool is_float = unary->Type()->IsFixedFloat();
       auto expr = BuildExpr(std::move(unary->expr));
       switch (unary->op) {
         case hir::Unary::Op::NEG:
@@ -296,20 +289,25 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
     case hir::Expr::BLOCK: {
       auto expr_type = LLVMType(expr->Type());
       auto as_expr = !expr_type->isVoidTy();
+      std::cout << "If or block stmt as_expr " << as_expr << std::endl;
 
       llvm::AllocaInst* alloca = nullptr;
       if (as_expr) {
         alloca = builder_.CreateAlloca(expr_type);
       }
 
-      auto after_bb = llvm::BasicBlock::Create(
-          ctx_, "end", current_func_, builder_.GetInsertBlock()->getNextNode());
+      llvm::BasicBlock* after_bb = nullptr;
+      if (as_expr || !expr->IsTerminating()) {
+        after_bb =
+            llvm::BasicBlock::Create(ctx_, "end", current_func_,
+                                     builder_.GetInsertBlock()->getNextNode());
+      }
       if (expr->ExprKind() == hir::Expr::Kind::IF) {
         BuildIf(unique_cast<hir::If>(std::move(expr)), alloca, after_bb);
       } else {
         BuildBlock(unique_cast<hir::Block>(std::move(expr)), alloca, after_bb);
       }
-      builder_.SetInsertPoint(after_bb);
+      if (after_bb) builder_.SetInsertPoint(after_bb);
 
       if (as_expr) {
         return builder_.CreateLoad(expr_type, alloca);

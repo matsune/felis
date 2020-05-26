@@ -64,12 +64,6 @@ class Session {
     return felis::Parser(std::move(tokens)).Parse();
   }
 
-  std::unique_ptr<felis::hir::File> LowerAst(
-      std::unique_ptr<felis::ast::File> ast, bool is_32bit) {
-    felis::Lower lower;
-    return lower.Lowering(std::move(ast), is_32bit);
-  }
-
   std::unique_ptr<llvm::TargetMachine> CreateTargetMachine() {
     std::string err;
     std::unique_ptr<llvm::TargetMachine> machine =
@@ -124,7 +118,7 @@ class Session {
 
       if (opts->IsPrintAst()) felis::AstPrinter().Print(ast);
 
-      auto hir = LowerAst(std::move(ast), is_32bit);
+      auto hir = felis::Lowering(std::move(ast), is_32bit);
       if (!hir) return 1;
 
       if (opts->IsPrintHir()) felis::HirPrinter().Print(hir);

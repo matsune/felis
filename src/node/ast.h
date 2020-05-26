@@ -15,8 +15,8 @@ namespace felis {
 namespace ast {
 
 struct AstNode : public Node {
-  virtual Loc Begin() const = 0;
-  virtual Loc End() const = 0;
+  virtual const Loc Begin() const = 0;
+  virtual const Loc End() const = 0;
 };
 
 struct Operator : public AstNode {
@@ -27,16 +27,16 @@ struct Operator : public AstNode {
 struct UnaryOp : public Operator {
   enum Op { NEG, NOT };
 
-  Loc begin;
-  UnaryOp::Op op;
+  const Loc begin;
+  const UnaryOp::Op op;
 
   UnaryOp(Loc begin, UnaryOp::Op op) : begin(begin), op(op) {}
 
   Operator::Kind OpKind() const override { return Operator::Kind::UNARY; }
 
-  Loc Begin() const override { return begin; }
+  const Loc Begin() const override { return begin; }
 
-  Loc End() const override { return begin; }
+  const Loc End() const override { return begin; }
 };
 
 struct BinaryOp : public Operator {
@@ -56,16 +56,16 @@ struct BinaryOp : public Operator {
     MOD = 23
   };
 
-  BinaryOp::Op op;
-  Loc begin;
+  const BinaryOp::Op op;
+  const Loc begin;
 
   BinaryOp(Loc begin, BinaryOp::Op op) : begin(begin), op(op) {}
 
   Operator::Kind OpKind() const override { return Operator::Kind::BINARY; }
 
-  Loc Begin() const override { return begin; }
+  const Loc Begin() const override { return begin; }
 
-  Loc End() const override {
+  const Loc End() const override {
     switch (op) {
       case BinaryOp::Op::EQEQ:
       case BinaryOp::Op::NEQ:
@@ -89,8 +89,6 @@ struct Stmt : public AstNode {
   enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
   virtual Stmt::Kind StmtKind() const = 0;
   virtual bool IsTerminating() const { return false; }
-
-  /* bool IsRet() const { return StmtKind() == Kind::RET; } */
 };
 
 struct Expr : public Stmt {
@@ -101,8 +99,8 @@ struct Expr : public Stmt {
 };
 
 struct Block : public Expr {
-  Loc begin;
-  Loc end;
+  const Loc begin;
+  const Loc end;
   unique_deque<Stmt> stmts;
 
   Block(Loc begin, Loc end, unique_deque<Stmt> stmts)
@@ -117,9 +115,9 @@ struct Block : public Expr {
 
   Expr::Kind ExprKind() const override { return Expr::Kind::BLOCK; }
 
-  Loc Begin() const override { return begin; }
+  const Loc Begin() const override { return begin; }
 
-  Loc End() const override { return end; }
+  const Loc End() const override { return end; }
 };
 
 struct If : public Expr {
@@ -151,9 +149,9 @@ struct If : public Expr {
 
   Expr::Kind ExprKind() const override { return Expr::Kind::IF; }
 
-  Loc Begin() const override { return begin; }
+  const Loc Begin() const override { return begin; }
 
-  Loc End() const override {
+  const Loc End() const override {
     if (els) {
       return els->End();
     } else {
@@ -163,22 +161,22 @@ struct If : public Expr {
 };
 
 struct Ident : public Expr {
-  Loc begin;
+  const Loc begin;
   std::string val;
 
   Ident(Loc begin, std::string val) : begin(begin), val(val) {}
 
-  Loc Begin() const override { return begin; }
+  const Loc Begin() const override { return begin; }
 
-  Loc End() const override { return begin + val.size(); }
+  const Loc End() const override { return begin + val.size(); }
 
   Expr::Kind ExprKind() const override { return Expr::Kind::IDENT; }
 };
 
 struct Lit : public Expr {
   enum Kind { INT, FLOAT, CHAR, BOOL, STRING };
-  Loc begin;
-  Lit::Kind kind;
+  const Loc begin;
+  const Lit::Kind kind;
   std::string val;
 
   Lit(Loc begin, Lit::Kind kind, std::string val = "")
@@ -186,9 +184,9 @@ struct Lit : public Expr {
 
   Lit::Kind LitKind() { return kind; }
 
-  Loc Begin() const override { return begin; }
+  const Loc Begin() const override { return begin; }
 
-  Loc End() const override { return begin + val.size() + 2; }
+  const Loc End() const override { return begin + val.size() + 2; }
 
   Expr::Kind ExprKind() const override { return Expr::Kind::LIT; }
 };
@@ -202,24 +200,24 @@ struct BinaryExpr : public Expr {
              std::unique_ptr<Expr> rhs)
       : lhs(std::move(lhs)), rhs(std::move(rhs)), op(std::move(op)) {}
 
-  Loc Begin() const override { return lhs->Begin(); }
+  const Loc Begin() const override { return lhs->Begin(); }
 
-  Loc End() const override { return rhs->End(); }
+  const Loc End() const override { return rhs->End(); }
 
   Expr::Kind ExprKind() const override { return Expr::Kind::BINARY; }
 };
 
 struct CallExpr : public Expr {
-  Loc end;
+  const Loc end;
   std::unique_ptr<Ident> ident;
   unique_deque<Expr> args;
 
   CallExpr(Loc end, std::unique_ptr<Ident> ident, unique_deque<Expr> args)
       : end(end), ident(std::move(ident)), args(std::move(args)) {}
 
-  Loc Begin() const override { return ident->Begin(); }
+  const Loc Begin() const override { return ident->Begin(); }
 
-  Loc End() const override { return end; }
+  const Loc End() const override { return end; }
 
   Expr::Kind ExprKind() const override { return Expr::Kind::CALL; }
 };
@@ -231,16 +229,16 @@ struct UnaryExpr : public Expr {
   UnaryExpr(std::unique_ptr<UnaryOp> op, std::unique_ptr<Expr> expr)
       : op(std::move(op)), expr(std::move(expr)) {}
 
-  Loc Begin() const override { return op->Begin(); }
+  const Loc Begin() const override { return op->Begin(); }
 
-  Loc End() const override { return expr->End(); }
+  const Loc End() const override { return expr->End(); }
 
   Expr::Kind ExprKind() const override { return Expr::Kind::UNARY; }
 };
 
 struct RetStmt : public Stmt {
-  Loc begin;
-  Loc end;
+  const Loc begin;
+  const Loc end;
   std::unique_ptr<Expr> expr;
 
   RetStmt(Loc begin, Loc end, std::unique_ptr<Expr> expr = nullptr)
@@ -248,16 +246,16 @@ struct RetStmt : public Stmt {
 
   virtual bool IsTerminating() const override { return true; }
 
-  Loc Begin() const override { return begin; }
+  const Loc Begin() const override { return begin; }
 
-  Loc End() const override { return end; }
+  const Loc End() const override { return end; }
 
   Stmt::Kind StmtKind() const override { return Stmt::Kind::RET; }
 };
 
 struct VarDeclStmt : public Stmt {
-  Loc begin;
-  bool is_let;
+  const Loc begin;
+  const bool is_let;
   std::unique_ptr<Ident> name;
   std::unique_ptr<Ident> ty_name;
   std::unique_ptr<Expr> expr;
@@ -272,9 +270,9 @@ struct VarDeclStmt : public Stmt {
         ty_name(std::move(ty_name)),
         expr(std::move(expr)) {}
 
-  Loc Begin() const override { return begin; }
+  const Loc Begin() const override { return begin; }
 
-  Loc End() const override { return expr->End(); }
+  const Loc End() const override { return expr->End(); }
 
   Stmt::Kind StmtKind() const override { return Stmt::Kind::VAR_DECL; }
 };
@@ -286,9 +284,9 @@ struct AssignStmt : public Stmt {
   AssignStmt(std::unique_ptr<Ident> name, std::unique_ptr<Expr> expr)
       : name(std::move(name)), expr(std::move(expr)) {}
 
-  Loc Begin() const override { return name->Begin(); }
+  const Loc Begin() const override { return name->Begin(); }
 
-  Loc End() const override { return expr->End(); }
+  const Loc End() const override { return expr->End(); }
 
   Stmt::Kind StmtKind() const override { return Stmt::Kind::ASSIGN; }
 };
@@ -302,28 +300,28 @@ struct FnArg : public AstNode {
 
   bool WithName() const { return name != nullptr; }
 
-  Loc Begin() const override {
+  const Loc Begin() const override {
     return WithName() ? name->Begin() : ty->Begin();
   }
 
-  Loc End() const override { return ty->End(); }
+  const Loc End() const override { return ty->End(); }
 };
 
 struct FnArgs : public AstNode {
-  Loc begin;
-  Loc end;
+  const Loc begin;
+  const Loc end;
   std::vector<std::unique_ptr<FnArg>> list;
 
   FnArgs(Loc begin, Loc end, std::vector<std::unique_ptr<FnArg>> list)
       : begin(begin), end(end), list(std::move(list)) {}
 
-  Loc Begin() const override { return begin; }
+  const Loc Begin() const override { return begin; }
 
-  Loc End() const override { return end; }
+  const Loc End() const override { return end; }
 };
 
 struct FnProto : public AstNode {
-  Loc begin;
+  const Loc begin;
   std::unique_ptr<Ident> name;
   std::unique_ptr<FnArgs> args;
   std::unique_ptr<Ident> ret;
@@ -335,9 +333,9 @@ struct FnProto : public AstNode {
         args(std::move(args)),
         ret(std::move(ret)) {}
 
-  Loc Begin() const override { return begin; }
+  const Loc Begin() const override { return begin; }
 
-  Loc End() const override {
+  const Loc End() const override {
     if (ret)
       return ret->End();
     else
@@ -352,21 +350,21 @@ struct FnDecl : public AstNode {
   FnDecl(std::unique_ptr<FnProto> proto, std::unique_ptr<Block> block)
       : proto(std::move(proto)), block(std::move(block)) {}
 
-  Loc Begin() const override { return proto->Begin(); }
+  const Loc Begin() const override { return proto->Begin(); }
 
-  Loc End() const override { return block->End(); }
+  const Loc End() const override { return block->End(); }
 };
 
 struct Extern : public AstNode {
-  Loc begin;
+  const Loc begin;
   std::unique_ptr<FnProto> proto;
 
   Extern(Loc begin, std::unique_ptr<FnProto> proto)
       : begin(begin), proto(std::move(proto)) {}
 
-  Loc Begin() const override { return begin; }
+  const Loc Begin() const override { return begin; }
 
-  Loc End() const override { return proto->End(); }
+  const Loc End() const override { return proto->End(); }
 };
 
 struct File {

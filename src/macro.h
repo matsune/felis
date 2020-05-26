@@ -1,6 +1,8 @@
 #ifndef FELIS_MACRO_H_
 #define FELIS_MACRO_H_
 
+#include <iostream>
+
 namespace felis {
 
 #define UNREACHABLE                                                        \

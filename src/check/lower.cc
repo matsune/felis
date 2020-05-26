@@ -45,32 +45,67 @@ hir::Binary::Op bin_op_ast_to_hir(ast::BinaryOp::Op op) {
   }
 }
 
+std::shared_ptr<Type> FinalType(std::shared_ptr<Type> ty, bool is_32bit) {
+  auto underlying_ty = Underlying(ty);
+  if (underlying_ty->IsFixed()) {
+    return underlying_ty;
+  } else if (underlying_ty->IsUntyped()) {
+    auto untyped = std::dynamic_pointer_cast<Untyped>(underlying_ty);
+    if (untyped->IsUntypedInt()) {
+      return is_32bit ? kTypeI32 : kTypeI64;
+    } else if (untyped->IsUntypedFloat()) {
+      return kTypeF32;
+    }
+  }
+  std::cout << "[unreachabel] underlying " << ToString(underlying_ty)
+            << std::endl;
+  UNREACHABLE
+}
+
 }  // namespace
 
-std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file,
-                                           bool is_32bit) {
-  // Type Checks
-  decl_checker_.Check(file);
-  std::cout << ">>Done DeclCheck" << std::endl;
-  ty_infer_.Infer(file);
+std::unique_ptr<hir::File> Lowering(std::unique_ptr<ast::File> file,
+                                    bool is_32bit) {
+  IdentDeclMap ident_decl_map;
+  ExprTypeMap expr_type_map;
 
-  node_map_.FinalizeTypes();
-  node_map_.Debug();
+  TypeChecker type_ck(is_32bit, ident_decl_map, expr_type_map);
+  type_ck.Check(file);
 
+  // finalize types
+  std::cout << "---------------" << std::endl;
+  for (auto &it : ident_decl_map) {
+    std::cout << "ident: " << it.first << " from: " << ToString(it.second);
+    it.second->type = FinalType(it.second->type, is_32bit);
+    std::cout << " to: " << ToString(it.second) << std::endl;
+  }
+  std::cout << "---------------" << std::endl;
+  for (auto &it : expr_type_map) {
+    std::cout << "expr: " << it.first;
+    it.second = FinalType(it.second, is_32bit);
+    std::cout << " type: " << ToString(it.second) << std::endl;
+  }
+  std::cout << "---------------" << std::endl;
+
+  return Lower(ident_decl_map, expr_type_map).Lowering(std::move(file));
+}
+
+std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file) {
   // Lowering AST to HIR
   auto hir_file = std::make_unique<hir::File>();
   while (!file->externs.empty()) {
     auto ext = file->externs.move_front();
-    auto decl = node_map_.GetDecl(ext->proto->name);
+    auto decl = GetDecl(ext->proto->name);
     hir_file->externs.push_back(std::make_unique<hir::Extern>(decl));
   }
+
   while (!file->fn_decls.empty()) {
-    auto fn = file->fn_decls.move_front();
-    auto decl = node_map_.GetDecl(fn->proto->name);
+    std::unique_ptr<ast::FnDecl> fn = file->fn_decls.move_front();
+    auto decl = GetDecl(fn->proto->name);
 
     std::deque<std::shared_ptr<Decl>> args;
-    for (auto& arg : fn->proto->args->list) {
-      auto arg_decl = node_map_.GetDecl(arg->name);
+    for (auto &arg : fn->proto->args->list) {
+      auto arg_decl = GetDecl(arg->name);
       args.push_back(arg_decl);
     }
     auto block = LowerBlock(std::move(fn->block));
@@ -82,6 +117,7 @@ std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file,
 }
 
 std::unique_ptr<hir::Stmt> Lower::LowerStmt(std::unique_ptr<ast::Stmt> stmt) {
+  std::cout << "LowerStmt " << stmt->StmtKind() << std::endl;
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR:
       return LowerExpr(unique_cast<ast::Expr>(std::move(stmt)));
@@ -105,14 +141,14 @@ std::unique_ptr<hir::RetStmt> Lower::LowerRet(
 
 std::unique_ptr<hir::VarDeclStmt> Lower::LowerVarDecl(
     std::unique_ptr<ast::VarDeclStmt> stmt) {
-  auto decl = node_map_.GetDecl(stmt->name);
+  auto decl = GetDecl(stmt->name);
   auto expr = LowerExpr(std::move(stmt->expr));
   return std::make_unique<hir::VarDeclStmt>(decl, std::move(expr));
 }
 
 std::unique_ptr<hir::AssignStmt> Lower::LowerAssign(
     std::unique_ptr<ast::AssignStmt> stmt) {
-  auto decl = node_map_.GetDecl(stmt->name);
+  auto decl = GetDecl(stmt->name);
   auto expr = LowerExpr(std::move(stmt->expr));
   return std::make_unique<hir::AssignStmt>(decl, std::move(expr));
 }
@@ -124,7 +160,7 @@ std::unique_ptr<hir::Expr> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
 
     case ast::Expr::Kind::CALL: {
       auto call = unique_cast<ast::CallExpr>(std::move(expr));
-      auto decl = node_map_.GetDecl(call->ident);
+      auto decl = GetDecl(call->ident);
       auto func_decl = decl->AsFuncType();
       unique_deque<hir::Expr> args;
       while (!call->args.empty()) {
@@ -136,7 +172,7 @@ std::unique_ptr<hir::Expr> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
 
     case ast::Expr::Kind::IDENT: {
       auto ident = unique_cast<ast::Ident>(std::move(expr));
-      auto decl = node_map_.GetDecl(ident);
+      auto decl = GetDecl(ident);
       return std::make_unique<hir::Variable>(decl);
     } break;
 
@@ -148,7 +184,7 @@ std::unique_ptr<hir::Expr> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
     } break;
 
     case ast::Expr::Kind::BINARY: {
-      auto ty = node_map_.GetType(expr);
+      auto ty = GetType(expr);
       auto binary = unique_cast<ast::BinaryExpr>(std::move(expr));
       auto op = bin_op_ast_to_hir(binary->op->op);
       auto lhs = LowerExpr(std::move(binary->lhs));
@@ -164,7 +200,7 @@ std::unique_ptr<hir::Expr> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
 }
 
 std::unique_ptr<hir::If> Lower::LowerIf(std::unique_ptr<ast::If> expr) {
-  auto ty = node_map_.GetType(expr);
+  auto ty = GetType(expr);
   auto cond = LowerExpr(std::move(expr->cond));
   auto block = LowerBlock(std::move(expr->block));
   std::unique_ptr<hir::Expr> els = nullptr;
@@ -181,7 +217,7 @@ std::unique_ptr<hir::If> Lower::LowerIf(std::unique_ptr<ast::If> expr) {
 
 std::unique_ptr<hir::Block> Lower::LowerBlock(
     std::unique_ptr<ast::Block> block) {
-  auto ty = node_map_.GetType(block);
+  auto ty = GetType(block);
   unique_deque<hir::Stmt> stmts;
   while (!block->stmts.empty()) {
     stmts.push_back(LowerStmt(block->stmts.move_front()));
@@ -192,20 +228,18 @@ std::unique_ptr<hir::Block> Lower::LowerBlock(
 std::unique_ptr<hir::Value> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
   switch (lit->LitKind()) {
     case ast::Lit::Kind::CHAR: {
-      auto ty = node_map_.GetType(lit);
+      auto ty = GetType(lit);
 
       std::stringstream ss(lit->val);
       rune r;
       ss >> r;
-      switch (ty->TypedKind()) {
-        case Typed::Kind::I32:
-        case Typed::Kind::I64:
-          return std::make_unique<hir::IntConstant>(ty, r);
-        case Typed::Kind::F32:
-        case Typed::Kind::F64:
-          return std::make_unique<hir::FloatConstant>(ty, r);
-        default:
-          UNREACHABLE
+
+      if (ty->IsI32() || ty->IsI64()) {
+        return std::make_unique<hir::IntConstant>(ty, r);
+      } else if (ty->IsF32() || ty->IsF64()) {
+        return std::make_unique<hir::FloatConstant>(ty, r);
+      } else {
+        UNREACHABLE
       }
 
     } break;
@@ -215,11 +249,11 @@ std::unique_ptr<hir::Value> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
       return ParseFloat(std::move(lit));
     } break;
     case ast::Lit::Kind::BOOL: {
-      auto ty = node_map_.GetType(lit);
+      auto ty = GetType(lit);
       return std::make_unique<hir::BoolConstant>(ty, lit->val == "true");
     } break;
     case ast::Lit::Kind::STRING: {
-      auto ty = node_map_.GetType(lit);
+      auto ty = GetType(lit);
       return std::make_unique<hir::StringConstant>(ty, lit->val);
     } break;
   }
@@ -228,30 +262,28 @@ std::unique_ptr<hir::Value> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
 std::unique_ptr<hir::Value> Lower::ParseInt(std::unique_ptr<ast::Lit> lit) {
   try {
     int64_t n = stoll(lit->val);
-    auto ty = node_map_.GetType(lit);
-    switch (ty->TypedKind()) {
-      case Typed::Kind::I8:
-        if (n < INT8_MIN || n > INT8_MAX) {
-          throw LocError::Create(lit->Begin(), "overflow int8");
-        }
-        return std::make_unique<hir::IntConstant>(ty, n);
-      case Typed::Kind::I16:
-        if (n < INT16_MIN || n > INT16_MAX) {
-          throw LocError::Create(lit->Begin(), "overflow int16");
-        }
-        return std::make_unique<hir::IntConstant>(ty, n);
-      case Typed::Kind::I32:
-        if (n < INT32_MIN || n > INT32_MAX) {
-          throw LocError::Create(lit->Begin(), "overflow int32");
-        }
-        return std::make_unique<hir::IntConstant>(ty, n);
-      case Typed::Kind::I64:
-        return std::make_unique<hir::IntConstant>(ty, n);
-      case Typed::Kind::F32:
-      case Typed::Kind::F64:
-        return std::make_unique<hir::FloatConstant>(ty, n);
-      default:
-        UNREACHABLE
+    auto ty = GetType(lit);
+    if (ty->IsI8()) {
+      if (n < INT8_MIN || n > INT8_MAX) {
+        throw LocError::Create(lit->Begin(), "overflow int8");
+      }
+      return std::make_unique<hir::IntConstant>(ty, n);
+    } else if (ty->IsI16()) {
+      if (n < INT16_MIN || n > INT16_MAX) {
+        throw LocError::Create(lit->Begin(), "overflow int16");
+      }
+      return std::make_unique<hir::IntConstant>(ty, n);
+    } else if (ty->IsI32()) {
+      if (n < INT32_MIN || n > INT32_MAX) {
+        throw LocError::Create(lit->Begin(), "overflow int32");
+      }
+      return std::make_unique<hir::IntConstant>(ty, n);
+    } else if (ty->IsI64()) {
+      return std::make_unique<hir::IntConstant>(ty, n);
+    } else if (ty->IsF32() || ty->IsF64()) {
+      return std::make_unique<hir::FloatConstant>(ty, n);
+    } else {
+      UNREACHABLE
     }
 
   } catch (std::out_of_range e) {
@@ -266,14 +298,8 @@ std::unique_ptr<hir::FloatConstant> Lower::ParseFloat(
   try {
     // TODO: parse float
     double n = stod(lit->val);
-    auto ty = node_map_.GetType(lit);
-    switch (ty->TypedKind()) {
-      case Typed::Kind::F32:
-      case Typed::Kind::F64:
-        break;
-      default:
-        UNREACHABLE
-    }
+    auto ty = GetType(lit);
+    assert(ty->IsFixedFloat());
     return std::make_unique<hir::FloatConstant>(ty, n);
   } catch (std::out_of_range e) {
     throw LocError::Create(lit->Begin(), "out of range");

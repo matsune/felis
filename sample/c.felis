@@ -1,9 +1,10 @@
-fn c() -> f64 { ret 4 }
+fn c(n: f64) -> f64 { ret n }
 
 fn main() -> i32 {
-  let b = c()
-  let c = b
-  ret if -(-c +2) > 0 {
+  let a = (1 + 4) + 3.2
+  let bb = 34 + a
+  let b = c(a)
+  ret if -(-b +2) > 0 {
     2
   } else {
     5

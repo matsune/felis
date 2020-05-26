@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "check/decl.h"
-#include "check/node_map.h"
 #include "check/scope.h"
 #include "check/type.h"
 #include "node/ast.h"
@@ -17,46 +16,31 @@ namespace felis {
 
 class DeclChecker {
  public:
-  DeclChecker(NodeMap &node_map)
-      : current_scope_(std::make_shared<Scope>(nullptr)), node_map_(node_map) {
-    SetupBuiltin();
+  DeclChecker(bool is_32bit)
+      : current_scope_(std::make_shared<Scope>(nullptr)), is_32bit(is_32bit) {
+    InsertBuiltinTypes();
   };
-  void Check(const std::unique_ptr<ast::File> &);
+  void CheckGlobalLevel(const std::unique_ptr<ast::File> &);
+
+  void OpenScope();
+  void CloseScope();
+  bool CanDecl(const std::string &);
+  std::shared_ptr<Decl> LookupVarDecl(const std::string &);
+  std::shared_ptr<Decl> LookupFuncDecl(const std::string &);
+  std::shared_ptr<Type> LookupType(const std::string &);
+
+  void InsertDecl(std::string name, std::shared_ptr<Decl> decl) {
+    current_scope_->InsertDecl(name, decl);
+  }
 
  private:
   std::shared_ptr<Scope> current_scope_;
-  std::shared_ptr<FuncType> current_func_;
-  NodeMap &node_map_;
+  bool is_32bit;
 
-  void SetupBuiltin();
-
-  std::shared_ptr<Decl> GetDecl(const std::unique_ptr<ast::Ident> &t) const {
-    return node_map_.GetDecl(t);
-  }
-
-  void SetDecl(const std::unique_ptr<ast::Ident> &t,
-               std::shared_ptr<Decl> decl) {
-    node_map_.SetDecl(t, decl);
-  }
-
-  void CheckFnDecl(const std::unique_ptr<ast::FnDecl> &);
-  void CheckStmt(const std::unique_ptr<ast::Stmt> &);
-  void CheckExpr(const std::unique_ptr<ast::Expr> &);
-  void CheckRet(const std::unique_ptr<ast::RetStmt> &);
-  void CheckVarDecl(const std::unique_ptr<ast::VarDeclStmt> &);
-  void CheckAssign(const std::unique_ptr<ast::AssignStmt> &);
-  void CheckIf(const std::unique_ptr<ast::If> &);
-  void CheckBlock(const std::unique_ptr<ast::Block> &);
-
-  std::shared_ptr<Decl> InsertFnDecl(
-      bool isExt, const std::unique_ptr<ast::FnProto> &proto);
-  void OpenScope();
-  void CloseScope();
-  bool CanDecl(std::string name);
-  std::shared_ptr<Decl> LookupDecl(std::string name);
-  std::shared_ptr<Typed> LookupType(std::string name);
-
-  void DebugScope();
+  void InsertBuiltinTypes();
+  std::shared_ptr<Decl> LookupDecl(const std::string &);
+  std::shared_ptr<Decl> MakeFnDecl(bool isExt,
+                                   const std::unique_ptr<ast::FnProto> &);
 };
 
 }  // namespace felis

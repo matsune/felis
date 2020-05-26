@@ -136,82 +136,60 @@ std::string ToString(const hir::Binary::Op &op) {
   }
 }
 
-std::string ToString(const Decl::Kind &kind) {
-  switch (kind) {
-    case Decl::Kind::EXT:
-      return "EXT";
-    case Decl::Kind::FN:
-      return "FN";
-    case Decl::Kind::ARG:
-      return "ARG";
-    case Decl::Kind::VAR:
-      return "VAR";
-    case Decl::Kind::LET:
-      return "LET";
-  };
-}
+std::string ToString(const std::shared_ptr<Type> &t) {
+  if (!t) return "null";
 
-std::string ToString(const Ty &t) {
-  if (t.IsTyped()) {
-    return ToString(dynamic_cast<const Typed &>(t));
-  } else {
-    return ToString(dynamic_cast<const Untyped &>(t));
+  if (t->IsVoid()) {
+    return "void";
   }
-}
-
-std::string ToString(const Typed &t) {
-  switch (t.TypedKind()) {
-    case Typed::Kind::VOID:
-      return "void";
-    case Typed::Kind::I8:
-      return "i8";
-    case Typed::Kind::I16:
-      return "i16";
-    case Typed::Kind::I32:
-      return "i32";
-    case Typed::Kind::I64:
-      return "i64";
-    case Typed::Kind::F32:
-      return "f32";
-    case Typed::Kind::F64:
-      return "f64";
-    case Typed::Kind::BOOL:
-      return "bool";
-    case Typed::Kind::STRING:
-      return "string";
-    case Typed::Kind::FUNC:
-      return ToString(dynamic_cast<const FuncType &>(t));
+  if (t->IsI8()) {
+    return "i8";
   }
-}
-
-std::string ToString(const FuncType &t) {
-  std::string str = "func(";
-  int i = 0;
-  for (auto &arg : t.args) {
-    if (i++ > 0) {
-      str += ", ";
+  if (t->IsI16()) {
+    return "i16";
+  }
+  if (t->IsI32()) {
+    return "i32";
+  }
+  if (t->IsI64()) {
+    return "i64";
+  }
+  if (t->IsF32()) {
+    return "f32";
+  }
+  if (t->IsF64()) {
+    return "f64";
+  }
+  if (t->IsBool()) {
+    return "bool";
+  }
+  if (t->IsString()) {
+    return "string";
+  }
+  if (t->IsFunc()) {
+    auto func_type = dynamic_cast<FuncType *>(t.get());
+    std::string str = "func(";
+    for (auto it = func_type->args.begin(); it != func_type->args.end(); ++it) {
+      bool is_begin = it == func_type->args.begin();
+      if (!is_begin) str += ", ";
+      str += ToString(*it);
     }
-    str += ToString(*arg);
+    str += ")";
+    if (!func_type->ret->IsVoid()) {
+      str += " -> " + ToString(func_type->ret);
+    }
+    return str;
   }
-  str += ")";
-  if (!t.ret->IsVoid()) {
-    str += " -> " + ToString(*t.ret);
+  if (t->IsUntyped()) {
+    auto untyped = dynamic_cast<Untyped *>(t.get());
+    std::stringstream s;
+    if (t->IsUnresolved()) s << "unresolved (ref: " << untyped->Ref() << ")";
+    if (t->IsUntypedInt()) s << "untyped int (ref: " << untyped->Ref() << ")";
+    if (t->IsUntypedFloat())
+      s << "untyped float (ref: " << untyped->Ref() << ")";
+    return s.str();
   }
-  return str;
-}
-
-std::string ToString(const Untyped &t) {
-  std::stringstream ss;
-  switch (t.UntypedKind()) {
-    case Untyped::Kind::INT:
-      ss << "UntypedInt ref: ";
-      break;
-    case Untyped::Kind::FLOAT:
-      ss << "UntypedFloat ref: ";
-      break;
-  }
-  ss << t.GetRef();
-  return ss.str();
+  UNREACHABLE
 }
 
 std::string ToString(const ast::Stmt::Kind &kind) {
@@ -227,10 +205,27 @@ std::string ToString(const ast::Stmt::Kind &kind) {
   }
 }
 
-std::string ToString(const Decl &decl) {
+std::string ToString(const DeclKind &kind) {
+  switch (kind) {
+    case DeclKind::EXT:
+      return "EXT";
+    case DeclKind::FN:
+      return "FN";
+    case DeclKind::ARG:
+      return "ARG";
+    case DeclKind::VAR:
+      return "VAR";
+    case DeclKind::LET:
+      return "LET";
+  };
+}
+
+std::string ToString(const std::shared_ptr<Decl> &decl) {
+  if (!decl) return "null";
+
   std::stringstream ss;
-  ss << "Decl {name: " << decl.name << ", kind: " << ToString(decl.kind)
-     << ", type: " << ToString(*decl.type) << "}";
+  ss << "Decl {name: " << decl->name << ", kind: " << ToString(decl->kind)
+     << ", type: " << ToString(decl->type) << "} (" << decl.get() << ")";
   return ss.str();
 }
 

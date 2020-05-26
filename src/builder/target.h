@@ -1,7 +1,10 @@
 #ifndef FELIS_BUILDER_TARGET_H_
 #define FELIS_BUILDER_TARGET_H_
 
-#include <llvm/Support/TargetRegistry.h>
+#include <llvm/Target/TargetMachine.h>
+
+#include <memory>
+#include <string>
 
 namespace felis {
 
