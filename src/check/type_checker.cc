@@ -314,7 +314,7 @@ std::shared_ptr<Type> TypeChecker::InferExpr(
           throw LocError::Create(e->Begin(), "mismatch element type");
         }
       }
-      return std::make_shared<ArrayType>(elem_ty, size);
+      return RecordType(array, std::make_shared<ArrayType>(elem_ty, size));
     } break;
   }
 }

@@ -28,7 +28,7 @@ struct Expr : public Stmt {
 };
 
 struct Value : public Expr {
-  enum Kind { CONSTANT, VARIABLE };
+  enum Kind { CONSTANT, VARIABLE, ARRAY };
   virtual Value::Kind ValueKind() const = 0;
 
   // override Expr
@@ -59,6 +59,20 @@ struct Constant : public Value {
 
   // override Value
   Value::Kind ValueKind() const override { return Value::Kind::CONSTANT; }
+
+  // override Expr
+  std::shared_ptr<FixedType> Type() const override { return type; }
+};
+
+struct Array : public Value {
+  unique_deque<hir::Expr> exprs;
+  std::shared_ptr<FixedType> type;
+
+  Array(std::shared_ptr<FixedType> type, unique_deque<hir::Expr> exprs)
+      : type(type), exprs(std::move(exprs)) {}
+
+  // override Value
+  Value::Kind ValueKind() const override { return Value::Kind::ARRAY; }
 
   // override Expr
   std::shared_ptr<FixedType> Type() const override { return type; }

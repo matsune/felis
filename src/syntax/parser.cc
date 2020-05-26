@@ -232,9 +232,6 @@ std::unique_ptr<ast::Expr> Parser::ParseExpr(uint8_t prec) {
     un_op = std::make_unique<ast::UnaryOp>(begin, ast::UnaryOp::Op::NOT);
   }
 
-  /* if (!is_primary(Peek()->kind)) { */
-  /*   Throw("expected primary expr"); */
-  /* } */
   auto lhs = ParsePrimary();
 
   if (Match(Token::Kind::LPAREN)) {
@@ -339,7 +336,7 @@ std::unique_ptr<ast::Expr> Parser::ParsePrimary() {
     } break;
     case Token::Kind::LBRACK: {
       auto begin = Bump()->begin;
-      std::vector<std::unique_ptr<ast::Expr>> exprs;
+      unique_deque<ast::Expr> exprs;
       while (true) {
         exprs.push_back(ParseExpr());
         if (Match(Token::Kind::COMMA)) {

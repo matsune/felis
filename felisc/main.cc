@@ -121,7 +121,7 @@ class Session {
       auto hir = felis::Lowering(std::move(ast), is_32bit);
       if (!hir) return 1;
 
-      /* if (opts->IsPrintHir()) felis::HirPrinter().Print(hir); */
+      if (opts->IsPrintHir()) felis::HirPrinter().Print(hir);
 
       /* Build(std::move(machine), std::move(hir)); */
 

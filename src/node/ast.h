@@ -276,9 +276,9 @@ struct UnaryExpr : public Expr {
 
 struct ArrayExpr : public Expr {
   Loc begin, end;
-  std::vector<std::unique_ptr<Expr>> exprs;
+  unique_deque<Expr> exprs;
 
-  ArrayExpr(Loc begin, Loc end, std::vector<std::unique_ptr<Expr>> exprs)
+  ArrayExpr(Loc begin, Loc end, unique_deque<Expr> exprs)
       : begin(begin), end(end), exprs(std::move(exprs)) {}
 
   const Loc Begin() const override { return begin; }

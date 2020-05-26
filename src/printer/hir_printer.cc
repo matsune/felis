@@ -171,6 +171,19 @@ void HirPrinter::PrintExpr(hir::Expr *expr) {
           }
           Up("}");
           break;
+        case hir::Value::Kind::ARRAY:
+          Down("Array {");
+          {
+            auto array = dynamic_cast<hir::Array *>(value);
+            PrintPtr(array);
+            Writeln("Type: %s", ToString(array->Type()).c_str());
+            for (int i = 0; i < array->exprs.size(); i++) {
+              PrintIndex(i);
+              PrintExpr(array->exprs.at(i).get());
+            }
+          }
+          Up("}");
+          break;
       }
     } break;
 

@@ -93,8 +93,7 @@ std::unique_ptr<hir::File> Lowering(std::unique_ptr<ast::File> file,
   }
   std::cout << "---------------" << std::endl;
 
-  return nullptr;
-  /* return Lower(ident_decl_map, expr_type_map).Lowering(std::move(file)); */
+  return Lower(ident_decl_map, expr_type_map).Lowering(std::move(file));
 }
 
 std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file) {
@@ -203,6 +202,16 @@ std::unique_ptr<hir::Expr> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
       return LowerIf(unique_cast<ast::If>(std::move(expr)));
     case ast::Expr::Kind::BLOCK:
       return LowerBlock(unique_cast<ast::Block>(std::move(expr)));
+    case ast::Expr::Kind::ARRAY: {
+      auto array = unique_cast<ast::ArrayExpr>(std::move(expr));
+      auto ty = GetType(array);
+      unique_deque<hir::Expr> exprs;
+      while (!array->exprs.empty()) {
+        auto expr = array->exprs.move_front();
+        exprs.push_back(LowerExpr(std::move(expr)));
+      }
+      return std::make_unique<hir::Array>(ty, std::move(exprs));
+    } break;
   }
 }
 
