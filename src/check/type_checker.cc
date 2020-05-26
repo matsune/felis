@@ -12,6 +12,13 @@ bool TryResolve(std::shared_ptr<Type> ty, std::shared_ptr<Type> to) {
   auto underlying_ty = Underlying(ty);
   std::cout << "Underlying " << ToString(underlying_ty) << std::endl;
   if (underlying_ty->IsFixed()) {
+    if (underlying_ty->IsArray()) {
+      auto array_ty = std::dynamic_pointer_cast<ArrayType>(underlying_ty);
+      if (!to->IsArray()) return false;
+      auto to_array_ty = std::dynamic_pointer_cast<ArrayType>(to);
+      if (array_ty->size != to_array_ty->size) return false;
+      return TryResolve(array_ty->elem, to_array_ty->elem);
+    }
     return *underlying_ty == *to;
   } else if (underlying_ty->IsUntyped()) {
     return std::dynamic_pointer_cast<Untyped>(underlying_ty)->TryResolve(to);
@@ -37,16 +44,14 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
 
     decl_ck.OpenScope();
 
-    // TODO
-    /* for (auto& arg : fn->proto->args->list) { */
-    /*   // arg-name duplication is already checked in parser */
-    /*   auto arg_decl = std::make_shared<Decl>( */
-    /*       arg->name->val, decl_ck.LookupType(arg->ty->val), DeclKind::ARG);
-     */
-    /*   RecordDecl(arg->name, arg_decl); */
+    for (auto& arg : fn->proto->args->list) {
+      // arg-name duplication is already checked in parser
+      auto arg_decl = std::make_shared<Decl>(
+          arg->name->val, decl_ck.LookupType(arg->type_name), DeclKind::ARG);
+      RecordDecl(arg->name, arg_decl);
 
-    /*   decl_ck.InsertDecl(arg->name->val, arg_decl); */
-    /* } */
+      decl_ck.InsertDecl(arg->name->val, arg_decl);
+    }
 
     std::shared_ptr<Type> block_ty = kTypeVoid;
     for (auto it = fn->block->stmts.begin(); it != fn->block->stmts.end();
@@ -144,16 +149,13 @@ void TypeChecker::InferVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
     throw LocError::Create(stmt->Begin(), "redeclared var %s", name.c_str());
   }
   std::shared_ptr<Type> decl_ty = Unresolved();
-  // TODO
-  /* if (stmt->ty_name) { */
-  /*   // has type constraint */
-  /*   decl_ty = decl_ck.LookupType(stmt->ty_name->val); */
-  /*   if (!decl_ty) { */
-  /*     throw LocError::Create(stmt->ty_name->Begin(), "unknown decl type %s",
-   */
-  /*                            stmt->ty_name->val.c_str()); */
-  /*   } */
-  /* } */
+  if (stmt->type_name) {
+    // has type constraint
+    decl_ty = decl_ck.LookupType(stmt->type_name);
+    if (!decl_ty) {
+      throw LocError::Create(stmt->type_name->Begin(), "unknown decl type");
+    }
+  }
 
   auto expr_ty = InferExpr(stmt->expr, true);
   if (expr_ty->IsVoid()) {
@@ -301,6 +303,19 @@ std::shared_ptr<Type> TypeChecker::InferExpr(
       return InferIf((std::unique_ptr<ast::If>&)expr, as_expr);
     case ast::Expr::Kind::BLOCK:
       return InferBlock((std::unique_ptr<ast::Block>&)expr, as_expr);
+
+    case ast::Expr::Kind::ARRAY: {
+      auto& array = (std::unique_ptr<ast::ArrayExpr>&)expr;
+      auto size = array->exprs.size();
+      auto elem_ty = Unresolved();
+      for (auto& e : array->exprs) {
+        auto e_ty = InferExpr(e, true);
+        if (!TryResolve(elem_ty, e_ty)) {
+          throw LocError::Create(e->Begin(), "mismatch element type");
+        }
+      }
+      return std::make_shared<ArrayType>(elem_ty, size);
+    } break;
   }
 }
 

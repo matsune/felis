@@ -142,33 +142,16 @@ std::string ToString(const hir::Binary::Op &op) {
 std::string ToString(const std::shared_ptr<Type> &t) {
   if (!t) return "null";
 
-  if (t->IsVoid()) {
-    return "void";
-  }
-  if (t->IsI8()) {
-    return "i8";
-  }
-  if (t->IsI16()) {
-    return "i16";
-  }
-  if (t->IsI32()) {
-    return "i32";
-  }
-  if (t->IsI64()) {
-    return "i64";
-  }
-  if (t->IsF32()) {
-    return "f32";
-  }
-  if (t->IsF64()) {
-    return "f64";
-  }
-  if (t->IsBool()) {
-    return "bool";
-  }
-  if (t->IsString()) {
-    return "string";
-  }
+  if (t->IsVoid()) return "void";
+  if (t->IsI8()) return "i8";
+  if (t->IsI16()) return "i16";
+  if (t->IsI32()) return "i32";
+  if (t->IsI64()) return "i64";
+  if (t->IsF32()) return "f32";
+  if (t->IsF64()) return "f64";
+  if (t->IsBool()) return "bool";
+  if (t->IsString()) return "string";
+
   if (t->IsFunc()) {
     auto func_type = dynamic_cast<FuncType *>(t.get());
     std::string str = "func(";
@@ -190,6 +173,12 @@ std::string ToString(const std::shared_ptr<Type> &t) {
     if (t->IsUntypedInt()) s << "untyped int (ref: " << untyped->Ref() << ")";
     if (t->IsUntypedFloat())
       s << "untyped float (ref: " << untyped->Ref() << ")";
+    return s.str();
+  }
+  if (t->IsArray()) {
+    auto array = dynamic_cast<ArrayType *>(t.get());
+    std::stringstream s;
+    s << "[" << ToString(array->elem) << ", " << array->size << "]";
     return s.str();
   }
   UNREACHABLE

@@ -16,6 +16,7 @@ struct Type {
 
   virtual inline bool IsPrim() const { return false; }
   virtual inline bool IsFunc() const { return false; }
+  virtual inline bool IsArray() const { return false; }
 
   virtual inline bool IsUnresolved() const { return false; }
   virtual inline bool IsUntypedInt() const { return false; }
@@ -45,7 +46,7 @@ struct Type {
 };
 
 struct FixedType : public Type {
-  enum Kind { PRIM, FUNC };
+  enum Kind { PRIM, FUNC, ARRAY };
   virtual inline FixedType::Kind FixedKind() const = 0;
 
   inline Type::Kind TypeKind() const override { return Type::Kind::FIXED; }
@@ -58,6 +59,10 @@ struct FixedType : public Type {
 
   inline bool IsFunc() const override {
     return FixedKind() == FixedType::Kind::FUNC;
+  }
+
+  inline bool IsArray() const override {
+    return FixedKind() == FixedType::Kind::ARRAY;
   }
 };
 
@@ -120,6 +125,20 @@ struct FuncType : public FixedType {
 
   std::vector<std::shared_ptr<Type>> args;
   std::shared_ptr<Type> ret;
+};
+
+struct ArrayType : public FixedType {
+  ArrayType(std::shared_ptr<Type> elem, int64_t size)
+      : elem(elem), size(size) {}
+
+  bool operator==(const ArrayType& other) const {
+    return elem == other.elem && size == other.size;
+  }
+
+  FixedType::Kind FixedKind() const override { return FixedType::Kind::ARRAY; }
+
+  std::shared_ptr<Type> elem;
+  int64_t size;
 };
 
 struct Untyped : public Type {

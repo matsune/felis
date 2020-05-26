@@ -2,6 +2,7 @@
 
 #include <assert.h>
 
+#include "check/parse.h"
 #include "error/error.h"
 #include "unique.h"
 
@@ -48,6 +49,11 @@ hir::Binary::Op bin_op_ast_to_hir(ast::BinaryOp::Op op) {
 std::shared_ptr<Type> FinalType(std::shared_ptr<Type> ty, bool is_32bit) {
   auto underlying_ty = Underlying(ty);
   if (underlying_ty->IsFixed()) {
+    if (underlying_ty->IsArray()) {
+      auto array_ty = std::dynamic_pointer_cast<ArrayType>(underlying_ty);
+      auto elem = FinalType(array_ty->elem, is_32bit);
+      return std::make_shared<ArrayType>(elem, array_ty->size);
+    }
     return underlying_ty;
   } else if (underlying_ty->IsUntyped()) {
     auto untyped = std::dynamic_pointer_cast<Untyped>(underlying_ty);
@@ -87,7 +93,8 @@ std::unique_ptr<hir::File> Lowering(std::unique_ptr<ast::File> file,
   }
   std::cout << "---------------" << std::endl;
 
-  return Lower(ident_decl_map, expr_type_map).Lowering(std::move(file));
+  return nullptr;
+  /* return Lower(ident_decl_map, expr_type_map).Lowering(std::move(file)); */
 }
 
 std::unique_ptr<hir::File> Lower::Lowering(std::unique_ptr<ast::File> file) {
@@ -244,9 +251,9 @@ std::unique_ptr<hir::Value> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
 
     } break;
     case ast::Lit::Kind::INT:
-      return ParseInt(std::move(lit));
+      return ParseIntLit(std::move(lit));
     case ast::Lit::Kind::FLOAT: {
-      return ParseFloat(std::move(lit));
+      return ParseFloatLit(std::move(lit));
     } break;
     case ast::Lit::Kind::BOOL: {
       auto ty = GetType(lit);
@@ -259,53 +266,48 @@ std::unique_ptr<hir::Value> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
   }
 }
 
-std::unique_ptr<hir::Value> Lower::ParseInt(std::unique_ptr<ast::Lit> lit) {
-  try {
-    int64_t n = stoll(lit->val);
-    auto ty = GetType(lit);
-    if (ty->IsI8()) {
-      if (n < INT8_MIN || n > INT8_MAX) {
-        throw LocError::Create(lit->Begin(), "overflow int8");
-      }
-      return std::make_unique<hir::IntConstant>(ty, n);
-    } else if (ty->IsI16()) {
-      if (n < INT16_MIN || n > INT16_MAX) {
-        throw LocError::Create(lit->Begin(), "overflow int16");
-      }
-      return std::make_unique<hir::IntConstant>(ty, n);
-    } else if (ty->IsI32()) {
-      if (n < INT32_MIN || n > INT32_MAX) {
-        throw LocError::Create(lit->Begin(), "overflow int32");
-      }
-      return std::make_unique<hir::IntConstant>(ty, n);
-    } else if (ty->IsI64()) {
-      return std::make_unique<hir::IntConstant>(ty, n);
-    } else if (ty->IsF32() || ty->IsF64()) {
-      return std::make_unique<hir::FloatConstant>(ty, n);
-    } else {
-      UNREACHABLE
-    }
+std::unique_ptr<hir::Value> Lower::ParseIntLit(std::unique_ptr<ast::Lit> lit) {
+  int64_t n;
+  std::string err;
+  if (!ParseInt(lit->val, n, err)) {
+    throw LocError::Create(lit->Begin(), err);
+  }
 
-  } catch (std::out_of_range e) {
-    throw LocError::Create(lit->Begin(), "out of range");
-  } catch (std::invalid_argument e) {
-    throw LocError::Create(lit->Begin(), "invalid or unimplemented");
+  auto ty = GetType(lit);
+  if (ty->IsI8()) {
+    if (n < INT8_MIN || n > INT8_MAX) {
+      throw LocError::Create(lit->Begin(), "overflow int8");
+    }
+    return std::make_unique<hir::IntConstant>(ty, n);
+  } else if (ty->IsI16()) {
+    if (n < INT16_MIN || n > INT16_MAX) {
+      throw LocError::Create(lit->Begin(), "overflow int16");
+    }
+    return std::make_unique<hir::IntConstant>(ty, n);
+  } else if (ty->IsI32()) {
+    if (n < INT32_MIN || n > INT32_MAX) {
+      throw LocError::Create(lit->Begin(), "overflow int32");
+    }
+    return std::make_unique<hir::IntConstant>(ty, n);
+  } else if (ty->IsI64()) {
+    return std::make_unique<hir::IntConstant>(ty, n);
+  } else if (ty->IsF32() || ty->IsF64()) {
+    return std::make_unique<hir::FloatConstant>(ty, n);
+  } else {
+    UNREACHABLE
   }
 }
 
-std::unique_ptr<hir::FloatConstant> Lower::ParseFloat(
+std::unique_ptr<hir::FloatConstant> Lower::ParseFloatLit(
     std::unique_ptr<ast::Lit> lit) {
-  try {
-    // TODO: parse float
-    double n = stod(lit->val);
-    auto ty = GetType(lit);
-    assert(ty->IsFixedFloat());
-    return std::make_unique<hir::FloatConstant>(ty, n);
-  } catch (std::out_of_range e) {
-    throw LocError::Create(lit->Begin(), "out of range");
-  } catch (std::invalid_argument e) {
-    throw LocError::Create(lit->Begin(), "invalid or unimplemented");
+  std::string err;
+  double n;
+  if (!ParseFloat(lit->val, n, err)) {
+    throw LocError::Create(lit->Begin(), err);
   }
+  auto ty = GetType(lit);
+  assert(ty->IsFixedFloat());
+  return std::make_unique<hir::FloatConstant>(ty, n);
 }
 
 }  // namespace felis

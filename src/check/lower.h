@@ -43,8 +43,8 @@ class Lower {
   std::unique_ptr<hir::If> LowerIf(std::unique_ptr<ast::If>);
 
   std::unique_ptr<hir::Value> LowerLit(std::unique_ptr<ast::Lit>);
-  std::unique_ptr<hir::Value> ParseInt(std::unique_ptr<ast::Lit>);
-  std::unique_ptr<hir::FloatConstant> ParseFloat(std::unique_ptr<ast::Lit>);
+  std::unique_ptr<hir::Value> ParseIntLit(std::unique_ptr<ast::Lit>);
+  std::unique_ptr<hir::FloatConstant> ParseFloatLit(std::unique_ptr<ast::Lit>);
 };
 
 std::unique_ptr<hir::File> Lowering(std::unique_ptr<ast::File>, bool is_32bit);

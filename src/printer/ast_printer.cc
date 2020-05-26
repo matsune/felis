@@ -145,8 +145,6 @@ void AstPrinter::PrintType(ast::Type *ty) {
       case ast::Type::Kind::IDENT: {
         auto ident = dynamic_cast<ast::TypeIdent *>(ty);
         Writeln("Name: " + ident->val);
-        PrintPtr(ident);
-        PrintLoc(ident);
       } break;
       case ast::Type::Kind::ARRAY: {
         auto array = dynamic_cast<ast::ArrayType *>(ty);

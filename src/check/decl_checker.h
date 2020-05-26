@@ -27,7 +27,7 @@ class DeclChecker {
   bool CanDecl(const std::string &);
   std::shared_ptr<Decl> LookupVarDecl(const std::string &);
   std::shared_ptr<Decl> LookupFuncDecl(const std::string &);
-  std::shared_ptr<Type> LookupType(const std::string &);
+  std::shared_ptr<Type> LookupType(const std::unique_ptr<ast::Type> &);
 
   void InsertDecl(std::string name, std::shared_ptr<Decl> decl) {
     current_scope_->InsertDecl(name, decl);

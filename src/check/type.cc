@@ -28,6 +28,10 @@ bool FixedType::operator==(const FixedType& other) const {
     auto t = dynamic_cast<const FuncType*>(this);
     auto& o = dynamic_cast<const FuncType&>(other);
     return *t == o;
+  } else if (IsArray()) {
+    auto t = dynamic_cast<const ArrayType*>(this);
+    auto& o = dynamic_cast<const ArrayType&>(other);
+    return *t == o;
   } else {
     UNREACHABLE
   }
