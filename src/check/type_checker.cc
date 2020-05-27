@@ -65,6 +65,9 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
         throw LocError::Create((*next)->Begin(), "unreachable code");
       }
     }
+    if (!current_func_->ret->IsVoid() && !fn->block->IsTerminating()) {
+      throw LocError::Create(fn->block->End(), "no return");
+    }
     RecordType(fn->block, block_ty);
 
     decl_ck.CloseScope();

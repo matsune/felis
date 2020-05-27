@@ -28,6 +28,11 @@ llvm::Type* Builder::LLVMType(const std::shared_ptr<Type>& ty) {
         LLVMType(std::dynamic_pointer_cast<FixedType>(func_type->ret)), args,
         false);
   }
+  if (ty->IsArray()) {
+    auto array_type = std::dynamic_pointer_cast<ArrayType>(ty);
+    auto elem_ty = LLVMType(array_type->elem);
+    return llvm::ArrayType::get(elem_ty, array_type->size);
+  }
   if (ty->IsVoid()) return llvm::Type::getVoidTy(ctx_);
 
   std::cout << ToString(ty) << std::endl;
@@ -109,8 +114,7 @@ llvm::Value* Builder::BuildStmt(std::unique_ptr<hir::Stmt> stmt) {
 
 void Builder::BuildRetStmt(std::unique_ptr<hir::RetStmt> stmt) {
   if (stmt->expr) {
-    auto expr = BuildExpr(std::move(stmt->expr));
-    builder_.CreateRet(expr);
+    builder_.CreateRet(BuildExpr(std::move(stmt->expr)));
   } else {
     builder_.CreateRetVoid();
   }
@@ -118,22 +122,43 @@ void Builder::BuildRetStmt(std::unique_ptr<hir::RetStmt> stmt) {
 
 void Builder::BuildVarDeclStmt(std::unique_ptr<hir::VarDeclStmt> stmt) {
   auto decl = stmt->decl;
-  auto value = BuildExpr(std::move(stmt->expr));
   auto ty = LLVMType(decl->type);
-  llvm::AllocaInst* alloca = builder_.CreateAlloca(ty, nullptr, decl->name);
-  builder_.CreateStore(value, alloca);
+  auto expr = BuildExpr(std::move(stmt->expr));
+  llvm::AllocaInst* alloca;
+  alloca = llvm::dyn_cast<llvm::AllocaInst>(expr);
+  if (!alloca) {
+    alloca = builder_.CreateAlloca(ty, nullptr, decl->name);
+  }
+  if (expr->getType() == alloca->getType()->getPointerElementType()) {
+    builder_.CreateStore(expr, alloca);
+  } else if (llvm::ArrayType::classof(ty)) {
+    auto a_ptr = builder_.CreateBitCast(alloca, llvm::Type::getInt8PtrTy(ctx_));
+    auto b_ptr = builder_.CreateBitCast(expr, llvm::Type::getInt8PtrTy(ctx_));
+    builder_.CreateMemCpy(
+        a_ptr,
+        module_.getDataLayout().getABITypeAlignment(
+            alloca->getType()->getPointerElementType()->getArrayElementType()),
+        b_ptr,
+        module_.getDataLayout().getABITypeAlignment(
+            expr->getType()->getPointerElementType()->getArrayElementType()),
+
+        llvm::ConstantInt::get(llvm::Type::getInt8Ty(ctx_), 0));
+  } else {
+    UNREACHABLE
+  }
   RecordValue(decl, alloca);
 }
 
 void Builder::BuildAssignStmt(std::unique_ptr<hir::AssignStmt> stmt) {
-  auto value = BuildExpr(std::move(stmt->expr));
-  auto alloca = GetValue(stmt->decl);
-  builder_.CreateStore(value, alloca);
+  auto alloca = llvm::dyn_cast<llvm::AllocaInst>(GetValue(stmt->decl));
+  auto expr = BuildExpr(std::move(stmt->expr));
+  builder_.CreateStore(expr, alloca);
 }
 
 llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
   auto ty = binary->Type();
   auto is_float = binary->lhs->Type()->IsFixedFloat();
+
   auto lhs = BuildExpr(std::move(binary->lhs));
   auto rhs = BuildExpr(std::move(binary->rhs));
 
@@ -191,7 +216,6 @@ void Builder::BuildBlock(std::unique_ptr<hir::Block> block,
 
   if (!builder_.GetInsertBlock()->getTerminator()) {
     builder_.CreateBr(after_bb);
-    /* builder_.SetInsertPoint(after_bb); */
   }
 }
 
@@ -237,6 +261,39 @@ void Builder::BuildIf(std::unique_ptr<hir::If> if_stmt, llvm::AllocaInst* into,
   }
 }
 
+llvm::AllocaInst* Builder::BuildArray(std::unique_ptr<hir::Array> array) {
+  auto array_ty = llvm::dyn_cast<llvm::ArrayType>(LLVMType(array->Type()));
+  auto alloca = builder_.CreateAlloca(array_ty);
+  int64_t i = 0;
+  while (!array->exprs.empty()) {
+    llvm::Value* idxList[2] = {
+        llvm::ConstantInt::get(llvm::Type::getInt8Ty(ctx_), 0),
+        llvm::ConstantInt::get(llvm::Type::getInt8Ty(ctx_), i)};
+    auto gep = builder_.CreateInBoundsGEP(alloca, idxList);
+    auto expr = BuildExpr(std::move(array->exprs.move_front()));
+    if (expr->getType() == gep->getType()->getPointerElementType()) {
+      builder_.CreateStore(expr, gep);
+    } else if (llvm::ArrayType::classof(
+                   expr->getType()->getPointerElementType())) {
+      auto a_ptr = builder_.CreateBitCast(gep, llvm::Type::getInt8PtrTy(ctx_));
+      auto b_ptr = builder_.CreateBitCast(expr, llvm::Type::getInt8PtrTy(ctx_));
+      builder_.CreateMemCpy(
+          a_ptr,
+          module_.getDataLayout().getABITypeAlignment(
+              gep->getType()->getPointerElementType()->getArrayElementType()),
+          b_ptr,
+          module_.getDataLayout().getABITypeAlignment(
+              expr->getType()->getPointerElementType()->getArrayElementType()),
+
+          llvm::ConstantInt::get(llvm::Type::getInt8Ty(ctx_), 0));
+    } else {
+      UNREACHABLE
+    }
+    ++i;
+  }
+  return alloca;
+}
+
 llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
   switch (expr->ExprKind()) {
     case hir::Expr::Kind::BINARY:
@@ -250,24 +307,28 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
           auto var_alloca = GetValue(variable->decl);
           return builder_.CreateLoad(LLVMType(variable->Type()), var_alloca);
         } break;
-        case hir::Value::Kind::CONSTANT: {
+
+        case hir::Value::Kind::CONSTANT:
           return BuildConstant(unique_cast<hir::Constant>(std::move(value)));
-        } break;
+
+        case hir::Value::Kind::ARRAY:
+          return BuildArray(unique_cast<hir::Array>(std::move(value)));
       }
     } break;
+
     case hir::Expr::Kind::CALL: {
       auto call = unique_cast<hir::Call>(std::move(expr));
       std::vector<llvm::Value*> arg_values(call->args.size());
       int i = 0;
       while (!call->args.empty()) {
         auto arg = call->args.move_front();
-        auto expr = BuildExpr(std::move(arg));
-        arg_values[i] = expr;
+        arg_values[i] = BuildExpr(std::move(arg));
         i++;
       }
       auto fn_type = GetValue(call->decl);
       return builder_.CreateCall(fn_type, arg_values);
     } break;
+
     case hir::Expr::Kind::UNARY: {
       auto unary = unique_cast<hir::Unary>(std::move(expr));
       bool is_float = unary->Type()->IsFixedFloat();
@@ -285,6 +346,7 @@ llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
           return builder_.CreateXor(expr, llvm::ConstantInt::getTrue(ctx_));
       }
     } break;
+
     case hir::Expr::IF:
     case hir::Expr::BLOCK: {
       auto expr_type = LLVMType(expr->Type());

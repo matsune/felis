@@ -123,7 +123,7 @@ class Session {
 
       if (opts->IsPrintHir()) felis::HirPrinter().Print(hir);
 
-      /* Build(std::move(machine), std::move(hir)); */
+      Build(std::move(machine), std::move(hir));
 
     } catch (felis::LocError &err) {
       exit = Report(err);

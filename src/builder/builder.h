@@ -67,6 +67,7 @@ class Builder {
 
   llvm::Value *BuildExpr(std::unique_ptr<hir::Expr>);
   llvm::Constant *BuildConstant(std::unique_ptr<hir::Constant>);
+  llvm::AllocaInst *BuildArray(std::unique_ptr<hir::Array>);
   llvm::Value *BuildBinary(std::unique_ptr<hir::Binary>);
 
   void EmitCodeGen(std::string, llvm::TargetMachine::CodeGenFileType);
