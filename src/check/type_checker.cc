@@ -7,21 +7,43 @@ namespace felis {
 namespace {
 
 bool TryResolve(std::shared_ptr<Type> ty, std::shared_ptr<Type> to) {
-  std::cout << "TryResolve " << ToString(ty) << " to " << ToString(to)
-            << std::endl;
-  auto underlying_ty = Underlying(ty);
-  std::cout << "Underlying " << ToString(underlying_ty) << std::endl;
-  if (underlying_ty->IsFixed()) {
-    if (underlying_ty->IsArray()) {
-      auto array_ty = std::dynamic_pointer_cast<ArrayType>(underlying_ty);
+  std::cout << "TryResolve " << ty.get() << "(" << ToString(ty) << ") to "
+            << to.get() << "(" << ToString(to) << ")" << std::endl;
+  std::shared_ptr<Type> underlying = ty;
+  while (true) {
+    if (underlying->IsFixed()) {
+      break;
+    } else if (underlying->IsUntyped()) {
+      auto ref = std::dynamic_pointer_cast<Untyped>(underlying)->Ref();
+      if (ref) {
+        if (ref == to) {
+          return true;
+        }
+        underlying = ref;
+      } else {
+        break;
+      }
+    } else {
+      UNREACHABLE
+    }
+  }
+
+  if (underlying->IsFixed()) {
+    if (underlying->IsArray()) {
+      auto array_ty = std::dynamic_pointer_cast<ArrayType>(underlying);
       if (!to->IsArray()) return false;
       auto to_array_ty = std::dynamic_pointer_cast<ArrayType>(to);
       if (array_ty->size != to_array_ty->size) return false;
       return TryResolve(array_ty->elem, to_array_ty->elem);
     }
-    return *underlying_ty == *to;
-  } else if (underlying_ty->IsUntyped()) {
-    return std::dynamic_pointer_cast<Untyped>(underlying_ty)->TryResolve(to);
+    return *underlying == *to;
+  } else if (underlying->IsUntyped()) {
+    auto untyped = std::dynamic_pointer_cast<Untyped>(underlying);
+    if (untyped->Canbe(to)) {
+      untyped->SetRef(to);
+      return true;
+    }
+    return false;
   }
   UNREACHABLE
 }

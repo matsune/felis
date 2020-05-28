@@ -58,10 +58,11 @@ std::shared_ptr<Type> Underlying(std::shared_ptr<Type> ty) {
     return ty;
   } else if (ty->IsUntyped()) {
     auto untyped = std::dynamic_pointer_cast<Untyped>(ty);
-    if (untyped->Ref())
+    if (untyped->Ref()) {
       return Underlying(untyped->Ref());
-    else
+    } else {
       return ty;
+    }
   }
   UNREACHABLE
 }

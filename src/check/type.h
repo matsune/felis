@@ -187,16 +187,9 @@ struct Untyped : public Type {
     }
   }
 
-  bool TryResolve(std::shared_ptr<Type> ty) {
-    assert(ref == nullptr);
-    if (Canbe(ty)) {
-      ref = ty;
-      return true;
-    }
-    return false;
-  }
-
   const std::shared_ptr<Type>& Ref() const { return ref; }
+
+  void SetRef(std::shared_ptr<Type> to) { ref = to; }
 
  private:
   Untyped::Kind kind;
