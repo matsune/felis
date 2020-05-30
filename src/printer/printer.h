@@ -48,8 +48,9 @@ class Printer {
     after_nl_ = true;
   }
 
-  void Down(std::string s) {
-    Writeln(s);
+  template <typename... Args>
+  void Down(const std::string format, Args const &... args) {
+    Writeln(format, args...);
     depth_++;
   }
 

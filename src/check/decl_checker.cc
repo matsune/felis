@@ -35,11 +35,13 @@ std::shared_ptr<Decl> DeclChecker::LookupDecl(const std::string& name) {
 
 std::shared_ptr<Decl> DeclChecker::LookupVarDecl(const std::string& name) {
   auto decl = LookupDecl(name);
+  if (!decl) return nullptr;
   return decl->IsFunc() ? nullptr : decl;
 }
 
 std::shared_ptr<Decl> DeclChecker::LookupFuncDecl(const std::string& name) {
   auto decl = LookupDecl(name);
+  if (!decl) return nullptr;
   return decl->IsFunc() ? decl : nullptr;
 }
 

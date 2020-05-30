@@ -81,8 +81,9 @@ std::string ToString(const Token::Kind &kind) {
       return ",";
     case Token::Kind::ARROW:
       return "->";
+    default:
+      UNREACHABLE
   }
-  UNREACHABLE
 }
 
 std::string ToString(const ast::BinaryOp::Op &op) {
@@ -92,13 +93,13 @@ std::string ToString(const ast::BinaryOp::Op &op) {
     case ast::BinaryOp::Op::NEQ:
       return "!=";
     case ast::BinaryOp::Op::LT:
-      return ">";
-    case ast::BinaryOp::Op::LE:
-      return ">=";
-    case ast::BinaryOp::Op::GT:
       return "<";
-    case ast::BinaryOp::Op::GE:
+    case ast::BinaryOp::Op::LE:
       return "<=";
+    case ast::BinaryOp::Op::GT:
+      return ">";
+    case ast::BinaryOp::Op::GE:
+      return ">=";
     case ast::BinaryOp::Op::ADD:
       return "+";
     case ast::BinaryOp::Op::SUB:
@@ -197,6 +198,27 @@ std::string ToString(const ast::Stmt::Kind &kind) {
   }
 }
 
+std::string ToString(const ast::Expr::Kind &kind) {
+  switch (kind) {
+    case ast::Expr::Kind::IDENT:
+      return "IDENT";
+    case ast::Expr::Kind::BINARY:
+      return "BINARY";
+    case ast::Expr::Kind::LIT:
+      return "LIT";
+    case ast::Expr::Kind::CALL:
+      return "CALL";
+    case ast::Expr::Kind::UNARY:
+      return "UNARY";
+    case ast::Expr::Kind::BLOCK:
+      return "BLOCK";
+    case ast::Expr::Kind::IF:
+      return "IF";
+    case ast::Expr::Kind::ARRAY:
+      return "ARRAY";
+  }
+}
+
 std::string ToString(const DeclKind &kind) {
   switch (kind) {
     case DeclKind::EXT:
@@ -219,6 +241,78 @@ std::string ToString(const std::shared_ptr<Decl> &decl) {
   ss << "Decl {name: " << decl->name << ", kind: " << ToString(decl->kind)
      << ", type: " << ToString(decl->type) << "} (" << decl.get() << ")";
   return ss.str();
+}
+
+std::string ToString(const std::shared_ptr<mir::Value> &value) {
+  std::stringstream s;
+  switch (value->ValueKind()) {
+    case mir::Value::Kind::CONST_INT: {
+      auto c = (const std::shared_ptr<mir::ConstantInt> &)value;
+      s << "constant " << c->val << ": " << ToString(c->type);
+    } break;
+    case mir::Value::Kind::CONST_FLOAT: {
+      auto c = (const std::shared_ptr<mir::ConstantFloat> &)value;
+      s << "constant " << c->val << ": " << ToString(c->type);
+    } break;
+    case mir::Value::Kind::CONST_BOOL: {
+      auto c = (const std::shared_ptr<mir::ConstantBool> &)value;
+      s << "constant " << (c->val ? "true" : "false") << ": "
+        << ToString(c->type);
+    } break;
+    case mir::Value::Kind::CONST_STRING: {
+      auto c = (const std::shared_ptr<mir::ConstantString> &)value;
+      s << "constant " << c->val << ": " << ToString(c->type);
+    } break;
+    case mir::Value::Kind::ALLOC: {
+      auto c = (const std::shared_ptr<mir::Alloc> &)value;
+      s << "$" << c->id << ": *" << ToString(c->type);
+    } break;
+    case mir::Value::Kind::VAL: {
+      auto c = (const std::shared_ptr<mir::Val> &)value;
+      s << "$" << c->id << ": " << ToString(c->type);
+    } break;
+  }
+  return s.str();
+}
+
+std::string ToString(const mir::Binary::Op &op) {
+  switch (op) {
+    case mir::Binary::Op::ADD:
+      return "Add";
+    case mir::Binary::Op::SUB:
+      return "Sub";
+    case mir::Binary::Op::MUL:
+      return "Mul";
+    case mir::Binary::Op::DIV:
+      return "Div";
+    case mir::Binary::Op::MOD:
+      return "Mod";
+  }
+}
+std::string ToString(const mir::Comp::Op &op) {
+  switch (op) {
+    case mir::Comp::Op::EQEQ:
+      return "Eq";
+    case mir::Comp::Op::NEQ:
+      return "NotEq";
+    case mir::Comp::Op::LT:
+      return "LT";
+    case mir::Comp::Op::LE:
+      return "LE";
+    case mir::Comp::Op::GT:
+      return "GT";
+    case mir::Comp::Op::GE:
+      return "GE";
+  }
+}
+
+std::string ToString(const mir::Unary::Op &op) {
+  switch (op) {
+    case mir::Unary::Op::NEG:
+      return "Neg";
+    case mir::Unary::Op::NOT:
+      return "Not";
+  }
 }
 
 }  // namespace felis

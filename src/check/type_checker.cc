@@ -9,6 +9,22 @@ namespace {
 bool TryResolve(std::shared_ptr<Type> ty, std::shared_ptr<Type> to) {
   std::cout << "TryResolve " << ty.get() << "(" << ToString(ty) << ") to "
             << to.get() << "(" << ToString(to) << ")" << std::endl;
+
+  while (true) {
+    if (to->IsFixed()) {
+      break;
+    } else if (to->IsUntyped()) {
+      auto ref = std::dynamic_pointer_cast<Untyped>(to)->Ref();
+      if (ref) {
+        to = ref;
+      } else {
+        break;
+      }
+    } else {
+      UNREACHABLE
+    }
+  }
+
   std::shared_ptr<Type> underlying = ty;
   while (true) {
     if (underlying->IsFixed()) {
@@ -168,6 +184,7 @@ void TypeChecker::InferRet(const std::unique_ptr<ast::RetStmt>& stmt) {
 }
 
 void TypeChecker::InferVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
+  std::cout << "InferVarDecl" << std::endl;
   // name validation
   auto& name = stmt->name->val;
   if (!decl_ck.CanDecl(name)) {
@@ -223,6 +240,7 @@ void TypeChecker::InferAssign(const std::unique_ptr<ast::AssignStmt>& stmt) {
 
 std::shared_ptr<Type> TypeChecker::InferExpr(
     const std::unique_ptr<ast::Expr>& expr, bool as_expr) {
+  std::cout << "InferExpr " << ToString(expr->ExprKind()) << std::endl;
   switch (expr->ExprKind()) {
     case ast::Expr::Kind::LIT: {
       auto& lit = (std::unique_ptr<ast::Lit>&)expr;
@@ -265,7 +283,7 @@ std::shared_ptr<Type> TypeChecker::InferExpr(
     case ast::Expr::Kind::IDENT: {
       auto& ident = (std::unique_ptr<ast::Ident>&)expr;
       auto decl = decl_ck.LookupVarDecl(ident->val);
-      if (decl == nullptr) {
+      if (!decl) {
         throw LocError::Create(ident->Begin(), "undefined function %s",
                                ident->val.c_str());
       }
@@ -409,6 +427,7 @@ std::shared_ptr<Type> TypeChecker::InferIf(const std::unique_ptr<ast::If>& e,
 
 std::shared_ptr<Type> TypeChecker::InferBlock(
     const std::unique_ptr<ast::Block>& e, bool as_expr) {
+  std::cout << "InferBlock" << std::endl;
   decl_ck.OpenScope();
   std::shared_ptr<Type> ty = kTypeVoid;
   for (auto it = e->stmts.begin(); it != e->stmts.end(); it++) {

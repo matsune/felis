@@ -9,6 +9,7 @@
 #include "check/type.h"
 #include "node/ast.h"
 #include "node/hir.h"
+#include "node/mir.h"
 #include "syntax/token.h"
 
 namespace felis {
@@ -26,8 +27,13 @@ std::string ToString(const ast::BinaryOp::Op&);
 std::string ToString(const hir::Binary::Op&);
 std::string ToString(const std::shared_ptr<Type>&);
 std::string ToString(const ast::Stmt::Kind&);
+std::string ToString(const ast::Expr::Kind&);
 std::string ToString(const DeclKind&);
 std::string ToString(const std::shared_ptr<Decl>&);
+std::string ToString(const std::shared_ptr<mir::Value>&);
+std::string ToString(const mir::Binary::Op&);
+std::string ToString(const mir::Comp::Op&);
+std::string ToString(const mir::Unary::Op&);
 
 }  // namespace felis
 

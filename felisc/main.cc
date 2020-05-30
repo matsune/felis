@@ -5,11 +5,12 @@
 #include "args.h"
 #include "builder/builder.h"
 #include "builder/target.h"
-#include "check/lower.h"
+/* #include "check/lower.h" */
+#include "check/low.h"
 #include "error/error.h"
 #include "loc.h"
 #include "printer/ast_printer.h"
-#include "printer/hir_printer.h"
+#include "printer/mir_printer.h"
 #include "syntax/lexer.h"
 #include "syntax/parser.h"
 #include "unique.h"
@@ -118,12 +119,12 @@ class Session {
 
       if (opts->IsPrintAst()) felis::AstPrinter().Print(ast);
 
-      auto hir = felis::Lowering(std::move(ast), is_32bit);
-      if (!hir) return 1;
+      auto mir = felis::Lowering(std::move(ast), is_32bit);
+      if (!mir) return 1;
 
-      if (opts->IsPrintHir()) felis::HirPrinter().Print(hir);
+      if (opts->IsPrintHir()) felis::MirPrinter().Print(mir);
 
-      Build(std::move(machine), std::move(hir));
+      /* Build(std::move(machine), std::move(hir)); */
 
     } catch (felis::LocError &err) {
       exit = Report(err);
