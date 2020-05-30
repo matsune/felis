@@ -16,15 +16,19 @@ class MirPrinter : public Printer<mir::File> {
 
  private:
   void PrintFunc(const std::shared_ptr<mir::Func> &);
-  void PrintStore(const std::shared_ptr<mir::Store> &);
-  void PrintLoad(const std::shared_ptr<mir::Load> &);
-  void PrintBinary(const std::shared_ptr<mir::Binary> &);
-  void PrintComp(const std::shared_ptr<mir::Comp> &);
-  void PrintUnary(const std::shared_ptr<mir::Unary> &);
-  void PrintCall(const std::shared_ptr<mir::Call> &);
-  void PrintRet(const std::shared_ptr<mir::Ret> &);
-  void PrintArray(const std::shared_ptr<mir::Array> &);
-  void PrintCond(const std::shared_ptr<mir::Cond> &);
+
+  // Inst
+  void PrintAlloc(const std::shared_ptr<mir::AllocInst> &);
+  void PrintLoad(const std::shared_ptr<mir::LoadInst> &);
+  void PrintStore(const std::shared_ptr<mir::StoreInst> &);
+  void PrintUnary(const std::shared_ptr<mir::UnaryInst> &);
+  void PrintBinary(const std::shared_ptr<mir::BinaryInst> &);
+  void PrintCmp(const std::shared_ptr<mir::CmpInst> &);
+  void PrintArray(const std::shared_ptr<mir::ArrayInst> &);
+  void PrintCall(const std::shared_ptr<mir::CallInst> &);
+  void PrintBr(const std::shared_ptr<mir::BrInst> &);
+  void PrintGoto(const std::shared_ptr<mir::GotoInst> &);
+  void PrintRet(const std::shared_ptr<mir::RetInst> &);
 };
 
 }  // namespace felis

@@ -243,31 +243,27 @@ std::string ToString(const std::shared_ptr<Decl> &decl) {
   return ss.str();
 }
 
-std::string ToString(const std::shared_ptr<mir::Value> &value) {
+// MIR
+std::string ToString(const std::shared_ptr<mir::RValue> &value) {
   std::stringstream s;
-  switch (value->ValueKind()) {
-    case mir::Value::Kind::CONST_INT: {
+  switch (value->RValueKind()) {
+    case mir::RValue::Kind::CONST_INT: {
       auto c = (const std::shared_ptr<mir::ConstantInt> &)value;
-      s << "constant " << c->val << ": " << ToString(c->type);
+      s << "constant " << ToString(c->type) << " " << c->val;
     } break;
-    case mir::Value::Kind::CONST_FLOAT: {
+    case mir::RValue::Kind::CONST_FLOAT: {
       auto c = (const std::shared_ptr<mir::ConstantFloat> &)value;
-      s << "constant " << c->val << ": " << ToString(c->type);
+      s << "constant " << ToString(c->type) << " " << c->val;
     } break;
-    case mir::Value::Kind::CONST_BOOL: {
+    case mir::RValue::Kind::CONST_BOOL: {
       auto c = (const std::shared_ptr<mir::ConstantBool> &)value;
-      s << "constant " << (c->val ? "true" : "false") << ": "
-        << ToString(c->type);
+      s << "constant bool " << (c->val ? "true" : "false");
     } break;
-    case mir::Value::Kind::CONST_STRING: {
+    case mir::RValue::Kind::CONST_STRING: {
       auto c = (const std::shared_ptr<mir::ConstantString> &)value;
-      s << "constant " << c->val << ": " << ToString(c->type);
+      s << "constant string " << c->val;
     } break;
-    case mir::Value::Kind::ALLOC: {
-      auto c = (const std::shared_ptr<mir::Alloc> &)value;
-      s << "$" << c->id << ": *" << ToString(c->type);
-    } break;
-    case mir::Value::Kind::VAL: {
+    case mir::RValue::Kind::VAL: {
       auto c = (const std::shared_ptr<mir::Val> &)value;
       s << "$" << c->id << ": " << ToString(c->type);
     } break;
@@ -275,42 +271,49 @@ std::string ToString(const std::shared_ptr<mir::Value> &value) {
   return s.str();
 }
 
-std::string ToString(const mir::Binary::Op &op) {
+std::string ToString(const std::shared_ptr<mir::LValue> &value) {
+  std::stringstream s;
+  s << "$" << value->id << ": *" << ToString(value->type);
+  return s.str();
+};
+
+std::string ToString(const mir::BinaryInst::Op &op) {
   switch (op) {
-    case mir::Binary::Op::ADD:
+    case mir::BinaryInst::Op::ADD:
       return "Add";
-    case mir::Binary::Op::SUB:
+    case mir::BinaryInst::Op::SUB:
       return "Sub";
-    case mir::Binary::Op::MUL:
+    case mir::BinaryInst::Op::MUL:
       return "Mul";
-    case mir::Binary::Op::DIV:
+    case mir::BinaryInst::Op::DIV:
       return "Div";
-    case mir::Binary::Op::MOD:
+    case mir::BinaryInst::Op::MOD:
       return "Mod";
   }
 }
-std::string ToString(const mir::Comp::Op &op) {
+
+std::string ToString(const mir::CmpInst::Op &op) {
   switch (op) {
-    case mir::Comp::Op::EQEQ:
+    case mir::CmpInst::Op::EQEQ:
       return "Eq";
-    case mir::Comp::Op::NEQ:
+    case mir::CmpInst::Op::NEQ:
       return "NotEq";
-    case mir::Comp::Op::LT:
+    case mir::CmpInst::Op::LT:
       return "LT";
-    case mir::Comp::Op::LE:
+    case mir::CmpInst::Op::LE:
       return "LE";
-    case mir::Comp::Op::GT:
+    case mir::CmpInst::Op::GT:
       return "GT";
-    case mir::Comp::Op::GE:
+    case mir::CmpInst::Op::GE:
       return "GE";
   }
 }
 
-std::string ToString(const mir::Unary::Op &op) {
+std::string ToString(const mir::UnaryInst::Op &op) {
   switch (op) {
-    case mir::Unary::Op::NEG:
+    case mir::UnaryInst::Op::NEG:
       return "Neg";
-    case mir::Unary::Op::NOT:
+    case mir::UnaryInst::Op::NOT:
       return "Not";
   }
 }

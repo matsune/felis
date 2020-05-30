@@ -1,11 +1,15 @@
-fn aa(a:i32, b: i64) -> i32 { ret a }
 
-fn main() {
-  var a = aa(32,87)
-  let b = {
-    aa(a, 2) + a
-    let c = -32
-    let e = !((20 + c) > 20)
-    e
+fn main() -> i64 {
+  let n = [[1,2,3], [2,3,4]]
+  ret if true {
+    if 3 > 4 {
+      30 + 3
+    } else {
+      ret 4
+    }
+    4
+  } else {
+    if true { ret 32 } 
+    22
   }
 }

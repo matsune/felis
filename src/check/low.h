@@ -12,56 +12,85 @@ namespace felis {
 
 class MIRBuilder {
  public:
-  MIRBuilder() : file(std::make_unique<mir::File>()) {}
+  MIRBuilder(std::unique_ptr<mir::File>& file) : file(file) {}
 
-  std::shared_ptr<mir::Func> CreateFunc(std::shared_ptr<Decl>);
-  std::shared_ptr<mir::BB> CreateBlock();
-  std::shared_ptr<mir::Val> CreateLoad(std::shared_ptr<Decl>);
-  std::shared_ptr<mir::Alloc> CreateAlloc(std::shared_ptr<Decl>);
-  std::shared_ptr<mir::Val> CreateVal(std::shared_ptr<Type>);
-  std::shared_ptr<mir::Val> CreateBinary(std::shared_ptr<Type>,
-                                         std::shared_ptr<mir::Value>,
-                                         std::shared_ptr<mir::Value>,
-                                         mir::Binary::Op);
-  std::shared_ptr<mir::Val> CreateComp(std::shared_ptr<Type>,
-                                       std::shared_ptr<mir::Value>,
-                                       std::shared_ptr<mir::Value>,
-                                       mir::Comp::Op);
-  std::shared_ptr<mir::Val> CreateUnary(std::shared_ptr<Type>,
-                                        std::shared_ptr<mir::Value>,
-                                        mir::Unary::Op);
-  std::shared_ptr<mir::Val> CreateArray(
-      std::shared_ptr<Type>, std::vector<std::shared_ptr<mir::Value>>);
-  std::shared_ptr<mir::Val> CreateCall(
-      std::shared_ptr<Decl>, std::vector<std::shared_ptr<mir::Value>>);
-  void CreateStore(std::shared_ptr<mir::Alloc>, std::shared_ptr<mir::Value>);
-  void CreateRet(std::shared_ptr<mir::Value>);
-  std::shared_ptr<mir::Cond> CreateCond(std::shared_ptr<mir::Value>);
-
-  std::unique_ptr<mir::File> file;
-
-  std::shared_ptr<mir::Func> GetFunction(std::shared_ptr<Decl> decl) {
+  inline std::shared_ptr<mir::Func> GetFunction(std::shared_ptr<Decl> decl) {
     return fn_decls.at(decl);
   }
 
-  std::shared_ptr<mir::Alloc> GetAlloc(std::shared_ptr<Decl> decl) {
-    return alloc_map.at(decl);
+  inline std::shared_ptr<mir::LValue> GetVar(std::shared_ptr<Decl> decl) {
+    return var_map.at(decl);
   }
 
-  void SetInsertPoint(std::shared_ptr<mir::BB> bb) { current_bb = bb; }
+  void SetInsertBB(std::shared_ptr<mir::BB> bb) { current_bb = bb; }
+
+  const std::shared_ptr<mir::BB>& GetInsertBB() const { return current_bb; }
+
+  std::shared_ptr<mir::BB> GetBeforeBB(std::shared_ptr<mir::BB>);
+
+  std::shared_ptr<mir::Func> CreateFunc(std::shared_ptr<Decl>);
+
+  std::shared_ptr<mir::BB> CreateBB(std::shared_ptr<mir::BB> after = nullptr);
+
+  std::shared_ptr<mir::LValue> CreateAlloc(std::shared_ptr<Decl>);
+  std::shared_ptr<mir::LValue> CreateAlloc(std::shared_ptr<Type>);
+
+  std::shared_ptr<mir::Val> CreateVal(std::shared_ptr<Type>);
+
+  std::shared_ptr<mir::Val> CreateLoad(std::shared_ptr<Decl>);
+  std::shared_ptr<mir::Val> CreateLoad(std::shared_ptr<mir::LValue>);
+
+  void CreateStore(std::shared_ptr<mir::LValue>, std::shared_ptr<mir::RValue>);
+
+  std::shared_ptr<mir::Val> CreateUnary(mir::UnaryInst::Op,
+                                        std::shared_ptr<mir::RValue>);
+
+  std::shared_ptr<mir::Val> CreateBinary(mir::BinaryInst::Op,
+                                         std::shared_ptr<mir::RValue>,
+                                         std::shared_ptr<mir::RValue>);
+
+  std::shared_ptr<mir::Val> CreateCmp(mir::CmpInst::Op,
+                                      std::shared_ptr<mir::RValue>,
+                                      std::shared_ptr<mir::RValue>);
+
+  std::shared_ptr<mir::Val> CreateArray(
+      std::shared_ptr<Type>, std::vector<std::shared_ptr<mir::RValue>>);
+
+  std::shared_ptr<mir::Val> CreateCall(
+      std::shared_ptr<Decl>, std::vector<std::shared_ptr<mir::RValue>>);
+
+  std::shared_ptr<mir::BrInst> CreateCond(std::shared_ptr<mir::RValue>);
+
+  void CreateGoto(std::shared_ptr<mir::BB>);
+
+  void CreateRet(std::shared_ptr<mir::RValue>);
 
  private:
+  std::unique_ptr<mir::File>& file;
   std::map<std::shared_ptr<Decl>, std::shared_ptr<mir::Func>> fn_decls;
-  std::map<std::shared_ptr<Decl>, std::shared_ptr<mir::Alloc>> alloc_map;
+  std::map<std::shared_ptr<Decl>, std::shared_ptr<mir::LValue>> var_map;
   std::shared_ptr<mir::BB> current_bb;
+
+  inline void SetFunc(std::shared_ptr<Decl> decl,
+                      std::shared_ptr<mir::Func> func) {
+    fn_decls[decl] = func;
+  }
+
+  inline void SetVar(std::shared_ptr<Decl> decl,
+                     std::shared_ptr<mir::LValue> lval) {
+    var_map[decl] = lval;
+  }
 };
 
 class Lower {
  public:
-  Lower(IdentDeclMap& ident_decl_map, ExprTypeMap& expr_type_map)
-      : ident_decl_map_(ident_decl_map), expr_type_map_(expr_type_map) {}
+  Lower(IdentDeclMap& ident_decl_map, ExprTypeMap& expr_type_map,
+        std::unique_ptr<mir::File>& file)
+      : ident_decl_map_(ident_decl_map),
+        expr_type_map_(expr_type_map),
+        builder_(file) {}
 
-  std::unique_ptr<mir::File> Lowering(std::unique_ptr<ast::File>);
+  void Lowering(std::unique_ptr<ast::File>);
 
  private:
   const IdentDeclMap& ident_decl_map_;
@@ -78,13 +107,20 @@ class Lower {
     return std::dynamic_pointer_cast<FixedType>(expr_type_map_.at(n.get()));
   }
 
-  std::shared_ptr<mir::Value> LowerStmt(std::unique_ptr<ast::Stmt>);
-  std::shared_ptr<mir::Value> LowerExpr(std::unique_ptr<ast::Expr>);
-  std::unique_ptr<mir::Value> LowerLit(std::unique_ptr<ast::Lit>);
+  std::shared_ptr<mir::RValue> LowerStmt(std::unique_ptr<ast::Stmt>,
+                                         std::shared_ptr<mir::BB> = nullptr);
+
+  std::shared_ptr<mir::RValue> LowerExpr(std::unique_ptr<ast::Expr>,
+                                         std::shared_ptr<mir::BB> = nullptr);
+
+  std::unique_ptr<mir::Constant> LowerLit(std::unique_ptr<ast::Lit>);
   std::unique_ptr<mir::Constant> ParseIntLit(std::unique_ptr<ast::Lit>);
   std::unique_ptr<mir::ConstantFloat> ParseFloatLit(std::unique_ptr<ast::Lit>);
-  std::shared_ptr<mir::Value> LowerBlock(std::unique_ptr<ast::Block>);
-  std::shared_ptr<mir::Value> LowerIf(std::unique_ptr<ast::If>);
+
+  std::shared_ptr<mir::RValue> LowerIf(std::unique_ptr<ast::If>,
+                                       std::shared_ptr<mir::BB>);
+  std::shared_ptr<mir::RValue> LowerBlock(std::unique_ptr<ast::Block>,
+                                          std::shared_ptr<mir::BB>);
 };
 
 std::unique_ptr<mir::File> Lowering(std::unique_ptr<ast::File> file,

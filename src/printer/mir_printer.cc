@@ -24,45 +24,48 @@ void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
     if (i > 0) {
       Write(", ");
     }
-    Write(ToString((const std::shared_ptr<mir::Value>&)fn->args.at(i)));
+    Write(ToString(fn->args.at(i)));
   }
-  Down(") -> %s {", ToString(func->type->ret).c_str());
+  auto ret = fn->ret ? ToString(fn->ret) : "void";
+  Down(") -> %s {", ret.c_str());
 
-  for (auto& val : fn->vals) {
-    Writeln(ToString(val));
-  }
   auto bb = fn->entry_bb;
-  auto bb_id = 0;
   while (bb) {
-    Down("bb%d: {", bb_id++);
+    Down("bb%d: {", bb->id);
     for (auto& inst : bb->instructions) {
       switch (inst->InstKind()) {
-        case mir::Inst::Kind::STORE:
-          PrintStore((const std::shared_ptr<mir::Store>&)inst);
+        case mir::Inst::Kind::ALLOC:
+          PrintAlloc((const std::shared_ptr<mir::AllocInst>&)inst);
           break;
         case mir::Inst::Kind::LOAD:
-          PrintLoad((const std::shared_ptr<mir::Load>&)inst);
+          PrintLoad((const std::shared_ptr<mir::LoadInst>&)inst);
           break;
-        case mir::Inst::Kind::BINARY:
-          PrintBinary((std::shared_ptr<mir::Binary>&)inst);
-          break;
-        case mir::Inst::Kind::COMP:
-          PrintComp((std::shared_ptr<mir::Comp>&)inst);
+        case mir::Inst::Kind::STORE:
+          PrintStore((const std::shared_ptr<mir::StoreInst>&)inst);
           break;
         case mir::Inst::Kind::UNARY:
-          PrintUnary((std::shared_ptr<mir::Unary>&)inst);
+          PrintUnary((std::shared_ptr<mir::UnaryInst>&)inst);
           break;
-        case mir::Inst::Kind::CALL:
-          PrintCall((std::shared_ptr<mir::Call>&)inst);
+        case mir::Inst::Kind::BINARY:
+          PrintBinary((std::shared_ptr<mir::BinaryInst>&)inst);
           break;
-        case mir::Inst::Kind::RET:
-          PrintRet((std::shared_ptr<mir::Ret>&)inst);
+        case mir::Inst::Kind::CMP:
+          PrintCmp((std::shared_ptr<mir::CmpInst>&)inst);
           break;
         case mir::Inst::Kind::ARRAY:
-          PrintArray((std::shared_ptr<mir::Array>&)inst);
+          PrintArray((std::shared_ptr<mir::ArrayInst>&)inst);
           break;
-        case mir::Inst::Kind::COND:
-          PrintCond((std::shared_ptr<mir::Cond>&)inst);
+        case mir::Inst::Kind::CALL:
+          PrintCall((std::shared_ptr<mir::CallInst>&)inst);
+          break;
+        case mir::Inst::Kind::BR:
+          PrintBr((std::shared_ptr<mir::BrInst>&)inst);
+          break;
+        case mir::Inst::Kind::GOTO:
+          PrintGoto((std::shared_ptr<mir::GotoInst>&)inst);
+          break;
+        case mir::Inst::Kind::RET:
+          PrintRet((std::shared_ptr<mir::RetInst>&)inst);
           break;
       }
     }
@@ -72,34 +75,50 @@ void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
   Up("}");
 }
 
-void MirPrinter::PrintStore(const std::shared_ptr<mir::Store>& inst) {
-  Writeln("%s = store %s", ToString(inst->alloc).c_str(),
-          ToString(inst->val).c_str());
+void MirPrinter::PrintAlloc(const std::shared_ptr<mir::AllocInst>& inst) {
+  Writeln("%s = alloc %s", ToString(inst->lval).c_str(),
+          ToString(inst->type).c_str());
 }
 
-void MirPrinter::PrintLoad(const std::shared_ptr<mir::Load>& inst) {
-  Writeln("%s = load %s", ToString(inst->val).c_str(),
-          ToString(inst->alloc).c_str());
+void MirPrinter::PrintLoad(const std::shared_ptr<mir::LoadInst>& inst) {
+  Writeln("%s = load %s", ToString(inst->rval).c_str(),
+          ToString(inst->lval).c_str());
 }
 
-void MirPrinter::PrintBinary(const std::shared_ptr<mir::Binary>& inst) {
-  Writeln("%s = %s(%s, %s)", ToString(inst->val).c_str(),
-          ToString(inst->op).c_str(), ToString(inst->lhs).c_str(),
-          ToString(inst->rhs).c_str());
+void MirPrinter::PrintStore(const std::shared_ptr<mir::StoreInst>& inst) {
+  Writeln("%s = store %s", ToString(inst->lval).c_str(),
+          ToString(inst->rval).c_str());
 }
 
-void MirPrinter::PrintComp(const std::shared_ptr<mir::Comp>& inst) {
-  Writeln("%s = %s(%s, %s)", ToString(inst->val).c_str(),
-          ToString(inst->op).c_str(), ToString(inst->lhs).c_str(),
-          ToString(inst->rhs).c_str());
-}
-
-void MirPrinter::PrintUnary(const std::shared_ptr<mir::Unary>& inst) {
+void MirPrinter::PrintUnary(const std::shared_ptr<mir::UnaryInst>& inst) {
   Writeln("%s = %s(%s)", ToString(inst->val).c_str(),
-          ToString(inst->op).c_str(), ToString(inst->value).c_str());
+          ToString(inst->op).c_str(), ToString(inst->operand).c_str());
 }
 
-void MirPrinter::PrintCall(const std::shared_ptr<mir::Call>& inst) {
+void MirPrinter::PrintBinary(const std::shared_ptr<mir::BinaryInst>& inst) {
+  Writeln("%s = %s(%s, %s)", ToString(inst->val).c_str(),
+          ToString(inst->op).c_str(), ToString(inst->lhs).c_str(),
+          ToString(inst->rhs).c_str());
+}
+
+void MirPrinter::PrintCmp(const std::shared_ptr<mir::CmpInst>& inst) {
+  Writeln("%s = %s(%s, %s)", ToString(inst->val).c_str(),
+          ToString(inst->op).c_str(), ToString(inst->lhs).c_str(),
+          ToString(inst->rhs).c_str());
+}
+
+void MirPrinter::PrintArray(const std::shared_ptr<mir::ArrayInst>& inst) {
+  Write("%s = [", ToString(inst->val).c_str());
+  for (auto i = 0; i < inst->values.size(); ++i) {
+    if (i > 0) {
+      Write(", ");
+    }
+    Write(ToString(inst->values.at(i)).c_str());
+  }
+  Writeln("]");
+}
+
+void MirPrinter::PrintCall(const std::shared_ptr<mir::CallInst>& inst) {
   Write("%s = call %d %s(", ToString(inst->val).c_str(), inst->func->id,
         inst->func->name.c_str());
   auto i = 0;
@@ -113,27 +132,21 @@ void MirPrinter::PrintCall(const std::shared_ptr<mir::Call>& inst) {
   Writeln(")");
 }
 
-void MirPrinter::PrintRet(const std::shared_ptr<mir::Ret>& inst) {
+void MirPrinter::PrintBr(const std::shared_ptr<mir::BrInst>& inst) {
+  Writeln("br(%s) [then: bb%d, otherwise bb%d]", ToString(inst->cond).c_str(),
+          inst->then_bb->id, inst->else_bb->id);
+}
+
+void MirPrinter::PrintGoto(const std::shared_ptr<mir::GotoInst>& inst) {
+  Writeln("goto -> bb%d", inst->goto_bb->id);
+}
+
+void MirPrinter::PrintRet(const std::shared_ptr<mir::RetInst>& inst) {
   if (inst->val) {
     Writeln("ret %s", ToString(inst->val).c_str());
   } else {
     Writeln("ret");
   }
-}
-
-void MirPrinter::PrintArray(const std::shared_ptr<mir::Array>& inst) {
-  Write("%s = array [", ToString(inst->val).c_str());
-  for (auto i = 0; i < inst->values.size(); ++i) {
-    if (i > 0) {
-      Write(", ");
-    }
-    Write(ToString(inst->values.at(i)).c_str());
-  }
-  Writeln("]");
-}
-
-void MirPrinter::PrintCond(const std::shared_ptr<mir::Cond>& inst) {
-  UNIMPLEMENTED
 }
 
 }  // namespace felis

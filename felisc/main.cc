@@ -119,11 +119,14 @@ class Session {
 
       if (opts->IsPrintAst()) felis::AstPrinter().Print(ast);
 
+      std::cout << "[Lowring]" << std::endl;
       auto mir = felis::Lowering(std::move(ast), is_32bit);
       if (!mir) return 1;
 
-      if (opts->IsPrintHir()) felis::MirPrinter().Print(mir);
-
+      if (opts->IsPrintHir()) {
+        std::cout << "Print MIR" << std::endl;
+        felis::MirPrinter().Print(mir);
+      }
       /* Build(std::move(machine), std::move(hir)); */
 
     } catch (felis::LocError &err) {
