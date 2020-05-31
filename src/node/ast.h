@@ -85,26 +85,39 @@ struct BinaryOp : public Operator {
   }
 };
 
+struct Block;
+
 struct Stmt : public AstNode {
+  Block *parent;
+  Stmt(Block *parent) : parent(parent) {}
+
   enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
   virtual Stmt::Kind StmtKind() const = 0;
   virtual bool IsTerminating() const { return false; }
+
+  bool IsLastStmt() const;
 };
 
 struct Expr : public Stmt {
   enum Kind { IDENT, BINARY, LIT, CALL, UNARY, BLOCK, IF, ARRAY };
   virtual Expr::Kind ExprKind() const = 0;
+  bool as_stmt;
+
+  Expr(Block *parent, bool as_stmt = false) : Stmt(parent), as_stmt(as_stmt) {}
 
   Stmt::Kind StmtKind() const override { return Stmt::Kind::EXPR; }
+
+  bool IsBlockRet() const;
 };
 
 struct Block : public Expr {
   const Loc begin;
-  const Loc end;
+  Loc end;
   unique_deque<Stmt> stmts;
 
-  Block(Loc begin, Loc end, unique_deque<Stmt> stmts)
-      : begin(begin), end(end), stmts(std::move(stmts)) {}
+  Block(Block *parent, Loc begin) : Expr(parent), begin(begin), end(begin) {
+    // end will be set after init
+  }
 
   virtual bool IsTerminating() const override {
     for (auto &stmt : stmts) {
@@ -126,9 +139,10 @@ struct If : public Expr {
   std::unique_ptr<Block> block;
   std::unique_ptr<Expr> els;  // block or if
 
-  If(Loc begin, std::unique_ptr<Expr> cond, std::unique_ptr<Block> block,
-     std::unique_ptr<Expr> els = nullptr)
-      : begin(begin),
+  If(Block *parent, Loc begin, std::unique_ptr<Expr> cond,
+     std::unique_ptr<Block> block, std::unique_ptr<Expr> els = nullptr)
+      : Expr(parent),
+        begin(begin),
         cond(std::move(cond)),
         block(std::move(block)),
         els(std::move(els)) {}
@@ -164,7 +178,8 @@ struct Ident : public Expr {
   const Loc begin;
   std::string val;
 
-  Ident(Loc begin, std::string val) : begin(begin), val(val) {}
+  Ident(Block *parent, Loc begin, std::string val)
+      : Expr(parent), begin(begin), val(val) {}
 
   const Loc Begin() const override { return begin; }
 
@@ -179,8 +194,8 @@ struct Lit : public Expr {
   const Lit::Kind kind;
   std::string val;
 
-  Lit(Loc begin, Lit::Kind kind, std::string val = "")
-      : begin(begin), kind(kind), val(val) {}
+  Lit(Block *parent, Loc begin, Lit::Kind kind, std::string val = "")
+      : Expr(parent), begin(begin), kind(kind), val(val) {}
 
   Lit::Kind LitKind() { return kind; }
 
@@ -234,9 +249,12 @@ struct BinaryExpr : public Expr {
   std::unique_ptr<Expr> rhs;
   std::unique_ptr<BinaryOp> op;
 
-  BinaryExpr(std::unique_ptr<Expr> lhs, std::unique_ptr<BinaryOp> op,
-             std::unique_ptr<Expr> rhs)
-      : lhs(std::move(lhs)), rhs(std::move(rhs)), op(std::move(op)) {}
+  BinaryExpr(Block *parent, std::unique_ptr<Expr> lhs,
+             std::unique_ptr<BinaryOp> op, std::unique_ptr<Expr> rhs)
+      : Expr(parent),
+        lhs(std::move(lhs)),
+        rhs(std::move(rhs)),
+        op(std::move(op)) {}
 
   const Loc Begin() const override { return lhs->Begin(); }
 
@@ -250,8 +268,12 @@ struct CallExpr : public Expr {
   std::unique_ptr<Ident> ident;
   unique_deque<Expr> args;
 
-  CallExpr(Loc end, std::unique_ptr<Ident> ident, unique_deque<Expr> args)
-      : end(end), ident(std::move(ident)), args(std::move(args)) {}
+  CallExpr(Block *parent, Loc end, std::unique_ptr<Ident> ident,
+           unique_deque<Expr> args)
+      : Expr(parent),
+        end(end),
+        ident(std::move(ident)),
+        args(std::move(args)) {}
 
   const Loc Begin() const override { return ident->Begin(); }
 
@@ -264,8 +286,9 @@ struct UnaryExpr : public Expr {
   std::unique_ptr<UnaryOp> op;
   std::unique_ptr<Expr> expr;
 
-  UnaryExpr(std::unique_ptr<UnaryOp> op, std::unique_ptr<Expr> expr)
-      : op(std::move(op)), expr(std::move(expr)) {}
+  UnaryExpr(Block *parent, std::unique_ptr<UnaryOp> op,
+            std::unique_ptr<Expr> expr)
+      : Expr(parent), op(std::move(op)), expr(std::move(expr)) {}
 
   const Loc Begin() const override { return op->Begin(); }
 
@@ -278,8 +301,8 @@ struct ArrayExpr : public Expr {
   Loc begin, end;
   unique_deque<Expr> exprs;
 
-  ArrayExpr(Loc begin, Loc end, unique_deque<Expr> exprs)
-      : begin(begin), end(end), exprs(std::move(exprs)) {}
+  ArrayExpr(Block *parent, Loc begin, Loc end, unique_deque<Expr> exprs)
+      : Expr(parent), begin(begin), end(end), exprs(std::move(exprs)) {}
 
   const Loc Begin() const override { return begin; }
 
@@ -293,8 +316,9 @@ struct RetStmt : public Stmt {
   const Loc end;
   std::unique_ptr<Expr> expr;
 
-  RetStmt(Loc begin, Loc end, std::unique_ptr<Expr> expr = nullptr)
-      : begin(begin), end(end), expr(std::move(expr)) {}
+  RetStmt(Block *parent, Loc begin, Loc end,
+          std::unique_ptr<Expr> expr = nullptr)
+      : Stmt(parent), begin(begin), end(end), expr(std::move(expr)) {}
 
   virtual bool IsTerminating() const override { return true; }
 
@@ -312,11 +336,12 @@ struct VarDeclStmt : public Stmt {
   std::unique_ptr<Type> type_name;
   std::unique_ptr<Expr> expr;
 
-  VarDeclStmt(Loc begin, bool is_let, std::unique_ptr<Ident> name,
-              std::unique_ptr<Type> type_name,
+  VarDeclStmt(Block *parent, Loc begin, bool is_let,
+              std::unique_ptr<Ident> name, std::unique_ptr<Type> type_name,
 
               std::unique_ptr<Expr> expr)
-      : begin(begin),
+      : Stmt(parent),
+        begin(begin),
         is_let(is_let),
         name(std::move(name)),
         type_name(std::move(type_name)),
@@ -333,8 +358,9 @@ struct AssignStmt : public Stmt {
   std::unique_ptr<Ident> name;
   std::unique_ptr<Expr> expr;
 
-  AssignStmt(std::unique_ptr<Ident> name, std::unique_ptr<Expr> expr)
-      : name(std::move(name)), expr(std::move(expr)) {}
+  AssignStmt(Block *parent, std::unique_ptr<Ident> name,
+             std::unique_ptr<Expr> expr)
+      : Stmt(parent), name(std::move(name)), expr(std::move(expr)) {}
 
   const Loc Begin() const override { return name->Begin(); }
 

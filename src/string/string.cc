@@ -113,33 +113,6 @@ std::string ToString(const ast::BinaryOp::Op &op) {
   }
 }
 
-std::string ToString(const hir::Binary::Op &op) {
-  switch (op) {
-    case hir::Binary::Op::EQEQ:
-      return "==";
-    case hir::Binary::Op::NEQ:
-      return "!=";
-    case hir::Binary::Op::LT:
-      return "<";
-    case hir::Binary::Op::LE:
-      return "<=";
-    case hir::Binary::Op::GT:
-      return ">";
-    case hir::Binary::Op::GE:
-      return ">=";
-    case hir::Binary::Op::ADD:
-      return "+";
-    case hir::Binary::Op::SUB:
-      return "-";
-    case hir::Binary::Op::MUL:
-      return "*";
-    case hir::Binary::Op::DIV:
-      return "/";
-    case hir::Binary::Op::MOD:
-      return "%";
-  }
-}
-
 std::string ToString(const std::shared_ptr<Type> &t) {
   if (!t) return "null";
 

@@ -11,7 +11,7 @@ std::unique_ptr<Opts> ParseArgs(int argc, char *argv[]) {
   options.add_options()
     ("h,help",  "Print this message")
     ("ast",   "Print AST tree", cxxopts::value<bool>()->default_value("false"))
-    ("hir",   "Print HIR tree", cxxopts::value<bool>()->default_value("false"))
+    ("mir",   "Print MIR tree", cxxopts::value<bool>()->default_value("false"))
     ("o,out",   "Write output to to <FILENAME>", cxxopts::value<std::string>()->default_value(""))
     ("t,target",   "Target build machine type", cxxopts::value<std::string>()->default_value(""))
     ("emit",    "[llvm-ir|llvm-bc|asm|obj|link] types of output for the compiler to ", 
@@ -51,6 +51,6 @@ std::unique_ptr<Opts> ParseArgs(int argc, char *argv[]) {
   return std::make_unique<Opts>(
       input.as<std::string>(), result["out"].as<std::string>(),
       result["target"].as<std::string>(), result["ast"].as<bool>(),
-      result["hir"].as<bool>(), emit);
+      result["mir"].as<bool>(), emit);
 }
 

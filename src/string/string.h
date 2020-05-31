@@ -8,7 +8,6 @@
 #include "check/decl.h"
 #include "check/type.h"
 #include "node/ast.h"
-#include "node/hir.h"
 #include "node/mir.h"
 #include "syntax/token.h"
 
@@ -24,7 +23,6 @@ std::string format(const std::string& fmt, Args... args) {
 
 std::string ToString(const Token::Kind&);
 std::string ToString(const ast::BinaryOp::Op&);
-std::string ToString(const hir::Binary::Op&);
 std::string ToString(const std::shared_ptr<Type>&);
 std::string ToString(const ast::Stmt::Kind&);
 std::string ToString(const ast::Expr::Kind&);

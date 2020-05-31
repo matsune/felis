@@ -32,11 +32,11 @@ class Parser {
   std::unique_ptr<ast::FnArgs> ParseFnArgs();
   std::unique_ptr<ast::FnArg> ParseFnArg();
   std::unique_ptr<ast::Type> ParseType();
-  std::unique_ptr<ast::Expr> ParseExpr(uint8_t prec = 0);
-  std::unique_ptr<ast::Expr> ParsePrimary();
-  std::unique_ptr<ast::If> ParseIf();
-  std::unique_ptr<ast::Block> ParseBlock();
-  std::unique_ptr<ast::Stmt> ParseStmt();
+  std::unique_ptr<ast::Expr> ParseExpr(ast::Block *, uint8_t prec = 0);
+  std::unique_ptr<ast::Expr> ParsePrimary(ast::Block *);
+  std::unique_ptr<ast::If> ParseIf(ast::Block *);
+  std::unique_ptr<ast::Block> ParseBlock(ast::Block *);
+  std::unique_ptr<ast::Stmt> ParseStmt(ast::Block *);
 
   template <typename... Args>
   void Throw(const std::string &fmt, Args... args);

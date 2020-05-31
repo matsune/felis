@@ -8,12 +8,7 @@ namespace felis {
 
 namespace {
 
-template <typename T>
-static std::string tostring(const T &t) {
-  std::ostringstream ss;
-  ss << t;
-  return ss.str();
-}
+inline std::string bool_str(bool f) { return f ? "true" : "false"; }
 
 }  // namespace
 
@@ -113,6 +108,7 @@ void AstPrinter::PrintBlock(ast::Block *block) {
       auto &stmt = block->stmts.at(i);
       PrintStmt(stmt.get());
     }
+    Writeln("IsBlockRet: %s", bool_str(block->IsBlockRet()).c_str());
     PrintPtr(block);
   }
   Up("}");
@@ -127,6 +123,7 @@ void AstPrinter::PrintIdent(ast::Ident *ident) {
   Down("Ident {");
   {
     Writeln("Name: " + ident->val);
+    Writeln("IsBlockRet: %s", bool_str(ident->IsBlockRet()).c_str());
     PrintPtr(ident);
     PrintLoc(ident);
   }
@@ -238,6 +235,7 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
         Writeln("Op: " + ToString(binary->op->op));
         Write("Right: ");
         PrintExpr(binary->rhs.get());
+        Writeln("IsBlockRet: %s", bool_str(binary->IsBlockRet()).c_str());
         PrintPtr(binary);
         PrintLoc(binary);
       }
@@ -258,6 +256,7 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
           }
         }
         Up("]");
+        Writeln("IsBlockRet: %s", bool_str(call->IsBlockRet()).c_str());
         PrintPtr(call);
         PrintLoc(call);
       }
@@ -270,6 +269,7 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
         std::string op = unary->op->op == ast::UnaryOp::Op::NEG ? "-" : "!";
         Writeln("op: %s", op.c_str());
         PrintExpr(unary->expr.get());
+        Writeln("IsBlockRet: %s", bool_str(unary->IsBlockRet()).c_str());
         PrintPtr(unary);
         PrintLoc(unary);
       }
@@ -284,6 +284,7 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
         PrintBlock(if_stmt->block.get());
         Write("Else: ");
         PrintExpr(if_stmt->els.get());
+        Writeln("IsBlockRet: %s", bool_str(if_stmt->IsBlockRet()).c_str());
         PrintPtr(if_stmt);
         PrintLoc(if_stmt);
       }
@@ -301,6 +302,9 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
           auto expr = array->exprs.at(i).get();
           PrintExpr(expr);
         }
+        Writeln("IsBlockRet: %s", bool_str(array->IsBlockRet()).c_str());
+        PrintPtr(array);
+        PrintLoc(array);
       }
       Up("]");
   }
@@ -318,6 +322,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("Int: " + l->val);
+        Writeln("IsBlockRet: %s", bool_str(l->IsBlockRet()).c_str());
         PrintPtr(l);
         PrintLoc(l);
       }
@@ -328,6 +333,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("Float: " + l->val);
+        Writeln("IsBlockRet: %s", bool_str(l->IsBlockRet()).c_str());
         PrintPtr(l);
         PrintLoc(l);
       }
@@ -338,6 +344,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("Bool: " + l->val);
+        Writeln("IsBlockRet: %s", bool_str(l->IsBlockRet()).c_str());
         PrintPtr(l);
         PrintLoc(l);
       }
@@ -348,6 +355,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("Char: '" + l->val + "'");
+        Writeln("IsBlockRet: %s", bool_str(l->IsBlockRet()).c_str());
         PrintPtr(l);
         PrintLoc(l);
       }
@@ -358,6 +366,7 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("literal: \"" + l->val + "\"");
+        Writeln("IsBlockRet: %s", bool_str(l->IsBlockRet()).c_str());
         PrintPtr(l);
         PrintLoc(l);
       }

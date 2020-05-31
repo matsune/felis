@@ -1,4 +1,4 @@
-fn d() -> i32 { ret 3 }
+fn d() -> i32 {  3 }
 fn e() -> i32 { ret if true { 3 } else { 4 } }
 fn c() { }
 

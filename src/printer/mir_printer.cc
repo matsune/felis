@@ -13,7 +13,7 @@ void MirPrinter::Print(const std::unique_ptr<mir::File>& file) {
 
 void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
   if (func->IsExt()) {
-    Writeln("ext %d %s %s", func->id, func->name.c_str(),
+    Writeln("%d ext %s %s", func->id, func->name.c_str(),
             ToString(func->type).c_str());
     return;
   }
