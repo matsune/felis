@@ -238,6 +238,8 @@ std::shared_ptr<PrimType> ArchInt(bool is_32bit);
 
 std::shared_ptr<Type> Underlying(std::shared_ptr<Type> ty);
 
+std::shared_ptr<Type> FinalType(std::shared_ptr<Type> ty, bool is_32bit);
+
 }  // namespace felis
 
 #endif  // FELIS_CHECK_TYPE_H_

@@ -67,28 +67,28 @@ bool TryResolve(std::shared_ptr<Type> ty, std::shared_ptr<Type> to) {
 }  // namespace
 
 void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
-  decl_ck.CheckGlobalLevel(file);
+  decl_ck_.CheckGlobalLevel(file);
 
   for (auto& fn : file->externs) {
-    auto decl = decl_ck.LookupFuncDecl(fn->proto->name->val);
-    RecordDecl(fn->proto->name, decl);
+    auto decl = decl_ck_.LookupFuncDecl(fn->proto->name->val);
+    ctx_.RecordDecl(fn->proto->name, decl);
   }
 
   for (auto& fn : file->fn_decls) {
-    auto decl = decl_ck.LookupFuncDecl(fn->proto->name->val);
-    RecordDecl(fn->proto->name, decl);
+    auto decl = decl_ck_.LookupFuncDecl(fn->proto->name->val);
+    ctx_.RecordDecl(fn->proto->name, decl);
     current_func_ = decl->AsFuncType();
     std::cout << "Infer fn " << fn->proto->name->val << std::endl;
 
-    decl_ck.OpenScope();
+    decl_ck_.OpenScope();
 
     for (auto& arg : fn->proto->args->list) {
       // arg-name duplication is already checked in parser
       auto arg_decl = std::make_shared<Decl>(
-          arg->name->val, decl_ck.LookupType(arg->type_name), DeclKind::ARG);
-      RecordDecl(arg->name, arg_decl);
+          arg->name->val, decl_ck_.LookupType(arg->type_name), DeclKind::ARG);
+      ctx_.RecordDecl(arg->name, arg_decl);
 
-      decl_ck.InsertDecl(arg->name->val, arg_decl);
+      decl_ck_.InsertDecl(arg->name->val, arg_decl);
     }
 
     auto block_ty = InferBlock(fn->block);
@@ -100,7 +100,7 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
       }
     }
 
-    decl_ck.CloseScope();
+    decl_ck_.CloseScope();
   }
 }
 
@@ -159,13 +159,13 @@ void TypeChecker::InferVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
   std::cout << "InferVarDecl" << std::endl;
   // name validation
   auto& name = stmt->name->val;
-  if (!decl_ck.CanDecl(name)) {
+  if (!decl_ck_.CanDecl(name)) {
     throw LocError::Create(stmt->Begin(), "redeclared var %s", name.c_str());
   }
   std::shared_ptr<Type> decl_ty = Unresolved();
   if (stmt->type_name) {
     // has type constraint
-    decl_ty = decl_ck.LookupType(stmt->type_name);
+    decl_ty = decl_ck_.LookupType(stmt->type_name);
     if (!decl_ty) {
       throw LocError::Create(stmt->type_name->Begin(), "unknown decl type");
     }
@@ -185,14 +185,14 @@ void TypeChecker::InferVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
 
   auto decl = std::make_shared<Decl>(
       name, decl_ty, stmt->is_let ? DeclKind::LET : DeclKind::VAR);
-  RecordDecl(stmt->name, decl);
+  ctx_.RecordDecl(stmt->name, decl);
 
-  decl_ck.InsertDecl(name, decl);
+  decl_ck_.InsertDecl(name, decl);
 }
 
 void TypeChecker::InferAssign(const std::unique_ptr<ast::AssignStmt>& stmt) {
   auto& name = stmt->name->val;
-  auto decl = decl_ck.LookupVarDecl(name);
+  auto decl = decl_ck_.LookupVarDecl(name);
   if (!decl) {
     throw LocError::Create(stmt->Begin(), "undeclared var %s", name.c_str());
   }
@@ -200,7 +200,7 @@ void TypeChecker::InferAssign(const std::unique_ptr<ast::AssignStmt>& stmt) {
     throw LocError::Create(stmt->Begin(), "%s is declared as mutable variable",
                            name.c_str());
   }
-  RecordDecl(stmt->name, decl);
+  ctx_.RecordDecl(stmt->name, decl);
 
   auto expr_ty = InferExpr(stmt->expr);
   if (!TryResolve(decl->type, expr_ty) && !TryResolve(expr_ty, decl->type)) {
@@ -218,20 +218,20 @@ std::shared_ptr<Type> TypeChecker::InferExpr(
       auto& lit = (std::unique_ptr<ast::Lit>&)expr;
       switch (lit->LitKind()) {
         case ast::Lit::Kind::BOOL:
-          return RecordType(lit, kTypeBool);
+          return ctx_.RecordType(lit, kTypeBool);
         case ast::Lit::Kind::STRING:
-          return RecordType(lit, kTypeString);
+          return ctx_.RecordType(lit, kTypeString);
         case ast::Lit::Kind::CHAR:
         case ast::Lit::Kind::INT:
-          return RecordType(lit, UntypedInt());
+          return ctx_.RecordType(lit, UntypedInt());
         case ast::Lit::Kind::FLOAT:
-          return RecordType(lit, UntypedFloat());
+          return ctx_.RecordType(lit, UntypedFloat());
       }
     } break;
 
     case ast::Expr::Kind::CALL: {
       auto& call_expr = (std::unique_ptr<ast::CallExpr>&)expr;
-      auto decl = decl_ck.LookupFuncDecl(call_expr->ident->val);
+      auto decl = decl_ck_.LookupFuncDecl(call_expr->ident->val);
       if (decl == nullptr) {
         throw LocError::Create(call_expr->Begin(), "undefined function %s",
                                call_expr->ident->val.c_str());
@@ -248,24 +248,24 @@ std::shared_ptr<Type> TypeChecker::InferExpr(
           throw LocError::Create(arg->Begin(), "mismatched arg ty");
         }
       }
-      RecordDecl(call_expr->ident, decl);
-      return RecordType(call_expr, fn_type->ret);
+      ctx_.RecordDecl(call_expr->ident, decl);
+      return ctx_.RecordType(call_expr, fn_type->ret);
     } break;
 
     case ast::Expr::Kind::IDENT: {
       auto& ident = (std::unique_ptr<ast::Ident>&)expr;
-      auto decl = decl_ck.LookupVarDecl(ident->val);
+      auto decl = decl_ck_.LookupVarDecl(ident->val);
       if (!decl) {
         throw LocError::Create(ident->Begin(), "undefined function %s",
                                ident->val.c_str());
       }
-      RecordDecl(ident, decl);
-      return RecordType(ident, decl->type);
+      ctx_.RecordDecl(ident, decl);
+      return ctx_.RecordType(ident, decl->type);
     } break;
 
     case ast::Expr::Kind::UNARY: {
       auto& unary_expr = (std::unique_ptr<ast::UnaryExpr>&)expr;
-      return RecordType(unary_expr, InferExpr(unary_expr->expr));
+      return ctx_.RecordType(unary_expr, InferExpr(unary_expr->expr));
     } break;
 
     case ast::Expr::Kind::BINARY: {
@@ -293,7 +293,7 @@ std::shared_ptr<Type> TypeChecker::InferExpr(
             throw LocError::Create(binary->Begin(),
                                    "cannot use this type for comparison");
           }
-          return RecordType(binary, kTypeBool);
+          return ctx_.RecordType(binary, kTypeBool);
 
         case ast::BinaryOp::Op::ADD:
         case ast::BinaryOp::Op::SUB:
@@ -303,14 +303,14 @@ std::shared_ptr<Type> TypeChecker::InferExpr(
             throw LocError::Create(binary->Begin(),
                                    "cannot use non numeric type of binary");
           }
-          return RecordType(binary, operand_ty);
+          return ctx_.RecordType(binary, operand_ty);
 
         case ast::BinaryOp::Op::MOD:
           if (!operand_ty->IsUntyped() && !operand_ty->IsFixedInt()) {
             throw LocError::Create(binary->Begin(),
                                    "cannot use non numeric type of binary");
           }
-          return RecordType(binary, operand_ty);
+          return ctx_.RecordType(binary, operand_ty);
       }
     } break;
 
@@ -329,7 +329,7 @@ std::shared_ptr<Type> TypeChecker::InferExpr(
           throw LocError::Create(e->Begin(), "mismatch element type");
         }
       }
-      return RecordType(array, std::make_shared<ArrayType>(elem_ty, size));
+      return ctx_.RecordType(array, std::make_shared<ArrayType>(elem_ty, size));
     } break;
   }
 }
@@ -352,7 +352,7 @@ std::shared_ptr<Type> TypeChecker::InferIf(const std::unique_ptr<ast::If>& e) {
       //
       throw LocError::Create(e->Begin(), "incomplete if statement");
     }
-    return RecordType(e, kTypeVoid);
+    return ctx_.RecordType(e, kTypeVoid);
   }
 
   // has else
@@ -400,19 +400,19 @@ std::shared_ptr<Type> TypeChecker::InferIf(const std::unique_ptr<ast::If>& e) {
     }
   }
 
-  return RecordType(e, whole_ty);
+  return ctx_.RecordType(e, whole_ty);
 }
 
 std::shared_ptr<Type> TypeChecker::InferBlock(
     const std::unique_ptr<ast::Block>& e) {
   std::cout << "InferBlock" << std::endl;
-  decl_ck.OpenScope();
+  decl_ck_.OpenScope();
   std::shared_ptr<Type> ty = kTypeVoid;
   for (auto& stmt : e->stmts) {
     ty = InferStmt(stmt);
   }
-  decl_ck.CloseScope();
-  return RecordType(e, ty);
+  decl_ck_.CloseScope();
+  return ctx_.RecordType(e, ty);
 }
 
 }  // namespace felis

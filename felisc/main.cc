@@ -5,12 +5,11 @@
 #include "args.h"
 #include "backend/llvm_builder.h"
 #include "backend/target.h"
-#include "check/lower.h"
 #include "error/error.h"
 #include "loc.h"
+#include "middle/lower.h"
 #include "printer/ast_printer.h"
 #include "printer/mir_printer.h"
-#include "syntax/lexer.h"
 #include "syntax/parser.h"
 #include "unique.h"
 
@@ -43,25 +42,12 @@ class Session {
     return 1;
   }
 
-  felis::unique_deque<felis::Token> ParseTokens(std::ifstream &in) {
-    felis::unique_deque<felis::Token> tokens;
-    felis::Lexer lexer(in);
-    bool is_end(false);
-    while (!is_end) {
-      auto token = lexer.Next();
-      is_end = token->kind == felis::Token::Kind::END;
-      tokens.push_back(std::move(token));
-    }
-    return std::move(tokens);
-  }
-
   std::unique_ptr<felis::ast::File> ParseAst() {
     std::ifstream in;
     if (!open(in)) {
       return nullptr;
     }
-    auto tokens = ParseTokens(in);
-    return felis::Parser(std::move(tokens)).Parse();
+    return felis::ParseAst(in);
   }
 
   std::unique_ptr<llvm::TargetMachine> CreateTargetMachine() {

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "error/error.h"
+#include "lexer.h"
 #include "node/ast.h"
 #include "syntax/token.h"
 #include "unique.h"
@@ -41,6 +42,8 @@ class Parser {
   template <typename... Args>
   void Throw(const std::string &fmt, Args... args);
 };
+
+std::unique_ptr<felis::ast::File> ParseAst(std::ifstream &);
 
 }  // namespace felis
 

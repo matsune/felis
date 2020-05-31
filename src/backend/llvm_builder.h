@@ -27,14 +27,13 @@ class LLVMBuilder {
     module_.setDataLayout(machine_->createDataLayout());
     module_.setTargetTriple(machine_->getTargetTriple().str());
   };
-  //
-  //  void Build(std::unique_ptr<hir::File>);
-  //
-  //  void EmitLLVMIR(std::string filename);
-  //  void EmitLLVMBC(std::string filename);
-  //  void EmitASM(std::string filename);
-  //  void EmitOBJ(std::string filename);
-  //
+
+  void Build(std::unique_ptr<mir::File>);
+  void EmitLLVMIR(std::string filename);
+  void EmitLLVMBC(std::string filename);
+  void EmitASM(std::string filename);
+  void EmitOBJ(std::string filename);
+
  private:
   llvm::LLVMContext ctx_;
   llvm::Module module_;
@@ -55,20 +54,20 @@ class LLVMBuilder {
   //
   //  llvm::Function *BuildFnProto(std::shared_ptr<Decl> &);
   //
-  //  llvm::Value *BuildStmt(std::unique_ptr<hir::Stmt>);
-  //  void BuildRetStmt(std::unique_ptr<hir::RetStmt>);
-  //  void BuildVarDeclStmt(std::unique_ptr<hir::VarDeclStmt>);
-  //  void BuildAssignStmt(std::unique_ptr<hir::AssignStmt>);
+  //  llvm::Value *BuildStmt(std::unique_ptr<mir::Stmt>);
+  //  void BuildRetStmt(std::unique_ptr<mir::RetStmt>);
+  //  void BuildVarDeclStmt(std::unique_ptr<mir::VarDeclStmt>);
+  //  void BuildAssignStmt(std::unique_ptr<mir::AssignStmt>);
   //
-  //  void BuildBlock(std::unique_ptr<hir::Block>, llvm::AllocaInst *into,
+  //  void BuildBlock(std::unique_ptr<mir::Block>, llvm::AllocaInst *into,
   //                  llvm::BasicBlock *after_bb);
-  //  void BuildIf(std::unique_ptr<hir::If>, llvm::AllocaInst *into,
+  //  void BuildIf(std::unique_ptr<mir::If>, llvm::AllocaInst *into,
   //               llvm::BasicBlock *after_bb);
   //
-  //  llvm::Value *BuildExpr(std::unique_ptr<hir::Expr>);
-  //  llvm::Constant *BuildConstant(std::unique_ptr<hir::Constant>);
-  //  llvm::AllocaInst *BuildArray(std::unique_ptr<hir::Array>);
-  //  llvm::Value *BuildBinary(std::unique_ptr<hir::Binary>);
+  //  llvm::Value *BuildExpr(std::unique_ptr<mir::Expr>);
+  //  llvm::Constant *BuildConstant(std::unique_ptr<mir::Constant>);
+  //  llvm::AllocaInst *BuildArray(std::unique_ptr<mir::Array>);
+  //  llvm::Value *BuildBinary(std::unique_ptr<mir::Binary>);
   //
   //  void EmitCodeGen(std::string, llvm::TargetMachine::CodeGenFileType);
 };

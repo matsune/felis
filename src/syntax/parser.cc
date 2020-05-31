@@ -8,6 +8,18 @@
 
 namespace felis {
 
+std::unique_ptr<felis::ast::File> ParseAst(std::ifstream& in) {
+  unique_deque<felis::Token> tokens;
+  Lexer lexer(in);
+  bool is_end(false);
+  while (!is_end) {
+    auto token = lexer.Next();
+    is_end = token->kind == felis::Token::Kind::END;
+    tokens.push_back(std::move(token));
+  }
+  return felis::Parser(std::move(tokens)).Parse();
+}
+
 namespace {
 
 inline bool is_lit(Token::Kind kind) {

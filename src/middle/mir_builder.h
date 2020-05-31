@@ -1,5 +1,5 @@
-#ifndef FELIS_CHECK_MIR_BUILDER_H_
-#define FELIS_CHECK_MIR_BUILDER_H_
+#ifndef FELIS_MIDDLE_MIR_BUILDER_H_
+#define FELIS_MIDDLE_MIR_BUILDER_H_
 
 #include <memory>
 
@@ -82,4 +82,4 @@ class MIRBuilder {
 
 }  // namespace felis
 
-#endif  // FELIS_CHECK_MIR_BUILDER_H_
+#endif  // FELIS_MIDDLE_MIR_BUILDER_H_

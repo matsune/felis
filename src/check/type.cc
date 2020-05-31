@@ -1,6 +1,7 @@
 #include "check/type.h"
 
 #include "macro.h"
+#include "string/string.h"
 
 namespace felis {
 
@@ -64,6 +65,28 @@ std::shared_ptr<Type> Underlying(std::shared_ptr<Type> ty) {
       return ty;
     }
   }
+  UNREACHABLE
+}
+
+std::shared_ptr<Type> FinalType(std::shared_ptr<Type> ty, bool is_32bit) {
+  auto underlying_ty = Underlying(ty);
+  if (underlying_ty->IsFixed()) {
+    if (underlying_ty->IsArray()) {
+      auto array_ty = std::dynamic_pointer_cast<ArrayType>(underlying_ty);
+      auto elem = FinalType(array_ty->elem, is_32bit);
+      return std::make_shared<ArrayType>(elem, array_ty->size);
+    }
+    return underlying_ty;
+  } else if (underlying_ty->IsUntyped()) {
+    auto untyped = std::dynamic_pointer_cast<Untyped>(underlying_ty);
+    if (untyped->IsUntypedInt()) {
+      return is_32bit ? kTypeI32 : kTypeI64;
+    } else if (untyped->IsUntypedFloat()) {
+      return kTypeF32;
+    }
+  }
+  std::cout << "[unreachabel] underlying " << ToString(underlying_ty)
+            << std::endl;
   UNREACHABLE
 }
 
