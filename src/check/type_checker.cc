@@ -91,22 +91,14 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
       decl_ck.InsertDecl(arg->name->val, arg_decl);
     }
 
-    std::shared_ptr<Type> block_ty = kTypeVoid;
-    for (auto it = fn->block->stmts.begin(); it != fn->block->stmts.end();
-         ++it) {
-      bool is_end = std::next(it) == fn->block->stmts.end();
-      const std::unique_ptr<ast::Stmt>& stmt = *it;
-      block_ty = InferStmt(stmt, false);
-
-      if (!is_end && stmt->IsTerminating()) {
-        auto next = std::next(it);
-        throw LocError::Create((*next)->Begin(), "unreachable code");
+    auto block_ty = InferBlock(fn->block);
+    if (!fn->block->IsTerminating()) {
+      std::cout << "fn->block " << fn->block.get() << " is not terminating"
+                << std::endl;
+      if (!TryResolve(block_ty, current_func_->ret)) {
+        throw LocError::Create(fn->block->End(), "mismatch ret type");
       }
     }
-    if (!current_func_->ret->IsVoid() && !fn->block->IsTerminating()) {
-      throw LocError::Create(fn->block->End(), "no return");
-    }
-    RecordType(fn->block, block_ty);
 
     decl_ck.CloseScope();
   }
@@ -133,10 +125,10 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
 // variable `a`.
 //
 std::shared_ptr<Type> TypeChecker::InferStmt(
-    const std::unique_ptr<ast::Stmt>& stmt, bool as_expr) {
+    const std::unique_ptr<ast::Stmt>& stmt) {
   std::cout << "InferStmt " << ToString(stmt->StmtKind()) << std::endl;
 
-  if (as_expr) {
+  if (stmt->parent->IsBlockRet() && stmt->IsLastStmt()) {
     switch (stmt->StmtKind()) {
       case ast::Stmt::Kind::VAR_DECL:
       case ast::Stmt::Kind::ASSIGN:
@@ -148,7 +140,7 @@ std::shared_ptr<Type> TypeChecker::InferStmt(
 
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR:
-      return InferExpr((std::unique_ptr<ast::Expr>&)stmt, as_expr);
+      return InferExpr((std::unique_ptr<ast::Expr>&)stmt);
     case ast::Stmt::Kind::RET:
       InferRet((std::unique_ptr<ast::RetStmt>&)stmt);
       break;
@@ -175,7 +167,7 @@ void TypeChecker::InferRet(const std::unique_ptr<ast::RetStmt>& stmt) {
   }
 
   if (stmt->expr) {
-    auto expr_ty = InferExpr(stmt->expr, true);
+    auto expr_ty = InferExpr(stmt->expr);
     if (!TryResolve(expr_ty, current_func_->ret)) {
       throw LocError::Create(stmt->Begin(), "mismatch ret type");
     }
@@ -199,7 +191,7 @@ void TypeChecker::InferVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
     }
   }
 
-  auto expr_ty = InferExpr(stmt->expr, true);
+  auto expr_ty = InferExpr(stmt->expr);
   if (expr_ty->IsVoid()) {
     throw LocError::Create(stmt->Begin(), "cannot decl void type var");
   }
@@ -230,7 +222,7 @@ void TypeChecker::InferAssign(const std::unique_ptr<ast::AssignStmt>& stmt) {
   }
   RecordDecl(stmt->name, decl);
 
-  auto expr_ty = InferExpr(stmt->expr, true);
+  auto expr_ty = InferExpr(stmt->expr);
   if (!TryResolve(decl->type, expr_ty) && !TryResolve(expr_ty, decl->type)) {
     throw LocError::Create(
         stmt->expr->Begin(), "mismatched assign type %s = %s",
@@ -239,7 +231,7 @@ void TypeChecker::InferAssign(const std::unique_ptr<ast::AssignStmt>& stmt) {
 }
 
 std::shared_ptr<Type> TypeChecker::InferExpr(
-    const std::unique_ptr<ast::Expr>& expr, bool as_expr) {
+    const std::unique_ptr<ast::Expr>& expr) {
   std::cout << "InferExpr " << ToString(expr->ExprKind()) << std::endl;
   switch (expr->ExprKind()) {
     case ast::Expr::Kind::LIT: {
@@ -271,7 +263,7 @@ std::shared_ptr<Type> TypeChecker::InferExpr(
 
       for (auto i = 0; i < call_expr->args.size(); ++i) {
         auto& arg = call_expr->args.at(i);
-        auto arg_ty = InferExpr(arg, true);
+        auto arg_ty = InferExpr(arg);
         if (!TryResolve(arg_ty, fn_type->args[i])) {
           throw LocError::Create(arg->Begin(), "mismatched arg ty");
         }
@@ -293,13 +285,13 @@ std::shared_ptr<Type> TypeChecker::InferExpr(
 
     case ast::Expr::Kind::UNARY: {
       auto& unary_expr = (std::unique_ptr<ast::UnaryExpr>&)expr;
-      return RecordType(unary_expr, InferExpr(unary_expr->expr, true));
+      return RecordType(unary_expr, InferExpr(unary_expr->expr));
     } break;
 
     case ast::Expr::Kind::BINARY: {
       auto& binary = (std::unique_ptr<ast::BinaryExpr>&)expr;
-      auto lhs_ty = InferExpr(binary->lhs, true);
-      auto rhs_ty = InferExpr(binary->rhs, true);
+      auto lhs_ty = InferExpr(binary->lhs);
+      auto rhs_ty = InferExpr(binary->rhs);
 
       std::shared_ptr<Type> operand_ty;
       if (TryResolve(lhs_ty, rhs_ty)) {
@@ -343,16 +335,16 @@ std::shared_ptr<Type> TypeChecker::InferExpr(
     } break;
 
     case ast::Expr::Kind::IF:
-      return InferIf((std::unique_ptr<ast::If>&)expr, as_expr);
+      return InferIf((std::unique_ptr<ast::If>&)expr);
     case ast::Expr::Kind::BLOCK:
-      return InferBlock((std::unique_ptr<ast::Block>&)expr, as_expr);
+      return InferBlock((std::unique_ptr<ast::Block>&)expr);
 
     case ast::Expr::Kind::ARRAY: {
       auto& array = (std::unique_ptr<ast::ArrayExpr>&)expr;
       auto size = array->exprs.size();
       auto elem_ty = Unresolved();
       for (auto& e : array->exprs) {
-        auto e_ty = InferExpr(e, true);
+        auto e_ty = InferExpr(e);
         if (!TryResolve(elem_ty, e_ty)) {
           throw LocError::Create(e->Begin(), "mismatch element type");
         }
@@ -362,91 +354,81 @@ std::shared_ptr<Type> TypeChecker::InferExpr(
   }
 }
 
-std::shared_ptr<Type> TypeChecker::InferIf(const std::unique_ptr<ast::If>& e,
-                                           bool as_expr) {
-  auto cond_ty = InferExpr(e->cond, true);
+std::shared_ptr<Type> TypeChecker::InferIf(const std::unique_ptr<ast::If>& e) {
+  auto cond_ty = InferExpr(e->cond);
   if (!TryResolve(cond_ty, kTypeBool)) {
     throw LocError::Create(e->cond->Begin(),
                            "if-statement condition must be bool type");
   }
 
-  auto block_ty = InferBlock(e->block, as_expr);
+  auto block_ty = InferBlock(e->block);
 
-  std::shared_ptr<Type> whole_ty = kTypeVoid;
-
-  if (e->HasElse()) {
-    auto is_then_terminating = e->block->IsTerminating();
-    auto is_else_terminating = e->els->IsTerminating();
-
-    std::shared_ptr<Type> els_ty;
-    if (e->IsElseIf()) {
-      els_ty = InferIf((std::unique_ptr<ast::If>&)e->els, as_expr);
-    } else {
-      els_ty = InferBlock((std::unique_ptr<ast::Block>&)e->els, as_expr);
-    }
-
-    if (as_expr) {
-      if (is_then_terminating && is_else_terminating) {
-        // Cannot infer type like this
-        //
-        // ```
-        // let a = if true {
-        //    ret 3
-        //  } else {
-        //    ret 4
-        //  }
-        // ```
-        //
-        throw LocError::Create(e->Begin(), "returning in all branch");
-      } else if (is_then_terminating) {
-        whole_ty = els_ty;
-      } else if (is_else_terminating) {
-        whole_ty = block_ty;
-      } else {
-        // Both of then block and else block should be same type
-        if (TryResolve(block_ty, els_ty)) {
-          whole_ty = els_ty;
-        } else if (TryResolve(els_ty, block_ty)) {
-          whole_ty = block_ty;
-        } else {
-          throw LocError::Create(e->Begin(), "unmatched if branches types");
-        }
-      }
-    }
-  } else {
-    if (as_expr) {
+  if (!e->HasElse()) {
+    // no else
+    if (!e->as_stmt) {
       // No else if-statement can't be used as value
       //
       // ex) let a = if true { 4 }
       //
       throw LocError::Create(e->Begin(), "incomplete if statement");
     }
+    return RecordType(e, kTypeVoid);
+  }
+
+  // has else
+
+  std::shared_ptr<Type> whole_ty = kTypeVoid;
+  auto is_then_terminating = e->block->IsTerminating();
+  auto is_else_terminating = e->els->IsTerminating();
+
+  std::shared_ptr<Type> els_ty;
+  if (e->IsElseIf()) {
+    els_ty = InferIf((std::unique_ptr<ast::If>&)e->els);
+  } else {
+    els_ty = InferBlock((std::unique_ptr<ast::Block>&)e->els);
+  }
+
+  if (e->IsBlockRet() || !e->as_stmt) {
+    // requires complete if-stmt
+    if (is_then_terminating && is_else_terminating) {
+      // Cannot infer type like this
+      //
+      // ```
+      // let a = if true {
+      //    ret 3
+      //  } else {
+      //    ret 4
+      //  }
+      // ```
+      //
+      throw LocError::Create(e->Begin(), "returning in all branch");
+    }
+  }
+
+  if (is_then_terminating) {
+    whole_ty = els_ty;
+  } else if (is_else_terminating) {
+    whole_ty = block_ty;
+  } else {
+    // Both of then block and else block should be same type
+    if (TryResolve(block_ty, els_ty)) {
+      whole_ty = els_ty;
+    } else if (TryResolve(els_ty, block_ty)) {
+      whole_ty = block_ty;
+    } else {
+      throw LocError::Create(e->Begin(), "unmatched if branches types");
+    }
   }
   return RecordType(e, whole_ty);
 }
 
 std::shared_ptr<Type> TypeChecker::InferBlock(
-    const std::unique_ptr<ast::Block>& e, bool as_expr) {
+    const std::unique_ptr<ast::Block>& e) {
   std::cout << "InferBlock" << std::endl;
   decl_ck.OpenScope();
   std::shared_ptr<Type> ty = kTypeVoid;
-  for (auto it = e->stmts.begin(); it != e->stmts.end(); it++) {
-    // If the block will be the value of parent statement,
-    // last statement of this block will also be the value.
-    // For example, below block will be the value of `let a`
-    // and `b` will be a value of whole this block.
-    //
-    // ```
-    // let a = {  // block is expr for `let a`
-    //  let b = 2
-    //  b         // last statement substitutes expr for block
-    // }
-    // ```
-    bool is_last = std::next(it) == e->stmts.end();
-    ty = InferStmt(*it, is_last && as_expr);
-  }
-  if (!as_expr) {
-    ty = kTypeVoid;
+  for (auto& stmt : e->stmts) {
+    ty = InferStmt(stmt);
   }
   decl_ck.CloseScope();
   return RecordType(e, ty);

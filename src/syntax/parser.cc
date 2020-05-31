@@ -90,6 +90,7 @@ std::unique_ptr<ast::FnDecl> Parser::ParseFnDecl() {
   auto proto = ParseFnProto();
   auto block = ParseBlock(nullptr);
   if (!proto->ret) {
+    // void function block
     block->as_stmt = true;
   }
   return std::make_unique<ast::FnDecl>(std::move(proto), std::move(block));

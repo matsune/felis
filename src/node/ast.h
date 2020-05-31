@@ -110,6 +110,8 @@ struct Expr : public Stmt {
   bool IsBlockRet() const;
 };
 
+// Top level block (function block) doesn't have parent(nullptr).
+// If block is top level and function ret type is not void, as_stmt is false.
 struct Block : public Expr {
   const Loc begin;
   Loc end;

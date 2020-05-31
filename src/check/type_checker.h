@@ -30,16 +30,13 @@ class TypeChecker {
   DeclChecker decl_ck;
   std::shared_ptr<FuncType> current_func_;
 
-  std::shared_ptr<Type> InferStmt(const std::unique_ptr<ast::Stmt> &,
-                                  bool as_expr);
+  std::shared_ptr<Type> InferStmt(const std::unique_ptr<ast::Stmt> &);
   void InferRet(const std::unique_ptr<ast::RetStmt> &);
   void InferVarDecl(const std::unique_ptr<ast::VarDeclStmt> &);
   void InferAssign(const std::unique_ptr<ast::AssignStmt> &);
-  std::shared_ptr<Type> InferExpr(const std::unique_ptr<ast::Expr> &,
-                                  bool as_expr);
-  std::shared_ptr<Type> InferIf(const std::unique_ptr<ast::If> &, bool as_expr);
-  std::shared_ptr<Type> InferBlock(const std::unique_ptr<ast::Block> &,
-                                   bool as_expr);
+  std::shared_ptr<Type> InferExpr(const std::unique_ptr<ast::Expr> &);
+  std::shared_ptr<Type> InferIf(const std::unique_ptr<ast::If> &);
+  std::shared_ptr<Type> InferBlock(const std::unique_ptr<ast::Block> &);
 
   template <typename T>
   void RecordDecl(const std::unique_ptr<T> &n, std::shared_ptr<Decl> ty) {
@@ -49,6 +46,7 @@ class TypeChecker {
   template <typename T>
   std::shared_ptr<Type> RecordType(const std::unique_ptr<T> &n,
                                    std::shared_ptr<Type> ty) {
+    std::cout << "RecordType " << n.get() << " " << ToString(ty) << std::endl;
     expr_type_map_[n.get()] = ty;
     return ty;
   }
