@@ -3,8 +3,8 @@
 #include <string>
 
 #include "args.h"
-#include "builder/builder.h"
-#include "builder/target.h"
+#include "backend/llvm_builder.h"
+#include "backend/target.h"
 #include "check/lower.h"
 #include "error/error.h"
 #include "loc.h"

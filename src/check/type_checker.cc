@@ -104,26 +104,6 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
   }
 }
 
-//
-// Infer a type of `ast::Stmt`.
-// `as_expr` means whether the statement would be used as a value
-// for other statement. For example, block is a kind of expressions
-// but it consists of a list of statements, and the last statement
-// may be a value of the block.
-//
-// ```
-// hoge()
-//
-// let a = {
-//    let b = 2
-//    fuga(b)
-// }
-// ```
-// In this case, `hoge()` is just a statement because result value
-// won't be used. However, `fuga(b)` is a statement but also a value
-// of block, this means the result value will be assigned into
-// variable `a`.
-//
 std::shared_ptr<Type> TypeChecker::InferStmt(
     const std::unique_ptr<ast::Stmt>& stmt) {
   std::cout << "InferStmt " << ToString(stmt->StmtKind()) << std::endl;

@@ -1,5 +1,5 @@
-#ifndef FELIS_BUILDER_TARGET_H_
-#define FELIS_BUILDER_TARGET_H_
+#ifndef FELIS_BACKEND_TARGET_H_
+#define FELIS_BACKEND_TARGET_H_
 
 #include <llvm/Target/TargetMachine.h>
 
@@ -13,4 +13,4 @@ std::unique_ptr<llvm::TargetMachine> CreateTargetMachine(const std::string &,
 
 }  // namespace felis
 
-#endif  // FELIS_BUILDER_TARGET_H_
+#endif  // FELIS_BACKEND_TARGET_H_
