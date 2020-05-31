@@ -9,6 +9,7 @@ void MirPrinter::Print(const std::unique_ptr<mir::File>& file) {
   for (auto& func : file->funcs) {
     PrintFunc(func);
   }
+  printf("\n");
 }
 
 void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {

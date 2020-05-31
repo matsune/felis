@@ -19,7 +19,7 @@ fn b() ->i32{
 }
 
 fn o() {
-  ret 
+  3 
 }
 
 fn main() ->i32 {

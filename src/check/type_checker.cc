@@ -92,7 +92,7 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
     }
 
     auto block_ty = InferBlock(fn->block);
-    if (!fn->block->IsTerminating()) {
+    if (!fn->block->IsTerminating() && !current_func_->ret->IsVoid()) {
       std::cout << "fn->block " << fn->block.get() << " is not terminating"
                 << std::endl;
       if (!TryResolve(block_ty, current_func_->ret)) {
@@ -403,22 +403,23 @@ std::shared_ptr<Type> TypeChecker::InferIf(const std::unique_ptr<ast::If>& e) {
       //
       throw LocError::Create(e->Begin(), "returning in all branch");
     }
-  }
 
-  if (is_then_terminating) {
-    whole_ty = els_ty;
-  } else if (is_else_terminating) {
-    whole_ty = block_ty;
-  } else {
-    // Both of then block and else block should be same type
-    if (TryResolve(block_ty, els_ty)) {
+    if (is_then_terminating) {
       whole_ty = els_ty;
-    } else if (TryResolve(els_ty, block_ty)) {
+    } else if (is_else_terminating) {
       whole_ty = block_ty;
     } else {
-      throw LocError::Create(e->Begin(), "unmatched if branches types");
+      // Both of then block and else block should be same type
+      if (TryResolve(block_ty, els_ty)) {
+        whole_ty = els_ty;
+      } else if (TryResolve(els_ty, block_ty)) {
+        whole_ty = block_ty;
+      } else {
+        throw LocError::Create(e->Begin(), "unmatched if branches types");
+      }
     }
   }
+
   return RecordType(e, whole_ty);
 }
 
