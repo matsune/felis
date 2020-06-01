@@ -22,7 +22,6 @@ class TypeChecker {
   std::shared_ptr<FuncType> current_func_;
 
   std::shared_ptr<Type> InferStmt(const std::unique_ptr<ast::Stmt> &);
-  void InferRet(const std::unique_ptr<ast::RetStmt> &);
   void InferVarDecl(const std::unique_ptr<ast::VarDeclStmt> &);
   void InferAssign(const std::unique_ptr<ast::AssignStmt> &);
   std::shared_ptr<Type> InferExpr(const std::unique_ptr<ast::Expr> &);

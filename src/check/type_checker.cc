@@ -108,51 +108,44 @@ std::shared_ptr<Type> TypeChecker::InferStmt(
     const std::unique_ptr<ast::Stmt>& stmt) {
   std::cout << "InferStmt " << ToString(stmt->StmtKind()) << std::endl;
 
-  if (stmt->parent->IsBlockRet() && stmt->IsLastStmt()) {
-    switch (stmt->StmtKind()) {
-      case ast::Stmt::Kind::VAR_DECL:
-      case ast::Stmt::Kind::ASSIGN:
-        throw LocError::Create(stmt->Begin(), "not value return statement");
-      default:
-        break;
-    }
-  }
-
+  std::shared_ptr<Type> ty;
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR:
-      return InferExpr((std::unique_ptr<ast::Expr>&)stmt);
-    case ast::Stmt::Kind::RET:
-      InferRet((std::unique_ptr<ast::RetStmt>&)stmt);
+      ty = InferExpr((std::unique_ptr<ast::Expr>&)stmt);
       break;
+
+    case ast::Stmt::Kind::RET: {
+      auto& ret = (std::unique_ptr<ast::RetStmt>&)stmt;
+      ty = ret->expr ? InferExpr(ret->expr) : kTypeVoid;
+    } break;
+
     case ast::Stmt::Kind::VAR_DECL:
+      // error on RET_VALUE, EXPR_VALUE
+      //
+      // let a = {
+      //  let b = 4
+      // }
+      if (!stmt->IsResultDiscard())
+        throw LocError::Create(stmt->Begin(), "var decl doesn't return value");
+
       InferVarDecl((std::unique_ptr<ast::VarDeclStmt>&)stmt);
-      break;
+      return kTypeVoid;
+
     case ast::Stmt::Kind::ASSIGN:
+      // error on RET_VALUE, EXPR_VALUE
+      if (!stmt->IsResultDiscard())
+        throw LocError::Create(stmt->Begin(), "var decl doesn't return value");
+
       InferAssign((std::unique_ptr<ast::AssignStmt>&)stmt);
-      break;
+      return kTypeVoid;
   }
-  return kTypeVoid;
-}
 
-void TypeChecker::InferRet(const std::unique_ptr<ast::RetStmt>& stmt) {
-  bool is_void_func = current_func_->ret->IsVoid();
-  bool is_ret_void = stmt->expr == nullptr;
-
-  if (is_void_func != is_ret_void) {
-    if (is_void_func) {
-      throw LocError::Create(stmt->expr->Begin(), "func type is void");
-    } else {
-      throw LocError::Create(stmt->Begin(), "func type is not void");
+  if (stmt->IsResultRetValue()) {
+    if (!TryResolve(ty, current_func_->ret)) {
+      throw LocError::Create(stmt->Begin(), "mismatch return type");
     }
   }
-
-  if (stmt->expr) {
-    auto expr_ty = InferExpr(stmt->expr);
-    if (!TryResolve(expr_ty, current_func_->ret)) {
-      throw LocError::Create(stmt->Begin(), "mismatch ret type");
-    }
-  }
-  std::cout << "end ret" << std::endl;
+  return ty;
 }
 
 void TypeChecker::InferVarDecl(const std::unique_ptr<ast::VarDeclStmt>& stmt) {
@@ -344,22 +337,22 @@ std::shared_ptr<Type> TypeChecker::InferIf(const std::unique_ptr<ast::If>& e) {
   auto block_ty = InferBlock(e->block);
 
   if (!e->HasElse()) {
-    // no else
-    if (!e->as_stmt) {
-      // No else if-statement can't be used as value
-      //
-      // ex) let a = if true { 4 }
-      //
+    // No-else if-stmt can't be used for value because it can't determine a type
+    // of whole statement.
+    //
+    // ERROR:
+    //  let a = if cond { 4 }
+    //          ^value
+    // ERROR:
+    //  fn hoge() -> i32 {
+    //    if cond { 4 }
+    //    ^ret value
+    //  }
+    if (!e->IsResultDiscard()) {
       throw LocError::Create(e->Begin(), "incomplete if statement");
     }
     return ctx_.RecordType(e, kTypeVoid);
   }
-
-  // has else
-
-  std::shared_ptr<Type> whole_ty = kTypeVoid;
-  auto is_then_terminating = e->block->IsTerminating();
-  auto is_else_terminating = e->els->IsTerminating();
 
   std::shared_ptr<Type> els_ty;
   if (e->IsElseIf()) {
@@ -368,38 +361,36 @@ std::shared_ptr<Type> TypeChecker::InferIf(const std::unique_ptr<ast::If>& e) {
     els_ty = InferBlock((std::unique_ptr<ast::Block>&)e->els);
   }
 
-  if (e->IsBlockRet() || !e->as_stmt) {
-    // requires complete if-stmt
-    if (is_then_terminating && is_else_terminating) {
-      // Cannot infer type like this
-      //
-      // ```
-      // let a = if true {
-      //    ret 3
-      //  } else {
-      //    ret 4
-      //  }
-      // ```
-      //
-      throw LocError::Create(e->Begin(), "returning in all branch");
-    }
-
-    if (is_then_terminating) {
-      whole_ty = els_ty;
-    } else if (is_else_terminating) {
-      whole_ty = block_ty;
-    } else {
-      // Both of then block and else block should be same type
-      if (TryResolve(block_ty, els_ty)) {
-        whole_ty = els_ty;
-      } else if (TryResolve(els_ty, block_ty)) {
-        whole_ty = block_ty;
-      } else {
-        throw LocError::Create(e->Begin(), "unmatched if branches types");
-      }
-    }
+  if (e->IsResultDiscard()) {
+    // no need to check types
+    return ctx_.RecordType(e, kTypeVoid);
+  }
+  if (e->IsResultRetValue()) {
+    // already checked branch types
+    return ctx_.RecordType(e, block_ty);
   }
 
+  auto then_terminating = e->block->IsTerminating();
+  auto els_terminating = e->els->IsTerminating();
+
+  if (then_terminating && els_terminating) {
+    throw LocError::Create(e->Begin(), "all branch terminating");
+  }
+
+  std::shared_ptr<Type> whole_ty = kTypeVoid;
+  if (then_terminating) {
+    whole_ty = els_ty;
+  } else if (els_terminating) {
+    whole_ty = block_ty;
+  } else {
+    if (TryResolve(block_ty, els_ty)) {
+      whole_ty = els_ty;
+    } else if (TryResolve(els_ty, block_ty)) {
+      whole_ty = block_ty;
+    } else {
+      throw LocError::Create(e->Begin(), "unmatched els branches types");
+    }
+  }
   return ctx_.RecordType(e, whole_ty);
 }
 

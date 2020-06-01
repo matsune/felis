@@ -74,11 +74,11 @@ mir::CmpInst::Op CmpOp(ast::BinaryOp::Op op) {
   }
 }
 
-mir::UnaryInst::Op UnaryOp(ast::UnaryOp::Op op) {
+mir::UnaryInst::Op UnaryOp(ast::UnaryOp::Kind op) {
   switch (op) {
-    case ast::UnaryOp::Op::NEG:
+    case ast::UnaryOp::NEG:
       return mir::UnaryInst::Op::NEG;
-    case ast::UnaryOp::Op::NOT:
+    case ast::UnaryOp::NOT:
       return mir::UnaryInst::Op::NOT;
   }
 }
@@ -132,7 +132,10 @@ void Lower::Lowering(std::unique_ptr<ast::File> file) {
         std::dynamic_pointer_cast<mir::Function>(builder_.GetFunction(decl));
     builder_.SetInsertBB(function->entry_bb);
 
-    LowerBlock(std::move(fn_decl->block), nullptr);
+    auto val = LowerBlock(std::move(fn_decl->block), nullptr);
+    if (val) {
+      builder_.CreateRet(val);
+    }
   }
   std::cout << "End Lowering" << std::endl;
 }
@@ -212,7 +215,7 @@ std::shared_ptr<mir::RValue> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr,
       auto unary = unique_cast<ast::UnaryExpr>(std::move(expr));
       auto ty = ctx_.GetType(unary);
       auto expr = LowerExpr(std::move(unary->expr));
-      return builder_.CreateUnary(UnaryOp(unary->op->op), expr);
+      return builder_.CreateUnary(UnaryOp(unary->op->kind), expr);
     } break;
     case ast::Expr::Kind::BLOCK: {
       return LowerBlock(unique_cast<ast::Block>(std::move(expr)), end_bb);

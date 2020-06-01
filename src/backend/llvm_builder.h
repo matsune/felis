@@ -41,9 +41,9 @@ class LLVMBuilder {
   std::unique_ptr<llvm::TargetMachine> machine_;
   llvm::Function *current_func_;
   std::map<Decl *, llvm::Value *> decl_map_;
-  //
-  //  llvm::Type *LLVMType(const std::shared_ptr<Type> &);
-  //
+
+  llvm::Type *LLVMType(const std::shared_ptr<Type> &);
+
   //  void RecordValue(std::shared_ptr<Decl> &t, llvm::Value *value) {
   //    decl_map_[t.get()] = value;
   //  }
@@ -69,7 +69,7 @@ class LLVMBuilder {
   //  llvm::AllocaInst *BuildArray(std::unique_ptr<mir::Array>);
   //  llvm::Value *BuildBinary(std::unique_ptr<mir::Binary>);
   //
-  //  void EmitCodeGen(std::string, llvm::TargetMachine::CodeGenFileType);
+  void EmitCodeGen(std::string, llvm::TargetMachine::CodeGenFileType);
 };
 
 }  // namespace felis

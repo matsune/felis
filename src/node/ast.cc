@@ -4,19 +4,28 @@ namespace felis {
 
 namespace ast {
 
-bool Stmt::IsLastStmt() const {
-  if (parent) {
-    assert(!parent->stmts.empty());
-    return parent->stmts.back().get() == this;
-  } else {
-    // fn block
-    return true;
+Stmt::Result Stmt::StmtResult() const {
+  if (!parent) std::cout << "No parent " << this << std::endl;
+  assert(parent);
+  if (auto p = parent->As<FnDecl>()) {
+    // function body block
+    //
+    // if the function has a ret type, last statement of this block will be a
+    // ret value
+    return p->proto->ret ? Stmt::Result::RET_VALUE : Stmt::Result::DISCARD;
   }
-}
-
-bool Expr::IsBlockRet() const {
-  if (!parent) return !as_stmt;
-  return !parent->as_stmt && IsLastStmt() && as_stmt;
+  if (auto p = parent->As<Block>()) {
+    // as stmt
+    bool is_last = p->stmts.back().get() == this;
+    // if this statement is a last of parent block, derives parent result
+    return is_last ? p->StmtResult() : Stmt::Result::DISCARD;
+  }
+  if (auto p = parent->As<If>()) {
+    // if block
+    return p->StmtResult();
+  }
+  if (As<RetStmt>()) return Stmt::Result::RET_VALUE;
+  return Stmt::Result::EXPR_VALUE;
 }
 
 }  // namespace ast

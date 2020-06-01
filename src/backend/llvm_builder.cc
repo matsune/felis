@@ -9,37 +9,37 @@
 
 namespace felis {
 
-// llvm::Type* Builder::LLVMType(const std::shared_ptr<Type>& ty) {
-//  if (ty->IsBool()) return llvm::Type::getInt1Ty(ctx_);
-//  if (ty->IsI8()) return llvm::Type::getInt8Ty(ctx_);
-//  if (ty->IsI16()) return llvm::Type::getInt16Ty(ctx_);
-//  if (ty->IsI32()) return llvm::Type::getInt32Ty(ctx_);
-//  if (ty->IsI64()) return llvm::Type::getInt64Ty(ctx_);
-//  if (ty->IsF32()) return llvm::Type::getFloatTy(ctx_);
-//  if (ty->IsF64()) return llvm::Type::getDoubleTy(ctx_);
-//  if (ty->IsString()) return llvm::Type::getInt8PtrTy(ctx_);
-//  if (ty->IsFunc()) {
-//    auto func_type = std::dynamic_pointer_cast<FuncType>(ty);
-//    std::vector<llvm::Type*> args;
-//    for (auto& arg : func_type->args) {
-//      args.push_back(LLVMType(std::dynamic_pointer_cast<FixedType>(arg)));
-//    }
-//    return llvm::FunctionType::get(
-//        LLVMType(std::dynamic_pointer_cast<FixedType>(func_type->ret)), args,
-//        false);
-//  }
-//  if (ty->IsArray()) {
-//    auto array_type = std::dynamic_pointer_cast<ArrayType>(ty);
-//    auto elem_ty = LLVMType(array_type->elem);
-//    return llvm::ArrayType::get(elem_ty, array_type->size);
-//  }
-//  if (ty->IsVoid()) return llvm::Type::getVoidTy(ctx_);
+llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<Type>& ty) {
+  if (ty->IsBool()) return llvm::Type::getInt1Ty(ctx_);
+  if (ty->IsI8()) return llvm::Type::getInt8Ty(ctx_);
+  if (ty->IsI16()) return llvm::Type::getInt16Ty(ctx_);
+  if (ty->IsI32()) return llvm::Type::getInt32Ty(ctx_);
+  if (ty->IsI64()) return llvm::Type::getInt64Ty(ctx_);
+  if (ty->IsF32()) return llvm::Type::getFloatTy(ctx_);
+  if (ty->IsF64()) return llvm::Type::getDoubleTy(ctx_);
+  if (ty->IsString()) return llvm::Type::getInt8PtrTy(ctx_);
+  if (ty->IsFunc()) {
+    auto func_type = std::dynamic_pointer_cast<FuncType>(ty);
+    std::vector<llvm::Type*> args;
+    for (auto& arg : func_type->args) {
+      args.push_back(LLVMType(std::dynamic_pointer_cast<FixedType>(arg)));
+    }
+    return llvm::FunctionType::get(
+        LLVMType(std::dynamic_pointer_cast<FixedType>(func_type->ret)), args,
+        false);
+  }
+  if (ty->IsArray()) {
+    auto array_type = std::dynamic_pointer_cast<ArrayType>(ty);
+    auto elem_ty = LLVMType(array_type->elem);
+    return llvm::ArrayType::get(elem_ty, array_type->size);
+  }
+  if (ty->IsVoid()) return llvm::Type::getVoidTy(ctx_);
+
+  std::cout << ToString(ty) << std::endl;
+  UNREACHABLE
+}
 //
-//  std::cout << ToString(ty) << std::endl;
-//  UNREACHABLE
-//}
-//
-// void Builder::Build(std::unique_ptr<hir::File> file) {
+// void LLVMBuilder::Build(std::unique_ptr<hir::File> file) {
 //  while (!file->externs.empty()) {
 //    auto ext = file->externs.move_front();
 //    auto func_value = BuildFnProto(ext->decl);
@@ -88,13 +88,13 @@ namespace felis {
 //  }
 //};
 //
-// llvm::Function* Builder::BuildFnProto(std::shared_ptr<Decl>& decl) {
+// llvm::Function* LLVMBuilder::BuildFnProto(std::shared_ptr<Decl>& decl) {
 //  auto ty = (llvm::FunctionType*)LLVMType(decl->type);
 //  return llvm::Function::Create(ty, llvm::GlobalValue::ExternalLinkage,
 //                                decl->name, module_);
 //}
 //
-// llvm::Value* Builder::BuildStmt(std::unique_ptr<hir::Stmt> stmt) {
+// llvm::Value* LLVMBuilder::BuildStmt(std::unique_ptr<hir::Stmt> stmt) {
 //  switch (stmt->StmtKind()) {
 //    case hir::Stmt::EXPR:
 //      return BuildExpr(unique_cast<hir::Expr>(std::move(stmt)));
@@ -112,7 +112,7 @@ namespace felis {
 //  return nullptr;
 //}
 //
-// void Builder::BuildRetStmt(std::unique_ptr<hir::RetStmt> stmt) {
+// void LLVMBuilder::BuildRetStmt(std::unique_ptr<hir::RetStmt> stmt) {
 //  if (stmt->expr) {
 //    builder_.CreateRet(BuildExpr(std::move(stmt->expr)));
 //  } else {
@@ -120,7 +120,7 @@ namespace felis {
 //  }
 //}
 //
-// void Builder::BuildVarDeclStmt(std::unique_ptr<hir::VarDeclStmt> stmt) {
+// void LLVMBuilder::BuildVarDeclStmt(std::unique_ptr<hir::VarDeclStmt> stmt) {
 //  auto decl = stmt->decl;
 //  auto ty = LLVMType(decl->type);
 //  auto expr = BuildExpr(std::move(stmt->expr));
@@ -149,13 +149,13 @@ namespace felis {
 //  RecordValue(decl, alloca);
 //}
 //
-// void Builder::BuildAssignStmt(std::unique_ptr<hir::AssignStmt> stmt) {
+// void LLVMBuilder::BuildAssignStmt(std::unique_ptr<hir::AssignStmt> stmt) {
 //  auto alloca = llvm::dyn_cast<llvm::AllocaInst>(GetValue(stmt->decl));
 //  auto expr = BuildExpr(std::move(stmt->expr));
 //  builder_.CreateStore(expr, alloca);
 //}
 //
-// llvm::Value* Builder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
+// llvm::Value* LLVMBuilder::BuildBinary(std::unique_ptr<hir::Binary> binary) {
 //  auto ty = binary->Type();
 //  auto is_float = binary->lhs->Type()->IsFixedFloat();
 //
@@ -200,7 +200,7 @@ namespace felis {
 //  }
 //}
 //
-// void Builder::BuildBlock(std::unique_ptr<hir::Block> block,
+// void LLVMBuilder::BuildBlock(std::unique_ptr<hir::Block> block,
 //                         llvm::AllocaInst* into, llvm::BasicBlock* after_bb) {
 //  std::cout << "BuildBlock " << block.get() << " into: " << into << " after_bb
 //  "
@@ -220,7 +220,7 @@ namespace felis {
 //  }
 //}
 //
-// void Builder::BuildIf(std::unique_ptr<hir::If> if_stmt, llvm::AllocaInst*
+// void LLVMBuilder::BuildIf(std::unique_ptr<hir::If> if_stmt, llvm::AllocaInst*
 // into,
 //                      llvm::BasicBlock* after_bb) {
 //  std::cout << "BuildIf " << if_stmt.get() << " into: " << into << " after_bb"
@@ -263,7 +263,8 @@ namespace felis {
 //  }
 //}
 //
-// llvm::AllocaInst* Builder::BuildArray(std::unique_ptr<hir::Array> array) {
+// llvm::AllocaInst* LLVMBuilder::BuildArray(std::unique_ptr<hir::Array> array)
+// {
 //  auto array_ty = llvm::dyn_cast<llvm::ArrayType>(LLVMType(array->Type()));
 //  auto alloca = builder_.CreateAlloca(array_ty);
 //  int64_t i = 0;
@@ -297,7 +298,7 @@ namespace felis {
 //  return alloca;
 //}
 //
-// llvm::Value* Builder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
+// llvm::Value* LLVMBuilder::BuildExpr(std::unique_ptr<hir::Expr> expr) {
 //  switch (expr->ExprKind()) {
 //    case hir::Expr::Kind::BINARY:
 //      return BuildBinary(unique_cast<hir::Binary>(std::move(expr)));
@@ -385,7 +386,7 @@ namespace felis {
 //  }
 //}
 //
-// llvm::Constant* Builder::BuildConstant(
+// llvm::Constant* LLVMBuilder::BuildConstant(
 //    std::unique_ptr<hir::Constant> constant) {
 //  switch (constant->ConstantKind()) {
 //    case hir::Constant::Kind::INT: {
@@ -408,47 +409,46 @@ namespace felis {
 //  };
 //}
 //
-// void Builder::EmitLLVMIR(std::string filename) {
-//  std::error_code err_code;
-//  llvm::raw_fd_ostream out(filename, err_code);
-//  if (err_code) {
-//    throw std::runtime_error(err_code.message());
-//  }
-//  module_.print(out, nullptr);
-//}
-//
-// void Builder::EmitLLVMBC(std::string filename) {
-//  std::error_code err_code;
-//  llvm::raw_fd_ostream out(filename, err_code);
-//  if (err_code) {
-//    throw std::runtime_error(err_code.message());
-//  }
-//  llvm::WriteBitcodeToFile(module_, out);
-//}
-//
-// void Builder::EmitCodeGen(std::string filename,
-//                          llvm::TargetMachine::CodeGenFileType ft) {
-//  std::error_code err_code;
-//  llvm::raw_fd_ostream out(filename, err_code);
-//  if (err_code) {
-//    throw std::runtime_error(err_code.message());
-//  }
-//  llvm::legacy::PassManager pass;
-//  if (machine_->addPassesToEmitFile(pass, out, nullptr, ft)) {
-//    throw std::runtime_error("TargetMachine can't emit a file of this type");
-//  }
-//  pass.run(module_);
-//  out.flush();
-//}
-//
-// void Builder::EmitASM(std::string filename) {
-//  EmitCodeGen(filename,
-//              llvm::TargetMachine::CodeGenFileType::CGFT_AssemblyFile);
-//}
-//
-// void Builder::EmitOBJ(std::string filename) {
-//  EmitCodeGen(filename,
-//  llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
-//}
+void LLVMBuilder::EmitLLVMIR(std::string filename) {
+  std::error_code err_code;
+  llvm::raw_fd_ostream out(filename, err_code);
+  if (err_code) {
+    throw std::runtime_error(err_code.message());
+  }
+  module_.print(out, nullptr);
+}
+
+void LLVMBuilder::EmitLLVMBC(std::string filename) {
+  std::error_code err_code;
+  llvm::raw_fd_ostream out(filename, err_code);
+  if (err_code) {
+    throw std::runtime_error(err_code.message());
+  }
+  llvm::WriteBitcodeToFile(module_, out);
+}
+
+void LLVMBuilder::EmitCodeGen(std::string filename,
+                              llvm::TargetMachine::CodeGenFileType ft) {
+  std::error_code err_code;
+  llvm::raw_fd_ostream out(filename, err_code);
+  if (err_code) {
+    throw std::runtime_error(err_code.message());
+  }
+  llvm::legacy::PassManager pass;
+  if (machine_->addPassesToEmitFile(pass, out, nullptr, ft)) {
+    throw std::runtime_error("TargetMachine can't emit a file of this type");
+  }
+  pass.run(module_);
+  out.flush();
+}
+
+void LLVMBuilder::EmitASM(std::string filename) {
+  EmitCodeGen(filename,
+              llvm::TargetMachine::CodeGenFileType::CGFT_AssemblyFile);
+}
+
+void LLVMBuilder::EmitOBJ(std::string filename) {
+  EmitCodeGen(filename, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
+}
 
 }  // namespace felis
