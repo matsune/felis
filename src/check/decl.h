@@ -22,10 +22,6 @@ struct Decl {
   Decl(std::string name, std::shared_ptr<Type> type, DeclKind kind)
       : name(std::move(name)), type(type), kind(kind) {}
 
-  std::shared_ptr<PrimType> AsPrimType() {
-    return std::dynamic_pointer_cast<PrimType>(type);
-  }
-
   std::shared_ptr<FuncType> AsFuncType() {
     assert(IsFunc());
     return std::dynamic_pointer_cast<FuncType>(type);

@@ -93,13 +93,13 @@ void DeclChecker::CloseScope() {
   current_scope_ = current_scope_->GetParent();
 }
 
-bool DeclChecker::CanDecl(const std::string& name) {
-  return current_scope_->FindDecl(name) == nullptr;
+bool DeclChecker::ExistsInThisScope(const std::string& name) {
+  return current_scope_->FindDecl(name) != nullptr;
 }
 
 std::shared_ptr<Decl> DeclChecker::MakeFnDecl(
     bool is_ext, const std::unique_ptr<ast::FnProto>& proto) {
-  if (!CanDecl(proto->name->val)) {
+  if (ExistsInThisScope(proto->name->val)) {
     throw LocError::Create(proto->name->Begin(), "redeclared function %s",
                            proto->name->val.c_str());
   }
