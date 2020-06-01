@@ -15,11 +15,19 @@ fn 関数1(a: i32) -> i32{
 }
 
 fn b() ->i32{
-  ret 0
+  {
+   0
+  }
 }
 
 fn o() {
-  3 
+  {
+    if true {
+      3
+    } else {
+     let n = 3 
+    }
+  }
 }
 
 fn main() ->i32 {

@@ -10,6 +10,23 @@
 
 namespace felis {
 
+struct StmtType {
+  enum Kind { NON, RET, TYPE };
+  std::shared_ptr<Type> ty;
+  StmtType::Kind kind;
+
+  StmtType(StmtType::Kind kind, std::shared_ptr<Type> ty = nullptr)
+      : kind(kind), ty(ty) {
+    if (kind == Kind::NON) assert(ty == nullptr);
+    if (kind == Kind::RET) assert(ty == nullptr);
+    if (kind == Kind::TYPE) assert(ty != nullptr);
+  }
+
+  bool IsNon() const { return kind == StmtType::Kind::NON; }
+  bool IsRet() const { return kind == StmtType::Kind::RET; }
+  bool IsType() const { return kind == StmtType::Kind::TYPE; }
+};
+
 class TypeChecker {
  public:
   TypeChecker(TypeCheckCtx &ctx) : ctx_(ctx), decl_ck_(ctx.Is32bit()) {}
@@ -21,12 +38,12 @@ class TypeChecker {
   DeclChecker decl_ck_;
   std::shared_ptr<FuncType> current_func_;
 
-  std::shared_ptr<Type> InferStmt(const std::unique_ptr<ast::Stmt> &);
-  void InferVarDecl(const std::unique_ptr<ast::VarDeclStmt> &);
-  void InferAssign(const std::unique_ptr<ast::AssignStmt> &);
-  std::shared_ptr<Type> InferExpr(const std::unique_ptr<ast::Expr> &);
-  std::shared_ptr<Type> InferIf(const std::unique_ptr<ast::If> &);
-  std::shared_ptr<Type> InferBlock(const std::unique_ptr<ast::Block> &);
+  StmtType CheckStmt(const std::unique_ptr<ast::Stmt> &);
+  void CheckVarDecl(const std::unique_ptr<ast::VarDeclStmt> &);
+  void CheckAssign(const std::unique_ptr<ast::AssignStmt> &);
+  StmtType CheckBlock(const std::unique_ptr<ast::Block> &);
+  StmtType CheckExpr(const std::unique_ptr<ast::Expr> &);
+  StmtType CheckIf(const std::unique_ptr<ast::If> &);
 };
 
 }  // namespace felis
