@@ -14,11 +14,10 @@ fn 関数1(a: i32) -> i32{
   }
 }
 
-fn b() ->i32{
-  let a = {
-   0
+fn b() {
+  ret {
+ let a =  0
   }
-  a
 }
 
 fn o() {
@@ -38,7 +37,6 @@ fn main() ->i32 {
     32
   }
   var a = 'a';
-  let c = b() + '4';
   let d = 関数1(a)
   let vv =  3
   o()

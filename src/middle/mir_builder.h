@@ -57,7 +57,9 @@ class MIRBuilder {
   std::shared_ptr<mir::Val> CreateCall(
       std::shared_ptr<Decl>, std::vector<std::shared_ptr<mir::RValue>>);
 
-  std::shared_ptr<mir::BrInst> CreateCond(std::shared_ptr<mir::RValue>);
+  std::shared_ptr<mir::BrInst> CreateCond(std::shared_ptr<mir::RValue>,
+                                          std::shared_ptr<mir::BB>,
+                                          std::shared_ptr<mir::BB>);
 
   void CreateGoto(std::shared_ptr<mir::BB>);
 

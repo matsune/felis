@@ -27,8 +27,7 @@ void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
     }
     Write(ToString(fn->args.at(i)));
   }
-  auto ret = fn->ret ? ToString(fn->ret) : "void";
-  Down(") -> %s {", ret.c_str());
+  Down(") -> %s {", ToString(fn->type->ret).c_str());
 
   auto bb = fn->entry_bb;
   while (bb) {

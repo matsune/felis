@@ -286,7 +286,6 @@ struct Func {
 };
 
 struct Function : Func {
-  std::shared_ptr<LValue> ret;
   std::vector<std::shared_ptr<LValue>> args;
   std::shared_ptr<BB> entry_bb;
 

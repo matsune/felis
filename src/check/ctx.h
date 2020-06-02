@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "check/decl_checker.h"
+#include "check/stmt_result.h"
 #include "node/ast.h"
 
 namespace felis {
@@ -12,7 +13,7 @@ namespace felis {
 class TypeCheckCtx {
  public:
   using IdentDeclMap = std::map<const ast::Ident *, std::shared_ptr<Decl>>;
-  using ExprTypeMap = std::map<const ast::Expr *, std::shared_ptr<Type>>;
+  using ResultMap = std::map<const ast::Stmt *, StmtResult<>>;
 
   TypeCheckCtx(bool is_32bit) : is_32bit(is_32bit) {}
 
@@ -22,11 +23,9 @@ class TypeCheckCtx {
   }
 
   template <typename T>
-  std::shared_ptr<Type> RecordType(const std::unique_ptr<T> &n,
-                                   std::shared_ptr<Type> ty) {
-    std::cout << "RecordType " << n.get() << " " << ToString(ty) << std::endl;
-    expr_type_map_[n.get()] = ty;
-    return ty;
+  StmtResult<> RecordResult(const std::unique_ptr<T> &n, StmtResult<> result) {
+    result_map_[n.get()] = result;
+    return result;
   }
 
   auto &GetDecl(const std::unique_ptr<ast::Ident> &t) const {
@@ -35,8 +34,8 @@ class TypeCheckCtx {
   }
 
   template <typename K>
-  std::shared_ptr<FixedType> GetType(const std::unique_ptr<K> &n) const {
-    return std::dynamic_pointer_cast<FixedType>(expr_type_map_.at(n.get()));
+  StmtResult<> GetResult(const std::unique_ptr<K> &n) const {
+    return result_map_.at(n.get());
   }
 
   bool Is32bit() const { return is_32bit; }
@@ -50,17 +49,19 @@ class TypeCheckCtx {
                 << std::endl;
     }
     std::cout << "---------------" << std::endl;
-    for (auto &it : expr_type_map_) {
-      it.second = FinalType(it.second, is_32bit);
-      std::cout << "expr: " << it.first << " type: " << ToString(it.second)
-                << std::endl;
+    for (auto &it : result_map_) {
+      if (it.second.IsExpr()) {
+        it.second.val = FinalType(it.second.val, is_32bit);
+        std::cout << "expr: " << it.first
+                  << " type: " << ToString(it.second.val) << std::endl;
+      }
     }
     std::cout << "---------------" << std::endl;
   }
 
  private:
   IdentDeclMap ident_decl_map_;
-  ExprTypeMap expr_type_map_;
+  ResultMap result_map_;
   const bool is_32bit;
 };
 

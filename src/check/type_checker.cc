@@ -106,7 +106,7 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
       // void function discards the value
       if (!current_func_->ret->IsVoid()) {
         // resolve type
-        if (!TryResolve(result.GetType(), current_func_->ret)) {
+        if (!TryResolve(result.val, current_func_->ret)) {
           throw LocError::Create(fn->block->End(), "mismatch ret type");
         }
       }
@@ -114,24 +114,23 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
   }
 }
 
-StmtResult TypeChecker::CheckBlock(const std::unique_ptr<ast::Block>& block,
-                                   bool open_scope) {
+StmtResult<> TypeChecker::CheckBlock(const std::unique_ptr<ast::Block>& block,
+                                     bool open_scope) {
   if (open_scope) decl_ck_.OpenScope();
-  StmtResult stmt_ty = StmtResult::NonValue();
+  auto result = StmtResult<>::NonValue();
   for (auto i = 0; i < block->stmts.size(); ++i) {
     bool is_last = i == block->stmts.size() - 1;
-    stmt_ty = CheckStmt(block->stmts.at(i));
-    if (!is_last && stmt_ty.IsRet()) {
+    result = CheckStmt(block->stmts.at(i));
+    if (!is_last && result.IsRet()) {
       throw LocError::Create(block->stmts.at(i + 1)->Begin(),
                              "unreachable code");
     }
   }
   if (open_scope) decl_ck_.CloseScope();
-  ctx_.RecordType(block, stmt_ty.GetType());
-  return stmt_ty;
+  return ctx_.RecordResult(block, result);
 }
 
-StmtResult TypeChecker::CheckStmt(const std::unique_ptr<ast::Stmt>& stmt) {
+StmtResult<> TypeChecker::CheckStmt(const std::unique_ptr<ast::Stmt>& stmt) {
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR:
       return CheckExpr((std::unique_ptr<ast::Expr>&)stmt);
@@ -144,25 +143,29 @@ StmtResult TypeChecker::CheckStmt(const std::unique_ptr<ast::Stmt>& stmt) {
   }
 }
 
-StmtResult TypeChecker::CheckRet(const std::unique_ptr<ast::RetStmt>& stmt) {
-  if (stmt->expr) {
-    auto result = CheckExpr(stmt->expr);
+StmtResult<> TypeChecker::CheckRet(const std::unique_ptr<ast::RetStmt>& stmt) {
+  bool is_void_fn = current_func_->ret->IsVoid();
+  if (!stmt->expr) {
+    if (!is_void_fn) {
+      throw LocError::Create(stmt->End(), "ret is void");
+    }
+    return ctx_.RecordResult(stmt, StmtResult<>::Ret());
+  }
+
+  auto result = CheckExpr(stmt->expr);
+  if (!is_void_fn) {
     if (result.IsNonValue()) {
       throw LocError::Create(stmt->expr->End(), "cannot return void type");
     } else if (result.IsExpr()) {
-      if (!TryResolve(result.GetType(), current_func_->ret)) {
+      if (!TryResolve(result.val, current_func_->ret)) {
         throw LocError::Create(stmt->expr->Begin(), "mismatch ret ty");
       }
     }
-  } else {
-    if (!current_func_->ret->IsVoid()) {
-      throw LocError::Create(stmt->End(), "ret is void");
-    }
   }
-  return StmtResult::Ret();
+  return ctx_.RecordResult(stmt, StmtResult<>::Ret());
 }
 
-StmtResult TypeChecker::CheckVarDecl(
+StmtResult<> TypeChecker::CheckVarDecl(
     const std::unique_ptr<ast::VarDeclStmt>& stmt) {
   std::cout << "InferVarDecl" << std::endl;
   // name validation
@@ -184,7 +187,7 @@ StmtResult TypeChecker::CheckVarDecl(
   if (!stmt_ty.IsExpr()) {
     throw LocError::Create(stmt->Begin(), "cannot decl no type var");
   }
-  auto expr_ty = stmt_ty.GetType();
+  auto expr_ty = stmt_ty.val;
 
   // resolve type constraints between decl and expr
   if (!TryResolve(decl_ty, expr_ty) && !TryResolve(expr_ty, decl_ty)) {
@@ -195,12 +198,12 @@ StmtResult TypeChecker::CheckVarDecl(
 
   auto decl = std::make_shared<Decl>(
       name, decl_ty, stmt->is_let ? DeclKind::LET : DeclKind::VAR);
-  ctx_.RecordDecl(stmt->name, decl);
   decl_ck_.InsertDecl(name, decl);
-  return StmtResult::NonValue();
+  ctx_.RecordDecl(stmt->name, decl);
+  return ctx_.RecordResult(stmt, StmtResult<>::NonValue());
 }
 
-StmtResult TypeChecker::CheckAssign(
+StmtResult<> TypeChecker::CheckAssign(
     const std::unique_ptr<ast::AssignStmt>& stmt) {
   auto& name = stmt->name->val;
   auto decl = decl_ck_.LookupVarDecl(name);
@@ -217,17 +220,17 @@ StmtResult TypeChecker::CheckAssign(
   if (!stmt_ty.IsExpr()) {
     throw LocError::Create(stmt->Begin(), "cannot assign no type var");
   }
-  auto expr_ty = stmt_ty.GetType();
+  auto expr_ty = stmt_ty.val;
 
   if (!TryResolve(decl->type, expr_ty) && !TryResolve(expr_ty, decl->type)) {
     throw LocError::Create(
         stmt->expr->Begin(), "mismatched assign type %s = %s",
         ToString(decl->type).c_str(), ToString(expr_ty).c_str());
   }
-  return StmtResult::NonValue();
+  return ctx_.RecordResult(stmt, StmtResult<>::NonValue());
 }
 
-StmtResult TypeChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
+StmtResult<> TypeChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
   std::cout << "InferExpr " << ToString(expr->ExprKind()) << std::endl;
   switch (expr->ExprKind()) {
     case ast::Expr::Kind::LIT:
@@ -249,49 +252,48 @@ StmtResult TypeChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
   }
 }
 
-StmtResult TypeChecker::CheckLit(const std::unique_ptr<ast::Lit>& lit) {
+StmtResult<> TypeChecker::CheckLit(const std::unique_ptr<ast::Lit>& lit) {
   std::shared_ptr<Type> ty;
   switch (lit->LitKind()) {
     case ast::Lit::Kind::BOOL:
-      ty = ctx_.RecordType(lit, kTypeBool);
+      ty = kTypeBool;
       break;
     case ast::Lit::Kind::STRING:
-      ty = ctx_.RecordType(lit, kTypeString);
+      ty = kTypeString;
       break;
     case ast::Lit::Kind::CHAR:
     case ast::Lit::Kind::INT:
-      ty = ctx_.RecordType(lit, UntypedInt());
+      ty = UntypedInt();
       break;
     case ast::Lit::Kind::FLOAT:
-      ty = ctx_.RecordType(lit, UntypedFloat());
+      ty = UntypedFloat();
       break;
   }
-  return StmtResult::Expr(ty);
+  return ctx_.RecordResult(lit, StmtResult<>::Expr(ty));
 }
 
-StmtResult TypeChecker::CheckIdent(const std::unique_ptr<ast::Ident>& ident) {
+StmtResult<> TypeChecker::CheckIdent(const std::unique_ptr<ast::Ident>& ident) {
   auto decl = decl_ck_.LookupVarDecl(ident->val);
   if (!decl) {
     throw LocError::Create(ident->Begin(), "undefined function %s",
                            ident->val.c_str());
   }
   ctx_.RecordDecl(ident, decl);
-  ctx_.RecordType(ident, decl->type);
-  return StmtResult::Expr(decl->type);
+  return ctx_.RecordResult(ident, StmtResult<>::Expr(decl->type));
 }
 
-StmtResult TypeChecker::CheckBinary(
+StmtResult<> TypeChecker::CheckBinary(
     const std::unique_ptr<ast::BinaryExpr>& binary) {
   auto lhs_stmt_ty = CheckExpr(binary->lhs);
   if (!lhs_stmt_ty.IsExpr()) {
     throw LocError::Create(binary->lhs->Begin(), "non type lhs ty");
   }
-  auto lhs_ty = lhs_stmt_ty.GetType();
+  auto lhs_ty = lhs_stmt_ty.val;
   auto rhs_stmt_ty = CheckExpr(binary->rhs);
   if (!rhs_stmt_ty.IsExpr()) {
     throw LocError::Create(binary->rhs->Begin(), "non type rhs ty");
   }
-  auto rhs_ty = rhs_stmt_ty.GetType();
+  auto rhs_ty = rhs_stmt_ty.val;
 
   std::shared_ptr<Type> operand_ty;
   if (TryResolve(lhs_ty, rhs_ty)) {
@@ -314,7 +316,7 @@ StmtResult TypeChecker::CheckBinary(
         throw LocError::Create(binary->Begin(),
                                "cannot use this type for comparison");
       }
-      ty = ctx_.RecordType(binary, kTypeBool);
+      ty = kTypeBool;
       break;
 
     case ast::BinaryOp::Op::ADD:
@@ -325,7 +327,7 @@ StmtResult TypeChecker::CheckBinary(
         throw LocError::Create(binary->Begin(),
                                "cannot use non numeric type of binary");
       }
-      ty = ctx_.RecordType(binary, operand_ty);
+      ty = operand_ty;
       break;
 
     case ast::BinaryOp::Op::MOD:
@@ -333,23 +335,23 @@ StmtResult TypeChecker::CheckBinary(
         throw LocError::Create(binary->Begin(),
                                "cannot use non numeric type of binary");
       }
-      ty = ctx_.RecordType(binary, operand_ty);
+      ty = operand_ty;
       break;
   }
-  return StmtResult::Expr(ty);
+  return ctx_.RecordResult(binary, StmtResult<>::Expr(ty));
 }
 
-StmtResult TypeChecker::CheckUnary(
+StmtResult<> TypeChecker::CheckUnary(
     const std::unique_ptr<ast::UnaryExpr>& unary) {
   auto stmt_ty = CheckExpr(unary->expr);
   if (!stmt_ty.IsExpr()) {
     throw LocError::Create(unary->Begin(), "non type unary ty");
   }
-  auto ty = ctx_.RecordType(unary, stmt_ty.GetType());
-  return StmtResult::Expr(ty);
+  return ctx_.RecordResult(unary, StmtResult<>::Expr(stmt_ty.val));
 }
 
-StmtResult TypeChecker::CheckCall(const std::unique_ptr<ast::CallExpr>& call) {
+StmtResult<> TypeChecker::CheckCall(
+    const std::unique_ptr<ast::CallExpr>& call) {
   auto decl = decl_ck_.LookupFuncDecl(call->ident->val);
   if (decl == nullptr) {
     throw LocError::Create(call->Begin(), "undefined function %s",
@@ -366,17 +368,16 @@ StmtResult TypeChecker::CheckCall(const std::unique_ptr<ast::CallExpr>& call) {
     if (!stmt_ty.IsExpr()) {
       throw LocError::Create(arg->Begin(), "non type arg ty");
     }
-    auto arg_ty = stmt_ty.GetType();
+    auto arg_ty = stmt_ty.val;
     if (!TryResolve(arg_ty, fn_type->args[i])) {
       throw LocError::Create(arg->Begin(), "mismatched arg ty");
     }
   }
   ctx_.RecordDecl(call->ident, decl);
-  auto ty = ctx_.RecordType(call, fn_type->ret);
-  return StmtResult::Expr(ty);
+  return ctx_.RecordResult(call, StmtResult<>::Expr(fn_type->ret));
 }
 
-StmtResult TypeChecker::CheckArray(
+StmtResult<> TypeChecker::CheckArray(
     const std::unique_ptr<ast::ArrayExpr>& array) {
   auto size = array->exprs.size();
   auto elem_ty = Unresolved();
@@ -385,20 +386,20 @@ StmtResult TypeChecker::CheckArray(
     if (!stmt_ty.IsExpr()) {
       throw LocError::Create(expr->Begin(), "array expr not type");
     }
-    if (!TryResolve(elem_ty, stmt_ty.GetType())) {
+    if (!TryResolve(elem_ty, stmt_ty.val)) {
       throw LocError::Create(expr->Begin(), "mismatch element type");
     }
   }
-  auto ty = ctx_.RecordType(array, std::make_shared<ArrayType>(elem_ty, size));
-  return StmtResult::Expr(ty);
+  return ctx_.RecordResult(
+      array, StmtResult<>::Expr(std::make_shared<ArrayType>(elem_ty, size)));
 }
 
-StmtResult TypeChecker::CheckIf(const std::unique_ptr<ast::If>& e) {
+StmtResult<> TypeChecker::CheckIf(const std::unique_ptr<ast::If>& e) {
   auto cond_stmt_ty = CheckExpr(e->cond);
   if (!cond_stmt_ty.IsExpr()) {
     throw LocError::Create(e->cond->Begin(), "cond is not type");
   }
-  auto cond_ty = cond_stmt_ty.GetType();
+  auto cond_ty = cond_stmt_ty.val;
   if (!TryResolve(cond_ty, kTypeBool)) {
     throw LocError::Create(e->cond->Begin(),
                            "if-statement condition must be bool type");
@@ -407,56 +408,38 @@ StmtResult TypeChecker::CheckIf(const std::unique_ptr<ast::If>& e) {
   auto block_stmt_ty = CheckBlock(e->block);
 
   if (!e->HasElse()) {
-    ctx_.RecordType(e, kTypeVoid);
     // Incomp
-    return StmtResult::NonValue();
+    return ctx_.RecordResult(e, StmtResult<>::NonValue());
   }
 
   // comp
-
-  StmtResult els_stmt_ty = StmtResult::NonValue();
+  auto els_stmt_ty = StmtResult<>::NonValue();
   if (e->IsElseIf()) {
     els_stmt_ty = CheckIf((std::unique_ptr<ast::If>&)e->els);
   } else {
     els_stmt_ty = CheckBlock((std::unique_ptr<ast::Block>&)e->els);
   }
-  auto then_terminating = block_stmt_ty.IsRet();
-  auto els_terminating = els_stmt_ty.IsRet();
 
-  if (then_terminating && els_terminating) {
-    // all ret
-    ctx_.RecordType(e, kTypeVoid);
-    return StmtResult::Ret();
+  // NON > EXPR > RET
+
+  if (block_stmt_ty.IsNonValue() || els_stmt_ty.IsNonValue()) {
+    return ctx_.RecordResult(e, StmtResult<>::NonValue());
   }
 
-  // partial ret
-
-  if (e->IsResultDiscard()) {
-    // no need to resolve type
-    ctx_.RecordType(e, kTypeVoid);
-    return StmtResult::NonValue();
-  }
-
-  // resolve type
-  if (block_stmt_ty.IsNonValue()) {
-    throw LocError::Create(e->block->Begin(), "then block not type");
-  }
-  if (els_stmt_ty.IsNonValue()) {
-    throw LocError::Create(e->els->Begin(), "els block not type");
+  if (block_stmt_ty.IsRet() && els_stmt_ty.IsRet()) {
+    return ctx_.RecordResult(e, StmtResult<>::Ret());
   }
 
   std::shared_ptr<Type> whole_ty = kTypeVoid;
-  if (then_terminating) {
-    assert(els_stmt_ty.IsExpr());
-    whole_ty = els_stmt_ty.GetType();
-  } else if (els_terminating) {
-    assert(block_stmt_ty.IsExpr());
-    whole_ty = block_stmt_ty.GetType();
+  if (block_stmt_ty.IsRet()) {
+    whole_ty = els_stmt_ty.val;
+  } else if (els_stmt_ty.IsRet()) {
+    whole_ty = block_stmt_ty.val;
   } else {
-    assert(block_stmt_ty.IsExpr());
-    assert(els_stmt_ty.IsExpr());
-    auto block_ty = block_stmt_ty.GetType();
-    auto els_ty = els_stmt_ty.GetType();
+    // expr and expr
+    // resolve type
+    auto block_ty = block_stmt_ty.val;
+    auto els_ty = els_stmt_ty.val;
     if (TryResolve(block_ty, els_ty)) {
       whole_ty = els_ty;
     } else if (TryResolve(els_ty, block_ty)) {
@@ -465,8 +448,7 @@ StmtResult TypeChecker::CheckIf(const std::unique_ptr<ast::If>& e) {
       throw LocError::Create(e->Begin(), "unmatched els branches types");
     }
   }
-  auto ty = ctx_.RecordType(e, whole_ty);
-  return StmtResult::Expr(ty);
+  return ctx_.RecordResult(e, StmtResult<>::Expr(whole_ty));
 }
 
 }  // namespace felis

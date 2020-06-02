@@ -124,12 +124,8 @@ std::shared_ptr<mir::Val> MIRBuilder::CreateCall(
 }
 
 std::shared_ptr<mir::BrInst> MIRBuilder::CreateCond(
-    std::shared_ptr<mir::RValue> cond) {
-  auto bb = current_bb;
-
-  // bb -> then_bb -> else_bb
-  auto then_bb = CreateBB(bb);
-  auto else_bb = CreateBB(then_bb);
+    std::shared_ptr<mir::RValue> cond, std::shared_ptr<mir::BB> then_bb,
+    std::shared_ptr<mir::BB> else_bb) {
   auto inst = std::make_shared<mir::BrInst>(cond, then_bb, else_bb);
   current_bb->InsertInst(inst);
   return inst;

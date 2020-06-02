@@ -246,7 +246,7 @@ std::string ToString(const std::shared_ptr<mir::RValue> &value) {
 
 std::string ToString(const std::shared_ptr<mir::LValue> &value) {
   std::stringstream s;
-  s << "$" << value->id << ": *" << ToString(value->type);
+  s << "$" << value->id << ": " << ToString(value->type);
   return s.str();
 };
 
