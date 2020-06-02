@@ -1,12 +1,15 @@
+fn a(b:int) ->int {
+  ret b 
+}
 
-fn main() -> i64 {
-  let d =if true {
-    ret 4
+fn main() ->int {
+  let d =if false {
+    ret 3
   } else {
     4
   }
-  let n = [[1,2,3], [2,3,4]]
-  ret if true {
+  /* let n = [[1,2,3], [2,3,4]] */
+  ret if false {
     if 3 > 4 {
       30 + 3
     } else {

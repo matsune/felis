@@ -40,35 +40,41 @@ class LLVMBuilder {
   llvm::IRBuilder<> builder_;
   std::unique_ptr<llvm::TargetMachine> machine_;
   llvm::Function *current_func_;
-  std::map<Decl *, llvm::Value *> decl_map_;
+  std::map<std::shared_ptr<mir::Func>, llvm::Function *> func_map_;
+  std::map<std::shared_ptr<mir::BB>, llvm::BasicBlock *> bb_map_;
+  std::map<std::shared_ptr<mir::LValue>, llvm::Value *> lvalue_map_;
+  std::map<std::shared_ptr<mir::RValue>, llvm::Value *> rvalue_map_;
+
+  void SetRValue(std::shared_ptr<mir::RValue> rvalue, llvm::Value *value) {
+    std::cout << "SetRValue " << rvalue.get() << " value: " << value
+              << std::endl;
+    rvalue_map_[rvalue] = value;
+  }
+
+  void SetLValue(std::shared_ptr<mir::LValue> lvalue, llvm::Value *value) {
+    std::cout << "SetLValue " << lvalue.get() << " value: " << value
+              << std::endl;
+    lvalue_map_[lvalue] = value;
+  }
+
+  void ClearLocalMaps() {
+    bb_map_.clear();
+    lvalue_map_.clear();
+    rvalue_map_.clear();
+  }
 
   llvm::Type *LLVMType(const std::shared_ptr<Type> &);
-
-  //  void RecordValue(std::shared_ptr<Decl> &t, llvm::Value *value) {
-  //    decl_map_[t.get()] = value;
-  //  }
-  //
-  //  llvm::Value *GetValue(std::shared_ptr<Decl> &t) {
-  //    return decl_map_.at(t.get());
-  //  }
-  //
-  //  llvm::Function *BuildFnProto(std::shared_ptr<Decl> &);
-  //
-  //  llvm::Value *BuildStmt(std::unique_ptr<mir::Stmt>);
-  //  void BuildRetStmt(std::unique_ptr<mir::RetStmt>);
-  //  void BuildVarDeclStmt(std::unique_ptr<mir::VarDeclStmt>);
-  //  void BuildAssignStmt(std::unique_ptr<mir::AssignStmt>);
-  //
-  //  void BuildBlock(std::unique_ptr<mir::Block>, llvm::AllocaInst *into,
-  //                  llvm::BasicBlock *after_bb);
-  //  void BuildIf(std::unique_ptr<mir::If>, llvm::AllocaInst *into,
-  //               llvm::BasicBlock *after_bb);
-  //
-  //  llvm::Value *BuildExpr(std::unique_ptr<mir::Expr>);
-  //  llvm::Constant *BuildConstant(std::unique_ptr<mir::Constant>);
-  //  llvm::AllocaInst *BuildArray(std::unique_ptr<mir::Array>);
-  //  llvm::Value *BuildBinary(std::unique_ptr<mir::Binary>);
-  //
+  llvm::Value *GetRValue(std::shared_ptr<mir::RValue>);
+  llvm::Value *GetLValue(std::shared_ptr<mir::LValue>);
+  llvm::BasicBlock *GetBasicBlock(std::shared_ptr<mir::BB>);
+  void BuildBB(std::shared_ptr<mir::BB>);
+  void BuildInst(std::shared_ptr<mir::Inst>);
+  llvm::AllocaInst *Alloca(std::shared_ptr<mir::LValue>);
+  void Load(std::shared_ptr<mir::RValue>, std::shared_ptr<mir::LValue>);
+  void Store(std::shared_ptr<mir::RValue>, std::shared_ptr<mir::LValue>);
+  void Unary(std::shared_ptr<mir::UnaryInst>);
+  void Binary(std::shared_ptr<mir::BinaryInst>);
+  void Cmp(std::shared_ptr<mir::CmpInst>);
   void EmitCodeGen(std::string, llvm::TargetMachine::CodeGenFileType);
 };
 

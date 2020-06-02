@@ -153,7 +153,11 @@ StmtResult<> TypeChecker::CheckRet(const std::unique_ptr<ast::RetStmt>& stmt) {
   }
 
   auto result = CheckExpr(stmt->expr);
-  if (!is_void_fn) {
+  if (is_void_fn) {
+    if (!result.IsNonValue()) {
+      throw LocError::Create(stmt->expr->Begin(), "mismatch ret ty");
+    }
+  } else {
     if (result.IsNonValue()) {
       throw LocError::Create(stmt->expr->End(), "cannot return void type");
     } else if (result.IsExpr()) {

@@ -241,6 +241,7 @@ std::string ToString(const std::shared_ptr<mir::RValue> &value) {
       s << "$" << c->id << ": " << ToString(c->type);
     } break;
   }
+  s << " " << value.get();
   return s.str();
 }
 

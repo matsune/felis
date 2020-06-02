@@ -84,9 +84,11 @@ struct Val : RValue, Local {
 };
 
 struct LValue : Local {
+  std::string name;
   std::shared_ptr<Type> type;
 
-  LValue(ID id, std::shared_ptr<Type> type) : Local(id), type(type){};
+  LValue(ID id, std::shared_ptr<Type> type, std::string name = "")
+      : Local(id), type(type), name(name){};
 };
 
 struct Inst {

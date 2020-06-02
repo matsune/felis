@@ -38,7 +38,7 @@ std::shared_ptr<mir::BB> MIRBuilder::CreateBB(std::shared_ptr<mir::BB> after) {
 std::shared_ptr<mir::LValue> MIRBuilder::CreateAlloc(
     std::shared_ptr<Decl> decl) {
   auto id = current_bb->parent.GenLocalID();
-  auto lval = std::make_shared<mir::LValue>(id, decl->type);
+  auto lval = std::make_shared<mir::LValue>(id, decl->type, decl->name);
   auto inst = std::make_shared<mir::AllocInst>(lval, decl->type);
   current_bb->InsertInst(inst);
   SetVar(decl, lval);

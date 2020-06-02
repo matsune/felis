@@ -350,8 +350,10 @@ LowStmtResult Lower::LowerIf(std::unique_ptr<ast::If> if_stmt) {
     auto end_bb = builder_.CreateBB(then_bb);
     auto cond = builder_.CreateCond(cond_expr, then_bb, end_bb);
     builder_.SetInsertBB(cond->then_bb);
-    LowerBlock(std::move(if_stmt->block));
-    builder_.CreateGoto(end_bb);
+    auto then_result = LowerBlock(std::move(if_stmt->block));
+    if (!then_result.IsRet()) {
+      builder_.CreateGoto(end_bb);
+    }
     builder_.SetInsertBB(end_bb);
     return LowStmtResult::NonValue();
   }
