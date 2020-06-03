@@ -113,7 +113,12 @@ void Lower::Lowering(std::unique_ptr<ast::File> file) {
 
     for (auto &arg : fn_decl->proto->args->list) {
       auto decl = ctx_.GetDecl(arg->name);
-      func->args.push_back(builder_.CreateAlloc(decl));
+      auto val =
+          builder_.CreateVal(std::dynamic_pointer_cast<FixedType>(decl->type));
+      func->args.push_back(val);
+
+      auto lval = builder_.CreateAlloc(decl);
+      builder_.CreateStore(lval, val);
     }
   }
 
@@ -212,7 +217,7 @@ LowStmtResult Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
   std::shared_ptr<mir::Constant> val;
   switch (lit->LitKind()) {
     case ast::Lit::Kind::CHAR: {
-      auto ty = ctx_.GetResult(lit).val;
+      auto ty = std::dynamic_pointer_cast<FixedType>(ctx_.GetResult(lit).val);
 
       std::stringstream ss(lit->val);
       rune r;
@@ -234,12 +239,10 @@ LowStmtResult Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
       val = ParseFloatLit(std::move(lit));
     } break;
     case ast::Lit::Kind::BOOL: {
-      auto ty = ctx_.GetResult(lit).val;
-      val = std::make_unique<mir::ConstantBool>(ty, lit->val == "true");
+      val = std::make_unique<mir::ConstantBool>(lit->val == "true");
     } break;
     case ast::Lit::Kind::STRING: {
-      auto ty = ctx_.GetResult(lit).val;
-      val = std::make_unique<mir::ConstantString>(ty, lit->val);
+      val = std::make_unique<mir::ConstantString>(lit->val);
     } break;
   }
   return LowStmtResult::Expr(val);
@@ -253,7 +256,7 @@ std::unique_ptr<mir::Constant> Lower::ParseIntLit(
     throw LocError::Create(lit->Begin(), err);
   }
 
-  auto ty = ctx_.GetResult(lit).val;
+  auto ty = std::dynamic_pointer_cast<FixedType>(ctx_.GetResult(lit).val);
   if (ty->IsI8()) {
     if (n < INT8_MIN || n > INT8_MAX) {
       throw LocError::Create(lit->Begin(), "overflow int8");
@@ -285,7 +288,7 @@ std::unique_ptr<mir::ConstantFloat> Lower::ParseFloatLit(
   if (!ParseFloat(lit->val, n, err)) {
     throw LocError::Create(lit->Begin(), err);
   }
-  auto ty = ctx_.GetResult(lit).val;
+  auto ty = std::dynamic_pointer_cast<FixedType>(ctx_.GetResult(lit).val);
   assert(ty->IsFixedFloat());
   return std::make_unique<mir::ConstantFloat>(ty, n);
 }
@@ -317,14 +320,14 @@ LowStmtResult Lower::LowerCall(std::unique_ptr<ast::CallExpr> expr) {
 }
 
 LowStmtResult Lower::LowerUnary(std::unique_ptr<ast::UnaryExpr> unary) {
-  auto ty = ctx_.GetResult(unary).val;
+  auto ty = std::dynamic_pointer_cast<FixedType>(ctx_.GetResult(unary).val);
   auto expr = LowerExpr(std::move(unary->expr)).val;
   auto val = builder_.CreateUnary(UnaryOp(unary->op->kind), expr);
   return LowStmtResult::Expr(val);
 }
 
 LowStmtResult Lower::LowerArray(std::unique_ptr<ast::ArrayExpr> array) {
-  auto type = ctx_.GetResult(array).val;
+  auto type = std::dynamic_pointer_cast<ArrayType>(ctx_.GetResult(array).val);
   std::vector<std::shared_ptr<mir::RValue>> values;
   while (!array->exprs.empty()) {
     auto expr = array->exprs.move_front();

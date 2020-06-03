@@ -38,8 +38,9 @@ std::shared_ptr<mir::BB> MIRBuilder::CreateBB(std::shared_ptr<mir::BB> after) {
 std::shared_ptr<mir::LValue> MIRBuilder::CreateAlloc(
     std::shared_ptr<Decl> decl) {
   auto id = current_bb->parent.GenLocalID();
-  auto lval = std::make_shared<mir::LValue>(id, decl->type, decl->name);
-  auto inst = std::make_shared<mir::AllocInst>(lval, decl->type);
+  auto lval = std::make_shared<mir::LValue>(
+      id, std::make_shared<PtrType>(decl->type), decl->name);
+  auto inst = std::make_shared<mir::AllocInst>(lval);
   current_bb->InsertInst(inst);
   SetVar(decl, lval);
   return lval;
@@ -48,19 +49,21 @@ std::shared_ptr<mir::LValue> MIRBuilder::CreateAlloc(
 std::shared_ptr<mir::LValue> MIRBuilder::CreateAlloc(
     std::shared_ptr<Type> type) {
   auto id = current_bb->parent.GenLocalID();
-  auto lval = std::make_shared<mir::LValue>(id, type);
-  auto inst = std::make_shared<mir::AllocInst>(lval, type);
+  auto lval =
+      std::make_shared<mir::LValue>(id, std::make_shared<PtrType>(type));
+  auto inst = std::make_shared<mir::AllocInst>(lval);
   current_bb->InsertInst(inst);
   return lval;
 }
 
-std::shared_ptr<mir::Val> MIRBuilder::CreateVal(std::shared_ptr<Type> type) {
+std::shared_ptr<mir::Val> MIRBuilder::CreateVal(
+    std::shared_ptr<FixedType> type) {
   auto id = current_bb->parent.GenLocalID();
   return std::make_shared<mir::Val>(id, type);
 }
 
 std::shared_ptr<mir::Val> MIRBuilder::CreateLoad(std::shared_ptr<Decl> decl) {
-  auto val = CreateVal(decl->type);
+  auto val = CreateVal(std::dynamic_pointer_cast<FixedType>(decl->type));
   auto lval = GetVar(decl);
   current_bb->InsertInst(std::make_shared<mir::LoadInst>(val, lval));
   return val;
@@ -106,7 +109,7 @@ std::shared_ptr<mir::Val> MIRBuilder::CreateCmp(
 }
 
 std::shared_ptr<mir::Val> MIRBuilder::CreateArray(
-    std::shared_ptr<Type> type,
+    std::shared_ptr<ArrayType> type,
     std::vector<std::shared_ptr<mir::RValue>> values) {
   auto val = CreateVal(type);
   auto array = std::make_shared<mir::ArrayInst>(val, values);
@@ -117,7 +120,8 @@ std::shared_ptr<mir::Val> MIRBuilder::CreateArray(
 std::shared_ptr<mir::Val> MIRBuilder::CreateCall(
     std::shared_ptr<Decl> decl,
     std::vector<std::shared_ptr<mir::RValue>> args) {
-  auto val = CreateVal(decl->AsFuncType()->ret);
+  auto val =
+      CreateVal(std::dynamic_pointer_cast<FixedType>(decl->AsFuncType()->ret));
   auto func = GetFunction(decl);
   current_bb->InsertInst(std::make_shared<mir::CallInst>(val, args, func));
   return val;

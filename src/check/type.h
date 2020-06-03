@@ -14,14 +14,6 @@ struct Type {
   enum Kind { FIXED, UNTYPED };
   virtual inline Type::Kind TypeKind() const = 0;
 
-  virtual inline bool IsPrim() const { return false; }
-  virtual inline bool IsFunc() const { return false; }
-  virtual inline bool IsArray() const { return false; }
-
-  virtual inline bool IsUnresolved() const { return false; }
-  virtual inline bool IsUntypedInt() const { return false; }
-  virtual inline bool IsUntypedFloat() const { return false; }
-
   virtual inline bool IsVoid() const { return false; }
   virtual inline bool IsI8() const { return false; }
   virtual inline bool IsI16() const { return false; }
@@ -30,7 +22,14 @@ struct Type {
   virtual inline bool IsF32() const { return false; }
   virtual inline bool IsF64() const { return false; }
   virtual inline bool IsBool() const { return false; }
+  virtual inline bool IsFunc() const { return false; }
+  virtual inline bool IsArray() const { return false; }
   virtual inline bool IsString() const { return false; }
+  virtual inline bool IsPtr() const { return false; }
+
+  virtual inline bool IsUnresolved() const { return false; }
+  virtual inline bool IsUntypedInt() const { return false; }
+  virtual inline bool IsUntypedFloat() const { return false; }
 
   inline bool IsFixed() const { return TypeKind() == Kind::FIXED; }
   inline bool IsUntyped() const { return TypeKind() == Kind::UNTYPED; }
@@ -46,28 +45,8 @@ struct Type {
 };
 
 struct FixedType : public Type {
-  enum Kind { PRIM, FUNC, ARRAY };
-  virtual inline FixedType::Kind FixedKind() const = 0;
-
-  inline Type::Kind TypeKind() const override { return Type::Kind::FIXED; }
-
-  bool operator==(const FixedType& other) const;
-
-  inline bool IsPrim() const override {
-    return FixedKind() == FixedType::Kind::PRIM;
-  }
-
-  inline bool IsFunc() const override {
-    return FixedKind() == FixedType::Kind::FUNC;
-  }
-
-  inline bool IsArray() const override {
-    return FixedKind() == FixedType::Kind::ARRAY;
-  }
-};
-
-struct PrimType : public FixedType {
   enum Kind {
+    // primitive
     VOID,
     I8,
     I16,
@@ -77,35 +56,44 @@ struct PrimType : public FixedType {
     F64,
     BOOL,
     STRING,
+    // compound
+    FUNC,
+    ARRAY,
+    PTR
   };
-  PrimType::Kind kind;
 
-  PrimType::Kind TypedKind() const { return kind; }
+  FixedType::Kind kind;
 
-  PrimType(PrimType::Kind kind) : kind(kind) {}
+  FixedType(FixedType::Kind kind) : kind(kind) {}
 
-  bool operator==(const PrimType& other) const { return kind == other.kind; }
+  inline Type::Kind TypeKind() const override { return Type::Kind::FIXED; }
 
-  inline virtual FixedType::Kind FixedKind() const override {
-    return FixedType::Kind::PRIM;
-  }
+  bool operator==(const FixedType& other) const;
 
-  inline bool IsVoid() const override { return kind == PrimType::Kind::VOID; }
-  inline bool IsI8() const override { return kind == PrimType::Kind::I8; }
-  inline bool IsI16() const override { return kind == PrimType::Kind::I16; }
-  inline bool IsI32() const override { return kind == PrimType::Kind::I32; }
-  inline bool IsI64() const override { return kind == PrimType::Kind::I64; }
-  inline bool IsF32() const override { return kind == PrimType::Kind::F32; }
-  inline bool IsF64() const override { return kind == PrimType::Kind::F64; }
-  inline bool IsBool() const override { return kind == PrimType::Kind::BOOL; }
+  inline bool IsVoid() const override { return kind == FixedType::Kind::VOID; }
+  inline bool IsI8() const override { return kind == FixedType::Kind::I8; }
+  inline bool IsI16() const override { return kind == FixedType::Kind::I16; }
+  inline bool IsI32() const override { return kind == FixedType::Kind::I32; }
+  inline bool IsI64() const override { return kind == FixedType::Kind::I64; }
+  inline bool IsF32() const override { return kind == FixedType::Kind::F32; }
+  inline bool IsF64() const override { return kind == FixedType::Kind::F64; }
+  inline bool IsBool() const override { return kind == FixedType::Kind::BOOL; }
   inline bool IsString() const override {
-    return kind == PrimType::Kind::STRING;
+    return kind == FixedType::Kind::STRING;
   }
+
+  inline bool IsFunc() const override { return kind == FixedType::Kind::FUNC; }
+
+  inline bool IsArray() const override {
+    return kind == FixedType::Kind::ARRAY;
+  }
+
+  inline bool IsPtr() const override { return kind == FixedType::Kind::PTR; }
 };
 
 struct FuncType : public FixedType {
   FuncType(std::vector<std::shared_ptr<Type>> args, std::shared_ptr<Type> ret)
-      : args(args), ret(ret) {}
+      : FixedType(FixedType::Kind::FUNC), args(args), ret(ret) {}
 
   bool operator==(const FuncType& other) const {
     if (args.size() != other.args.size()) return false;
@@ -121,24 +109,29 @@ struct FuncType : public FixedType {
     }
   }
 
-  FixedType::Kind FixedKind() const override { return FixedType::Kind::FUNC; }
-
   std::vector<std::shared_ptr<Type>> args;
   std::shared_ptr<Type> ret;
 };
 
 struct ArrayType : public FixedType {
   ArrayType(std::shared_ptr<Type> elem, int64_t size)
-      : elem(elem), size(size) {}
+      : FixedType(FixedType::Kind::ARRAY), elem(elem), size(size) {}
 
   bool operator==(const ArrayType& other) const {
-    return elem == other.elem && size == other.size;
+    return *elem == *other.elem && size == other.size;
   }
-
-  FixedType::Kind FixedKind() const override { return FixedType::Kind::ARRAY; }
 
   std::shared_ptr<Type> elem;
   int64_t size;
+};
+
+struct PtrType : public FixedType {
+  PtrType(std::shared_ptr<Type> elem)
+      : FixedType(FixedType::Kind::PTR), elem(elem) {}
+
+  bool operator==(const PtrType& other) const { return *elem == *other.elem; }
+
+  std::shared_ptr<Type> elem;
 };
 
 struct Untyped : public Type {
@@ -215,26 +208,19 @@ struct Untyped : public Type {
   std::shared_ptr<Type> ref;
 };
 
-/* struct Aliased : public Type { */
-/*   Type::Kind TypeKind() const override { return Type::Kind::ALIASED; } */
-
-/*  private: */
-/*   std::shared_ptr<Type> ref; */
-/* }; */
-
-const auto kTypeVoid = std::make_shared<PrimType>(PrimType::Kind::VOID);
-const auto kTypeI8 = std::make_shared<PrimType>(PrimType::Kind::I8);
-const auto kTypeI16 = std::make_shared<PrimType>(PrimType::Kind::I16);
-const auto kTypeI32 = std::make_shared<PrimType>(PrimType::Kind::I32);
-const auto kTypeI64 = std::make_shared<PrimType>(PrimType::Kind::I64);
-const auto kTypeF32 = std::make_shared<PrimType>(PrimType::Kind::F32);
-const auto kTypeF64 = std::make_shared<PrimType>(PrimType::Kind::F64);
-const auto kTypeBool = std::make_shared<PrimType>(PrimType::Kind::BOOL);
-const auto kTypeString = std::make_shared<PrimType>(PrimType::Kind::STRING);
+const auto kTypeVoid = std::make_shared<FixedType>(FixedType::Kind::VOID);
+const auto kTypeI8 = std::make_shared<FixedType>(FixedType::Kind::I8);
+const auto kTypeI16 = std::make_shared<FixedType>(FixedType::Kind::I16);
+const auto kTypeI32 = std::make_shared<FixedType>(FixedType::Kind::I32);
+const auto kTypeI64 = std::make_shared<FixedType>(FixedType::Kind::I64);
+const auto kTypeF32 = std::make_shared<FixedType>(FixedType::Kind::F32);
+const auto kTypeF64 = std::make_shared<FixedType>(FixedType::Kind::F64);
+const auto kTypeBool = std::make_shared<FixedType>(FixedType::Kind::BOOL);
+const auto kTypeString = std::make_shared<FixedType>(FixedType::Kind::STRING);
 std::shared_ptr<Untyped> Unresolved();
 std::shared_ptr<Untyped> UntypedInt();
 std::shared_ptr<Untyped> UntypedFloat();
-std::shared_ptr<PrimType> ArchInt(bool is_32bit);
+std::shared_ptr<FixedType> ArchInt(bool is_32bit);
 
 std::shared_ptr<Type> Underlying(std::shared_ptr<Type> ty);
 

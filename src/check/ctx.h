@@ -28,7 +28,8 @@ class TypeCheckCtx {
     return result;
   }
 
-  auto &GetDecl(const std::unique_ptr<ast::Ident> &t) const {
+  const std::shared_ptr<Decl> &GetDecl(
+      const std::unique_ptr<ast::Ident> &t) const {
     std::cout << "GetDecl " << t.get() << std::endl;
     return ident_decl_map_.at(t.get());
   }

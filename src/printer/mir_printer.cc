@@ -77,7 +77,7 @@ void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
 
 void MirPrinter::PrintAlloc(const std::shared_ptr<mir::AllocInst>& inst) {
   Writeln("%s = alloc %s", ToString(inst->lval).c_str(),
-          ToString(inst->type).c_str());
+          ToString(inst->lval->type->elem).c_str());
 }
 
 void MirPrinter::PrintLoad(const std::shared_ptr<mir::LoadInst>& inst) {

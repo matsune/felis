@@ -116,43 +116,48 @@ std::string ToString(const ast::BinaryOp::Op &op) {
 std::string ToString(const std::shared_ptr<Type> &t) {
   if (!t) return "null";
 
-  if (t->IsVoid()) return "void";
-  if (t->IsI8()) return "i8";
-  if (t->IsI16()) return "i16";
-  if (t->IsI32()) return "i32";
-  if (t->IsI64()) return "i64";
-  if (t->IsF32()) return "f32";
-  if (t->IsF64()) return "f64";
-  if (t->IsBool()) return "bool";
-  if (t->IsString()) return "string";
-
-  if (t->IsFunc()) {
-    auto func_type = dynamic_cast<FuncType *>(t.get());
-    std::string str = "func(";
-    for (auto it = func_type->args.begin(); it != func_type->args.end(); ++it) {
-      bool is_begin = it == func_type->args.begin();
-      if (!is_begin) str += ", ";
-      str += ToString(*it);
+  if (auto fixed_type = std::dynamic_pointer_cast<FixedType>(t)) {
+    if (auto func_type = std::dynamic_pointer_cast<FuncType>(fixed_type)) {
+      std::string str = "func(";
+      for (auto it = func_type->args.begin(); it != func_type->args.end();
+           ++it) {
+        bool is_begin = it == func_type->args.begin();
+        if (!is_begin) str += ", ";
+        str += ToString(*it);
+      }
+      str += ")";
+      if (!func_type->ret->IsVoid()) {
+        str += " -> " + ToString(func_type->ret);
+      }
+      return str;
+    } else if (auto array_type =
+                   std::dynamic_pointer_cast<ArrayType>(fixed_type)) {
+      std::stringstream s;
+      s << "[" << ToString(array_type->elem) << ", " << array_type->size << "]";
+      return s.str();
+    } else if (auto ptr_type = std::dynamic_pointer_cast<PtrType>(fixed_type)) {
+      std::stringstream s;
+      s << ToString(ptr_type->elem) << "*";
+      return s.str();
+    } else {
+      if (t->IsVoid()) return "void";
+      if (t->IsI8()) return "i8";
+      if (t->IsI16()) return "i16";
+      if (t->IsI32()) return "i32";
+      if (t->IsI64()) return "i64";
+      if (t->IsF32()) return "f32";
+      if (t->IsF64()) return "f64";
+      if (t->IsBool()) return "bool";
+      if (t->IsString()) return "string";
     }
-    str += ")";
-    if (!func_type->ret->IsVoid()) {
-      str += " -> " + ToString(func_type->ret);
-    }
-    return str;
-  }
-  if (t->IsUntyped()) {
-    auto untyped = dynamic_cast<Untyped *>(t.get());
+  } else if (auto untyped_type = std::dynamic_pointer_cast<Untyped>(t)) {
     std::stringstream s;
-    if (t->IsUnresolved()) s << "unresolved (ref: " << untyped->Ref() << ")";
-    if (t->IsUntypedInt()) s << "untyped int (ref: " << untyped->Ref() << ")";
+    if (t->IsUnresolved())
+      s << "unresolved (ref: " << untyped_type->Ref() << ")";
+    if (t->IsUntypedInt())
+      s << "untyped int (ref: " << untyped_type->Ref() << ")";
     if (t->IsUntypedFloat())
-      s << "untyped float (ref: " << untyped->Ref() << ")";
-    return s.str();
-  }
-  if (t->IsArray()) {
-    auto array = dynamic_cast<ArrayType *>(t.get());
-    std::stringstream s;
-    s << "[" << ToString(array->elem) << ", " << array->size << "]";
+      s << "untyped float (ref: " << untyped_type->Ref() << ")";
     return s.str();
   }
   UNREACHABLE

@@ -9,17 +9,8 @@
 
 namespace felis {
 
-llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<Type>& ty) {
-  if (ty->IsBool()) return llvm::Type::getInt1Ty(ctx_);
-  if (ty->IsI8()) return llvm::Type::getInt8Ty(ctx_);
-  if (ty->IsI16()) return llvm::Type::getInt16Ty(ctx_);
-  if (ty->IsI32()) return llvm::Type::getInt32Ty(ctx_);
-  if (ty->IsI64()) return llvm::Type::getInt64Ty(ctx_);
-  if (ty->IsF32()) return llvm::Type::getFloatTy(ctx_);
-  if (ty->IsF64()) return llvm::Type::getDoubleTy(ctx_);
-  if (ty->IsString()) return llvm::Type::getInt8PtrTy(ctx_);
-  if (ty->IsFunc()) {
-    auto func_type = std::dynamic_pointer_cast<FuncType>(ty);
+llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<FixedType>& ty) {
+  if (auto func_type = std::dynamic_pointer_cast<FuncType>(ty)) {
     std::vector<llvm::Type*> args;
     for (auto& arg : func_type->args) {
       args.push_back(LLVMType(std::dynamic_pointer_cast<FixedType>(arg)));
@@ -28,11 +19,27 @@ llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<Type>& ty) {
         LLVMType(std::dynamic_pointer_cast<FixedType>(func_type->ret)), args,
         false);
   }
-  if (ty->IsArray()) {
-    auto array_type = std::dynamic_pointer_cast<ArrayType>(ty);
-    auto elem_ty = LLVMType(array_type->elem);
+
+  if (auto array_type = std::dynamic_pointer_cast<ArrayType>(ty)) {
+    auto elem_ty =
+        LLVMType(std::dynamic_pointer_cast<FixedType>(array_type->elem));
     return llvm::ArrayType::get(elem_ty, array_type->size);
   }
+
+  if (auto ptr_type = std::dynamic_pointer_cast<PtrType>(ty)) {
+    auto elem_ty =
+        LLVMType(std::dynamic_pointer_cast<FixedType>(ptr_type->elem));
+    return elem_ty->getPointerTo();
+  }
+
+  if (ty->IsBool()) return llvm::Type::getInt1Ty(ctx_);
+  if (ty->IsI8()) return llvm::Type::getInt8Ty(ctx_);
+  if (ty->IsI16()) return llvm::Type::getInt16Ty(ctx_);
+  if (ty->IsI32()) return llvm::Type::getInt32Ty(ctx_);
+  if (ty->IsI64()) return llvm::Type::getInt64Ty(ctx_);
+  if (ty->IsF32()) return llvm::Type::getFloatTy(ctx_);
+  if (ty->IsF64()) return llvm::Type::getDoubleTy(ctx_);
+  if (ty->IsString()) return llvm::Type::getInt8PtrTy(ctx_);
   if (ty->IsVoid()) return llvm::Type::getVoidTy(ctx_);
 
   std::cout << ToString(ty) << std::endl;
@@ -80,7 +87,8 @@ llvm::BasicBlock* LLVMBuilder::GetBasicBlock(std::shared_ptr<mir::BB> bb) {
 }
 
 llvm::AllocaInst* LLVMBuilder::Alloca(std::shared_ptr<mir::LValue> lval) {
-  auto alloca = builder_.CreateAlloca(LLVMType(lval->type));
+  auto alloca = builder_.CreateAlloca(
+      LLVMType(std::dynamic_pointer_cast<FixedType>(lval->type->elem)));
   SetLValue(lval, alloca);
   return alloca;
 }
@@ -121,9 +129,7 @@ void LLVMBuilder::Build(std::unique_ptr<mir::File> file) {
 
     auto arg_it = current_func_->arg_begin();
     for (auto arg : function->args) {
-      arg_it->setName(arg->name);
-      auto alloca = Alloca(arg);
-      builder_.CreateStore(arg_it, alloca);
+      SetRValue(arg, arg_it);
       ++arg_it;
     }
 

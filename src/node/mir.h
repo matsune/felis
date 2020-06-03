@@ -23,19 +23,19 @@ struct RValue {
 
   virtual RValue::Kind RValueKind() const = 0;
 
-  std::shared_ptr<Type> type;
+  std::shared_ptr<FixedType> type;
 
-  RValue(std::shared_ptr<Type> type) : type(type) {}
+  RValue(std::shared_ptr<FixedType> type) : type(type) {}
 };
 
 struct Constant : RValue {
-  Constant(std::shared_ptr<Type> type) : RValue(type){};
+  Constant(std::shared_ptr<FixedType> type) : RValue(type){};
 };
 
 struct ConstantInt : Constant {
   int64_t val;
 
-  ConstantInt(std::shared_ptr<Type> type, int64_t val)
+  ConstantInt(std::shared_ptr<FixedType> type, int64_t val)
       : Constant(type), val(val){};
 
   RValue::Kind RValueKind() const override { return RValue::Kind::CONST_INT; }
@@ -44,7 +44,7 @@ struct ConstantInt : Constant {
 struct ConstantFloat : Constant {
   double val;
 
-  ConstantFloat(std::shared_ptr<Type> type, double val)
+  ConstantFloat(std::shared_ptr<FixedType> type, double val)
       : Constant(type), val(val){};
 
   RValue::Kind RValueKind() const override { return RValue::Kind::CONST_FLOAT; }
@@ -53,8 +53,7 @@ struct ConstantFloat : Constant {
 struct ConstantString : Constant {
   std::string val;
 
-  ConstantString(std::shared_ptr<Type> type, std::string val)
-      : Constant(type), val(val){};
+  ConstantString(std::string val) : Constant(kTypeString), val(val){};
 
   RValue::Kind RValueKind() const override {
     return RValue::Kind::CONST_STRING;
@@ -64,8 +63,7 @@ struct ConstantString : Constant {
 struct ConstantBool : Constant {
   bool val;
 
-  ConstantBool(std::shared_ptr<Type> type, bool val)
-      : Constant(type), val(val){};
+  ConstantBool(bool val) : Constant(kTypeBool), val(val){};
 
   RValue::Kind RValueKind() const override { return RValue::Kind::CONST_BOOL; }
 };
@@ -78,16 +76,16 @@ struct Local {
 };
 
 struct Val : RValue, Local {
-  Val(ID id, std::shared_ptr<Type> type) : RValue(type), Local(id){};
+  Val(ID id, std::shared_ptr<FixedType> type) : RValue(type), Local(id){};
 
   RValue::Kind RValueKind() const override { return RValue::Kind::VAL; }
 };
 
 struct LValue : Local {
   std::string name;
-  std::shared_ptr<Type> type;
+  std::shared_ptr<PtrType> type;
 
-  LValue(ID id, std::shared_ptr<Type> type, std::string name = "")
+  LValue(ID id, std::shared_ptr<PtrType> type, std::string name = "")
       : Local(id), type(type), name(name){};
 };
 
@@ -112,12 +110,8 @@ struct Inst {
 // lval: *T = alloc T
 struct AllocInst : Inst {
   std::shared_ptr<LValue> lval;
-  std::shared_ptr<Type> type;
 
-  AllocInst(std::shared_ptr<LValue> lval, std::shared_ptr<Type> type)
-      : lval(lval), type(type) {
-    assert(*lval->type == *type);
-  }
+  AllocInst(std::shared_ptr<LValue> lval) : lval(lval) {}
 
   Inst::Kind InstKind() const override { return Inst::Kind::ALLOC; }
 };
@@ -213,6 +207,11 @@ struct ArrayInst : Inst {
   Inst::Kind InstKind() const override { return Inst::Kind::ARRAY; }
 };
 
+// val: T* = gep lval: [T], idx: int
+/* struct GepInst : Inst { */
+/*   std::shared_ptr<Val> val; */
+/* }; */
+
 // val: T = call func(arg: S, ...)
 struct CallInst : Inst {
   std::shared_ptr<Val> val;
@@ -288,7 +287,7 @@ struct Func {
 };
 
 struct Function : Func {
-  std::vector<std::shared_ptr<LValue>> args;
+  std::vector<std::shared_ptr<RValue>> args;
   std::shared_ptr<BB> entry_bb;
 
   Function(FunctionID id, std::string name, std::shared_ptr<FuncType> type)

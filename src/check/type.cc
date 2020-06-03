@@ -9,7 +9,8 @@ bool Type::operator==(const Type& other) const {
   if (TypeKind() != other.TypeKind()) {
     return false;
   }
-  if (IsUntyped()) {
+  if (IsUntyped() || other.IsUntyped()) {
+    // untyped cannot compare
     UNREACHABLE
   }
   auto t = dynamic_cast<const FixedType*>(this);
@@ -18,14 +19,9 @@ bool Type::operator==(const Type& other) const {
 }
 
 bool FixedType::operator==(const FixedType& other) const {
-  if (FixedKind() != other.FixedKind()) {
-    return false;
-  }
-  if (IsPrim()) {
-    auto t = dynamic_cast<const PrimType*>(this);
-    auto& o = dynamic_cast<const PrimType&>(other);
-    return *t == o;
-  } else if (IsFunc()) {
+  if (kind != other.kind) return false;
+
+  if (IsFunc()) {
     auto t = dynamic_cast<const FuncType*>(this);
     auto& o = dynamic_cast<const FuncType&>(other);
     return *t == o;
@@ -33,8 +29,12 @@ bool FixedType::operator==(const FixedType& other) const {
     auto t = dynamic_cast<const ArrayType*>(this);
     auto& o = dynamic_cast<const ArrayType&>(other);
     return *t == o;
+  } else if (IsPtr()) {
+    auto t = dynamic_cast<const PtrType*>(this);
+    auto& o = dynamic_cast<const PtrType&>(other);
+    return *t == o;
   } else {
-    UNREACHABLE
+    return true;
   }
 }
 
@@ -50,7 +50,7 @@ std::shared_ptr<Untyped> UntypedFloat() {
   return std::make_shared<Untyped>(Untyped::Kind::FLOAT);
 }
 
-std::shared_ptr<PrimType> ArchInt(bool is_32bit) {
+std::shared_ptr<FixedType> ArchInt(bool is_32bit) {
   return is_32bit ? kTypeI32 : kTypeI64;
 }
 
