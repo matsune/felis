@@ -70,7 +70,7 @@ class LLVMBuilder {
   void BuildBB(std::shared_ptr<mir::BB>);
   void BuildInst(std::shared_ptr<mir::Inst>);
   llvm::AllocaInst *Alloca(std::shared_ptr<mir::LValue>);
-  void Load(std::shared_ptr<mir::RValue>, std::shared_ptr<mir::LValue>);
+  void Load(std::shared_ptr<mir::Val>, std::shared_ptr<mir::LValue>);
   void Store(std::shared_ptr<mir::RValue>, std::shared_ptr<mir::LValue>);
   void Unary(std::shared_ptr<mir::UnaryInst>);
   void Binary(std::shared_ptr<mir::BinaryInst>);

@@ -164,7 +164,7 @@ std::string ToString(const std::shared_ptr<Ty> &ty) {
   } else if (auto array_ty = std::dynamic_pointer_cast<ArrayTy>(ty)) {
     ss << "[" << ToString(array_ty->elem) << ", " << array_ty->size << "]";
   } else if (auto ptr_ty = std::dynamic_pointer_cast<PtrTy>(ty)) {
-    ss << ToString(ptr_ty->elem) << "*";
+    ss << ToString(ptr_ty->ref) << "*";
   } else {
     ss << ToString(ty->kind);
   }

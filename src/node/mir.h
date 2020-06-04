@@ -116,13 +116,13 @@ struct AllocInst : Inst {
   Inst::Kind InstKind() const override { return Inst::Kind::ALLOC; }
 };
 
-// rval: T = load lval: *T
+// val: T = load lval: *T
 struct LoadInst : Inst {
-  std::shared_ptr<RValue> rval;
+  std::shared_ptr<Val> val;
   std::shared_ptr<LValue> lval;
 
-  LoadInst(std::shared_ptr<RValue> rval, std::shared_ptr<LValue> lval)
-      : rval(rval), lval(lval) {}
+  LoadInst(std::shared_ptr<Val> val, std::shared_ptr<LValue> lval)
+      : val(val), lval(lval) {}
 
   Inst::Kind InstKind() const override { return Inst::Kind::LOAD; }
 };

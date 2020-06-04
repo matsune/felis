@@ -6,6 +6,7 @@
 #include <map>
 
 #include "macro.h"
+#include "string/string.h"
 #include "ty.h"
 
 namespace felis {
@@ -15,6 +16,8 @@ class TyResolver {
   TyResolver() = default;
 
   bool TryResolve(std::shared_ptr<Ty> ty, std::shared_ptr<Ty> to) {
+    std::cout << "TryResolve " << ToString(ty) << " to " << ToString(to)
+              << std::endl;
     ty = Underlying(ty);
     to = Underlying(to);
     if (to == ty) return true;
@@ -50,7 +53,7 @@ class TyResolver {
       array_ty->elem = ResolvedType(array_ty->elem, is_32bit);
       return array_ty;
     } else if (auto ptr_ty = std::dynamic_pointer_cast<PtrTy>(ty)) {
-      ptr_ty->elem = ResolvedType(ptr_ty->elem, is_32bit);
+      ptr_ty->ref = ResolvedType(ptr_ty->ref, is_32bit);
       return ptr_ty;
     }
     return ty;
@@ -68,7 +71,7 @@ class TyResolver {
     } else if (auto array_ty = std::dynamic_pointer_cast<ArrayTy>(ty)) {
       return IsFixed(array_ty->elem);
     } else if (auto ptr_ty = std::dynamic_pointer_cast<PtrTy>(ty)) {
-      return IsFixed(ptr_ty->elem);
+      return IsFixed(ptr_ty->ref);
     } else {
       return !ty->IsUntyped();
     }
@@ -87,7 +90,7 @@ class TyResolver {
         array_ty->elem = Underlying(array_ty->elem);
         return array_ty;
       } else if (auto ptr_ty = std::dynamic_pointer_cast<PtrTy>(ty)) {
-        ptr_ty->elem = Underlying(ptr_ty->elem);
+        ptr_ty->ref = Underlying(ptr_ty->ref);
         return ptr_ty;
       } else {
         if (IsFixed(ty)) {
@@ -147,7 +150,7 @@ class TyResolver {
 
     if (auto ptr_ty = std::dynamic_pointer_cast<PtrTy>(ty)) {
       if (auto ptr_to = std::dynamic_pointer_cast<PtrTy>(to)) {
-        return Canbe(ptr_ty->elem, ptr_to->elem);
+        return Canbe(ptr_ty->ref, ptr_to->ref);
       }
     }
 

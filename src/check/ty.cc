@@ -23,7 +23,7 @@ bool Ty::operator==(const Ty& other) const {
   if (IsPtr()) {
     auto a = dynamic_cast<const PtrTy*>(this);
     auto b = dynamic_cast<const PtrTy&>(other);
-    return *a->elem == *b.elem;
+    return *a->ref == *b.ref;
   }
   return true;
 }

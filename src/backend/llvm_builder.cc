@@ -24,7 +24,7 @@ llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<Ty>& ty) {
   }
 
   if (auto ptr_type = std::dynamic_pointer_cast<PtrTy>(ty)) {
-    auto elem_ty = LLVMType(ptr_type->elem);
+    auto elem_ty = LLVMType(ptr_type->ref);
     return elem_ty->getPointerTo();
   }
 
@@ -83,16 +83,16 @@ llvm::BasicBlock* LLVMBuilder::GetBasicBlock(std::shared_ptr<mir::BB> bb) {
 }
 
 llvm::AllocaInst* LLVMBuilder::Alloca(std::shared_ptr<mir::LValue> lval) {
-  auto alloca = builder_.CreateAlloca(LLVMType(lval->type->elem));
+  auto alloca = builder_.CreateAlloca(LLVMType(lval->type->ref));
   SetLValue(lval, alloca);
   return alloca;
 }
 
-void LLVMBuilder::Load(std::shared_ptr<mir::RValue> rval,
+void LLVMBuilder::Load(std::shared_ptr<mir::Val> val,
                        std::shared_ptr<mir::LValue> lval) {
   auto ptr = GetLValue(lval);
   auto load = builder_.CreateLoad(ptr);
-  SetRValue(rval, load);
+  SetRValue(val, load);
 }
 
 void LLVMBuilder::Store(std::shared_ptr<mir::RValue> rval,
@@ -163,7 +163,7 @@ void LLVMBuilder::BuildInst(std::shared_ptr<mir::Inst> inst) {
     } break;
     case mir::Inst::LOAD: {
       auto load_inst = std::dynamic_pointer_cast<mir::LoadInst>(inst);
-      Load(load_inst->rval, load_inst->lval);
+      Load(load_inst->val, load_inst->lval);
     } break;
     case mir::Inst::STORE: {
       auto store_inst = std::dynamic_pointer_cast<mir::StoreInst>(inst);

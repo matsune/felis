@@ -91,9 +91,9 @@ struct ArrayTy : Ty {
 };
 
 struct PtrTy : Ty {
-  std::shared_ptr<Ty> elem;
+  std::shared_ptr<Ty> ref;
 
-  PtrTy(std::shared_ptr<Ty> elem) : Ty(Ty::Kind::PTR), elem(elem){};
+  PtrTy(std::shared_ptr<Ty> ref) : Ty(Ty::Kind::PTR), ref(ref){};
 };
 
 const auto kTypeVoid = std::make_shared<Ty>(Ty::Kind::VOID);
