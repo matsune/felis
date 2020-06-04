@@ -38,8 +38,22 @@ class TyResolver {
       case Ty::Kind::UNTYPED_FLOAT:
         return kTypeF32;
       default:
-        return ty;
+        break;
     }
+    if (auto func_ty = std::dynamic_pointer_cast<FuncTy>(ty)) {
+      for (auto i = 0; i < func_ty->args.size(); ++i) {
+        func_ty->args.at(i) = ResolvedType(func_ty->args.at(i), is_32bit);
+      }
+      func_ty->ret = ResolvedType(func_ty->ret, is_32bit);
+      return func_ty;
+    } else if (auto array_ty = std::dynamic_pointer_cast<ArrayTy>(ty)) {
+      array_ty->elem = ResolvedType(array_ty->elem, is_32bit);
+      return array_ty;
+    } else if (auto ptr_ty = std::dynamic_pointer_cast<PtrTy>(ty)) {
+      ptr_ty->elem = ResolvedType(ptr_ty->elem, is_32bit);
+      return ptr_ty;
+    }
+    return ty;
   }
 
  private:
@@ -63,13 +77,27 @@ class TyResolver {
   std::shared_ptr<Ty> Underlying(std::shared_ptr<Ty> ty) {
     assert(ty);
     while (true) {
-      if (IsFixed(ty)) {
-        return ty;
-      }
-      if (auto ref = ref_map[ty]) {
-        ty = ref;
+      if (auto func_ty = std::dynamic_pointer_cast<FuncTy>(ty)) {
+        for (auto i = 0; i < func_ty->args.size(); ++i) {
+          func_ty->args.at(i) = Underlying(func_ty->args.at(i));
+        }
+        func_ty->ret = Underlying(func_ty->ret);
+        return func_ty;
+      } else if (auto array_ty = std::dynamic_pointer_cast<ArrayTy>(ty)) {
+        array_ty->elem = Underlying(array_ty->elem);
+        return array_ty;
+      } else if (auto ptr_ty = std::dynamic_pointer_cast<PtrTy>(ty)) {
+        ptr_ty->elem = Underlying(ptr_ty->elem);
+        return ptr_ty;
       } else {
-        return ty;
+        if (IsFixed(ty)) {
+          return ty;
+        }
+        if (auto ref = ref_map[ty]) {
+          ty = ref;
+        } else {
+          return ty;
+        }
       }
     }
   }
