@@ -24,6 +24,24 @@ class TyResolver {
     if (Canbe(ty, to)) {
       assert(!ref_map[ty]);
       ref_map[ty] = to;
+
+      if (auto func_ty = std::dynamic_pointer_cast<FuncTy>(ty)) {
+        if (auto func_to = std::dynamic_pointer_cast<FuncTy>(to)) {
+          for (auto i = 0; i < func_ty->args.size(); ++i) {
+            TryResolve(func_ty->args.at(i), func_to->args.at(i));
+          }
+          TryResolve(func_ty->ret, func_to->ret);
+        }
+      } else if (auto array_ty = std::dynamic_pointer_cast<ArrayTy>(ty)) {
+        if (auto array_to = std::dynamic_pointer_cast<ArrayTy>(to)) {
+          TryResolve(array_ty->elem, array_to->elem);
+        }
+      } else if (auto ptr_ty = std::dynamic_pointer_cast<PtrTy>(ty)) {
+        if (auto ptr_to = std::dynamic_pointer_cast<PtrTy>(to)) {
+          TryResolve(ptr_ty->ref, ptr_to->ref);
+        }
+      }
+
       return true;
     } else {
       return false;
@@ -80,6 +98,10 @@ class TyResolver {
   std::shared_ptr<Ty> Underlying(std::shared_ptr<Ty> ty) {
     assert(ty);
     while (true) {
+      if (auto ref = ref_map[ty]) {
+        ty = ref;
+        continue;
+      }
       if (auto func_ty = std::dynamic_pointer_cast<FuncTy>(ty)) {
         for (auto i = 0; i < func_ty->args.size(); ++i) {
           func_ty->args.at(i) = Underlying(func_ty->args.at(i));
@@ -93,14 +115,7 @@ class TyResolver {
         ptr_ty->ref = Underlying(ptr_ty->ref);
         return ptr_ty;
       } else {
-        if (IsFixed(ty)) {
-          return ty;
-        }
-        if (auto ref = ref_map[ty]) {
-          ty = ref;
-        } else {
-          return ty;
-        }
+        return ty;
       }
     }
   }
@@ -121,12 +136,9 @@ class TyResolver {
     /* clang-format on */
     if (ty->IsUnResolved()) return true;
     if (ty->IsUntypedInt())
-      return to->IsUntypedInt() || to->IsUntypedFloat() || to->IsInt() ||
-             to->IsFloat();
+      return to->IsUntypedInt() || to->IsUntypedFloat() || to->IsNum();
     if (ty->IsUntypedFloat()) return to->IsUntypedFloat() || to->IsFloat();
 
-    // [T, n] = [S, k]
-    // n == k && T == S
     if (auto array_ty = std::dynamic_pointer_cast<ArrayTy>(ty)) {
       if (auto array_to = std::dynamic_pointer_cast<ArrayTy>(to)) {
         return array_ty->size == array_ty->size &&

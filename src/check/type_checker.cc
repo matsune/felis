@@ -333,6 +333,7 @@ StmtResult<> TypeChecker::CheckArray(
     if (!ctx_.TryResolve(elem_ty, stmt_ty.val)) {
       throw LocError::Create(expr->Begin(), "mismatch element type");
     }
+    elem_ty = stmt_ty.val;
   }
   return ctx_.RecordResult(
       array, StmtResult<>::Expr(std::make_shared<ArrayTy>(elem_ty, size)));
