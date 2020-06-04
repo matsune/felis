@@ -63,7 +63,7 @@ class LLVMBuilder {
     rvalue_map_.clear();
   }
 
-  llvm::Type *LLVMType(const std::shared_ptr<FixedType> &);
+  llvm::Type *LLVMType(const std::shared_ptr<Ty> &);
   llvm::Value *GetRValue(std::shared_ptr<mir::RValue>);
   llvm::Value *GetLValue(std::shared_ptr<mir::LValue>);
   llvm::BasicBlock *GetBasicBlock(std::shared_ptr<mir::BB>);

@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 
+#include "macro.h"
 #include "unique.h"
 
 namespace felis {

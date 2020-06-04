@@ -45,7 +45,7 @@ std::shared_ptr<Decl> DeclChecker::LookupFuncDecl(const std::string& name) {
   return decl->IsFunc() ? decl : nullptr;
 }
 
-std::shared_ptr<Type> DeclChecker::LookupType(
+std::shared_ptr<Ty> DeclChecker::LookupType(
     const std::unique_ptr<ast::Type>& ty) {
   switch (ty->TypeKind()) {
     case ast::Type::Kind::IDENT: {
@@ -65,7 +65,7 @@ std::shared_ptr<Type> DeclChecker::LookupType(
       if (!ParseInt(array->size_lit->val, size, err)) {
         throw LocError(array->Begin(), err);
       }
-      return std::make_shared<ArrayType>(elem, size);
+      return std::make_shared<ArrayTy>(elem, size);
     } break;
   }
   return nullptr;
@@ -104,7 +104,7 @@ std::shared_ptr<Decl> DeclChecker::MakeFnDecl(
                            proto->name->val.c_str());
   }
 
-  std::vector<std::shared_ptr<Type>> args;
+  std::vector<std::shared_ptr<Ty>> args;
   for (auto& arg : proto->args->list) {
     auto ty = LookupType(arg->type_name);
     if (!ty) {
@@ -112,7 +112,7 @@ std::shared_ptr<Decl> DeclChecker::MakeFnDecl(
     }
     args.push_back(ty);
   }
-  std::shared_ptr<Type> ret_ty;
+  std::shared_ptr<Ty> ret_ty;
   if (proto->ret) {
     ret_ty = LookupType(proto->ret);
     if (!ret_ty) {
@@ -121,7 +121,7 @@ std::shared_ptr<Decl> DeclChecker::MakeFnDecl(
   } else {
     ret_ty = kTypeVoid;
   }
-  auto fn_type = std::make_shared<FuncType>(args, ret_ty);
+  auto fn_type = std::make_shared<FuncTy>(args, ret_ty);
   DeclKind kind = is_ext ? DeclKind::EXT : DeclKind::FN;
   return std::make_shared<Decl>(proto->name->val, fn_type, kind);
 }

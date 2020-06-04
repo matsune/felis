@@ -20,7 +20,7 @@ class TypeChecker {
  private:
   TypeCheckCtx &ctx_;
   DeclChecker decl_ck_;
-  std::shared_ptr<FuncType> current_func_;
+  std::shared_ptr<FuncTy> current_func_;
 
   StmtResult<> CheckBlock(const std::unique_ptr<ast::Block> &,
                           bool open_scope = true);

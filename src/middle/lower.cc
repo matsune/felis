@@ -6,6 +6,7 @@
 #include "check/parse.h"
 #include "check/type_checker.h"
 #include "error/error.h"
+#include "macro.h"
 
 namespace felis {
 
@@ -113,8 +114,7 @@ void Lower::Lowering(std::unique_ptr<ast::File> file) {
 
     for (auto &arg : fn_decl->proto->args->list) {
       auto decl = ctx_.GetDecl(arg->name);
-      auto val =
-          builder_.CreateVal(std::dynamic_pointer_cast<FixedType>(decl->type));
+      auto val = builder_.CreateVal(ctx_.ResolvedType(decl->type));
       func->args.push_back(val);
 
       auto lval = builder_.CreateAlloc(decl);
@@ -217,7 +217,7 @@ LowStmtResult Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
   std::shared_ptr<mir::Constant> val;
   switch (lit->LitKind()) {
     case ast::Lit::Kind::CHAR: {
-      auto ty = std::dynamic_pointer_cast<FixedType>(ctx_.GetResult(lit).val);
+      auto ty = ctx_.GetResult(lit).val;
 
       std::stringstream ss(lit->val);
       rune r;
@@ -256,7 +256,7 @@ std::unique_ptr<mir::Constant> Lower::ParseIntLit(
     throw LocError::Create(lit->Begin(), err);
   }
 
-  auto ty = std::dynamic_pointer_cast<FixedType>(ctx_.GetResult(lit).val);
+  auto ty = ctx_.GetResult(lit).val;
   if (ty->IsI8()) {
     if (n < INT8_MIN || n > INT8_MAX) {
       throw LocError::Create(lit->Begin(), "overflow int8");
@@ -288,8 +288,7 @@ std::unique_ptr<mir::ConstantFloat> Lower::ParseFloatLit(
   if (!ParseFloat(lit->val, n, err)) {
     throw LocError::Create(lit->Begin(), err);
   }
-  auto ty = std::dynamic_pointer_cast<FixedType>(ctx_.GetResult(lit).val);
-  assert(ty->IsFixedFloat());
+  auto ty = ctx_.GetResult(lit).val;
   return std::make_unique<mir::ConstantFloat>(ty, n);
 }
 
@@ -320,14 +319,14 @@ LowStmtResult Lower::LowerCall(std::unique_ptr<ast::CallExpr> expr) {
 }
 
 LowStmtResult Lower::LowerUnary(std::unique_ptr<ast::UnaryExpr> unary) {
-  auto ty = std::dynamic_pointer_cast<FixedType>(ctx_.GetResult(unary).val);
+  auto ty = ctx_.GetResult(unary).val;
   auto expr = LowerExpr(std::move(unary->expr)).val;
   auto val = builder_.CreateUnary(UnaryOp(unary->op->kind), expr);
   return LowStmtResult::Expr(val);
 }
 
 LowStmtResult Lower::LowerArray(std::unique_ptr<ast::ArrayExpr> array) {
-  auto type = std::dynamic_pointer_cast<ArrayType>(ctx_.GetResult(array).val);
+  auto type = std::dynamic_pointer_cast<ArrayTy>(ctx_.GetResult(array).val);
   std::vector<std::shared_ptr<mir::RValue>> values;
   while (!array->exprs.empty()) {
     auto expr = array->exprs.move_front();

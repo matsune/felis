@@ -1,7 +1,7 @@
 #ifndef FELIS_NODE_MIR_H_
 #define FELIS_NODE_MIR_H_
 
-#include "check/type.h"
+#include "check/ty.h"
 #include "node/ast.h"
 
 namespace felis {
@@ -23,19 +23,19 @@ struct RValue {
 
   virtual RValue::Kind RValueKind() const = 0;
 
-  std::shared_ptr<FixedType> type;
+  std::shared_ptr<Ty> type;
 
-  RValue(std::shared_ptr<FixedType> type) : type(type) {}
+  RValue(std::shared_ptr<Ty> type) : type(type) {}
 };
 
 struct Constant : RValue {
-  Constant(std::shared_ptr<FixedType> type) : RValue(type){};
+  Constant(std::shared_ptr<Ty> type) : RValue(type){};
 };
 
 struct ConstantInt : Constant {
   int64_t val;
 
-  ConstantInt(std::shared_ptr<FixedType> type, int64_t val)
+  ConstantInt(std::shared_ptr<Ty> type, int64_t val)
       : Constant(type), val(val){};
 
   RValue::Kind RValueKind() const override { return RValue::Kind::CONST_INT; }
@@ -44,7 +44,7 @@ struct ConstantInt : Constant {
 struct ConstantFloat : Constant {
   double val;
 
-  ConstantFloat(std::shared_ptr<FixedType> type, double val)
+  ConstantFloat(std::shared_ptr<Ty> type, double val)
       : Constant(type), val(val){};
 
   RValue::Kind RValueKind() const override { return RValue::Kind::CONST_FLOAT; }
@@ -76,16 +76,16 @@ struct Local {
 };
 
 struct Val : RValue, Local {
-  Val(ID id, std::shared_ptr<FixedType> type) : RValue(type), Local(id){};
+  Val(ID id, std::shared_ptr<Ty> type) : RValue(type), Local(id){};
 
   RValue::Kind RValueKind() const override { return RValue::Kind::VAL; }
 };
 
 struct LValue : Local {
   std::string name;
-  std::shared_ptr<PtrType> type;
+  std::shared_ptr<PtrTy> type;
 
-  LValue(ID id, std::shared_ptr<PtrType> type, std::string name = "")
+  LValue(ID id, std::shared_ptr<PtrTy> type, std::string name = "")
       : Local(id), type(type), name(name){};
 };
 
@@ -278,9 +278,9 @@ using FunctionID = int;
 struct Func {
   FunctionID id;
   std::string name;
-  std::shared_ptr<FuncType> type;
+  std::shared_ptr<FuncTy> type;
 
-  Func(FunctionID id, std::string name, std::shared_ptr<FuncType> type)
+  Func(FunctionID id, std::string name, std::shared_ptr<FuncTy> type)
       : id(id), name(name), type(type) {}
 
   virtual bool IsExt() { return true; }
@@ -290,7 +290,7 @@ struct Function : Func {
   std::vector<std::shared_ptr<RValue>> args;
   std::shared_ptr<BB> entry_bb;
 
-  Function(FunctionID id, std::string name, std::shared_ptr<FuncType> type)
+  Function(FunctionID id, std::string name, std::shared_ptr<FuncTy> type)
       : Func(id, name, type),
         next_local_id(0),
         next_bb_id(1),

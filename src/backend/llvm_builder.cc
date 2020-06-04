@@ -9,26 +9,22 @@
 
 namespace felis {
 
-llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<FixedType>& ty) {
-  if (auto func_type = std::dynamic_pointer_cast<FuncType>(ty)) {
+llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<Ty>& ty) {
+  if (auto func_type = std::dynamic_pointer_cast<FuncTy>(ty)) {
     std::vector<llvm::Type*> args;
     for (auto& arg : func_type->args) {
-      args.push_back(LLVMType(std::dynamic_pointer_cast<FixedType>(arg)));
+      args.push_back(LLVMType(arg));
     }
-    return llvm::FunctionType::get(
-        LLVMType(std::dynamic_pointer_cast<FixedType>(func_type->ret)), args,
-        false);
+    return llvm::FunctionType::get(LLVMType(func_type->ret), args, false);
   }
 
-  if (auto array_type = std::dynamic_pointer_cast<ArrayType>(ty)) {
-    auto elem_ty =
-        LLVMType(std::dynamic_pointer_cast<FixedType>(array_type->elem));
+  if (auto array_type = std::dynamic_pointer_cast<ArrayTy>(ty)) {
+    auto elem_ty = LLVMType(array_type->elem);
     return llvm::ArrayType::get(elem_ty, array_type->size);
   }
 
-  if (auto ptr_type = std::dynamic_pointer_cast<PtrType>(ty)) {
-    auto elem_ty =
-        LLVMType(std::dynamic_pointer_cast<FixedType>(ptr_type->elem));
+  if (auto ptr_type = std::dynamic_pointer_cast<PtrTy>(ty)) {
+    auto elem_ty = LLVMType(ptr_type->elem);
     return elem_ty->getPointerTo();
   }
 
@@ -87,8 +83,7 @@ llvm::BasicBlock* LLVMBuilder::GetBasicBlock(std::shared_ptr<mir::BB> bb) {
 }
 
 llvm::AllocaInst* LLVMBuilder::Alloca(std::shared_ptr<mir::LValue> lval) {
-  auto alloca = builder_.CreateAlloca(
-      LLVMType(std::dynamic_pointer_cast<FixedType>(lval->type->elem)));
+  auto alloca = builder_.CreateAlloca(LLVMType(lval->type->elem));
   SetLValue(lval, alloca);
   return alloca;
 }
@@ -224,7 +219,7 @@ void LLVMBuilder::BuildInst(std::shared_ptr<mir::Inst> inst) {
 }
 
 void LLVMBuilder::Unary(std::shared_ptr<mir::UnaryInst> inst) {
-  bool is_float = inst->val->type->IsFixedFloat();
+  bool is_float = inst->val->type->IsFloat();
   auto expr = GetRValue(inst->operand);
   llvm::Value* val;
   switch (inst->op) {
@@ -246,7 +241,7 @@ void LLVMBuilder::Unary(std::shared_ptr<mir::UnaryInst> inst) {
 void LLVMBuilder::Binary(std::shared_ptr<mir::BinaryInst> inst) {
   auto lhs = GetRValue(inst->lhs);
   auto rhs = GetRValue(inst->rhs);
-  auto is_float = inst->lhs->type->IsFixedFloat();
+  auto is_float = inst->lhs->type->IsFloat();
 
   llvm::Value* val;
   switch (inst->op) {
@@ -276,7 +271,7 @@ void LLVMBuilder::Binary(std::shared_ptr<mir::BinaryInst> inst) {
 void LLVMBuilder::Cmp(std::shared_ptr<mir::CmpInst> inst) {
   auto lhs = GetRValue(inst->lhs);
   auto rhs = GetRValue(inst->rhs);
-  auto is_float = inst->lhs->type->IsFixedFloat();
+  auto is_float = inst->lhs->type->IsFloat();
 
   llvm::Value* val;
   switch (inst->op) {

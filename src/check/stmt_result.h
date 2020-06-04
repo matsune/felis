@@ -3,11 +3,11 @@
 
 #include <memory>
 
-#include "check/type.h"
+#include "check/ty.h"
 
 namespace felis {
 
-template <typename T = Type>
+template <typename T = Ty>
 class StmtResult {
  public:
   // NON_VALUE: assign, var/let statement

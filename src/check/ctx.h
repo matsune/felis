@@ -6,6 +6,7 @@
 
 #include "check/decl_checker.h"
 #include "check/stmt_result.h"
+#include "check/ty_resolver.h"
 #include "node/ast.h"
 
 namespace felis {
@@ -41,18 +42,26 @@ class TypeCheckCtx {
 
   bool Is32bit() const { return is_32bit; }
 
+  bool TryResolve(std::shared_ptr<Ty> ty, std::shared_ptr<Ty> to) {
+    return resolver_.TryResolve(ty, to);
+  }
+
+  std::shared_ptr<Ty> ResolvedType(std::shared_ptr<Ty> ty) {
+    return resolver_.ResolvedType(ty, is_32bit);
+  }
+
   void FinalizeType() {
     // finalize types
     std::cout << "---------------" << std::endl;
     for (auto &it : ident_decl_map_) {
-      it.second->type = FinalType(it.second->type, is_32bit);
+      it.second->type = ResolvedType(it.second->type);
       std::cout << "ident: " << it.first << " decl: " << ToString(it.second)
                 << std::endl;
     }
     std::cout << "---------------" << std::endl;
     for (auto &it : result_map_) {
       if (it.second.IsExpr()) {
-        it.second.val = FinalType(it.second.val, is_32bit);
+        it.second.val = ResolvedType(it.second.val);
         std::cout << "expr: " << it.first
                   << " type: " << ToString(it.second.val) << std::endl;
       }
@@ -63,6 +72,7 @@ class TypeCheckCtx {
  private:
   IdentDeclMap ident_decl_map_;
   ResultMap result_map_;
+  TyResolver resolver_;
   const bool is_32bit;
 };
 

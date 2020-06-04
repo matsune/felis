@@ -31,9 +31,9 @@ class MIRBuilder {
   std::shared_ptr<mir::BB> CreateBB(std::shared_ptr<mir::BB> after = nullptr);
 
   std::shared_ptr<mir::LValue> CreateAlloc(std::shared_ptr<Decl>);
-  std::shared_ptr<mir::LValue> CreateAlloc(std::shared_ptr<Type>);
+  std::shared_ptr<mir::LValue> CreateAlloc(std::shared_ptr<Ty>);
 
-  std::shared_ptr<mir::Val> CreateVal(std::shared_ptr<FixedType>);
+  std::shared_ptr<mir::Val> CreateVal(std::shared_ptr<Ty>);
 
   std::shared_ptr<mir::Val> CreateLoad(std::shared_ptr<Decl>);
   std::shared_ptr<mir::Val> CreateLoad(std::shared_ptr<mir::LValue>);
@@ -52,7 +52,7 @@ class MIRBuilder {
                                       std::shared_ptr<mir::RValue>);
 
   std::shared_ptr<mir::Val> CreateArray(
-      std::shared_ptr<ArrayType>, std::vector<std::shared_ptr<mir::RValue>>);
+      std::shared_ptr<ArrayTy>, std::vector<std::shared_ptr<mir::RValue>>);
 
   std::shared_ptr<mir::Val> CreateCall(
       std::shared_ptr<Decl>, std::vector<std::shared_ptr<mir::RValue>>);

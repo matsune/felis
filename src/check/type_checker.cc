@@ -4,68 +4,6 @@
 
 namespace felis {
 
-namespace {
-
-bool TryResolve(std::shared_ptr<Type> ty, std::shared_ptr<Type> to) {
-  std::cout << "TryResolve " << ty.get() << "(" << ToString(ty) << ") to "
-            << to.get() << "(" << ToString(to) << ")" << std::endl;
-
-  while (true) {
-    if (to->IsFixed()) {
-      break;
-    } else if (to->IsUntyped()) {
-      auto ref = std::dynamic_pointer_cast<Untyped>(to)->Ref();
-      if (ref) {
-        to = ref;
-      } else {
-        break;
-      }
-    } else {
-      UNREACHABLE
-    }
-  }
-
-  std::shared_ptr<Type> underlying = ty;
-  while (true) {
-    if (underlying->IsFixed()) {
-      break;
-    } else if (underlying->IsUntyped()) {
-      auto ref = std::dynamic_pointer_cast<Untyped>(underlying)->Ref();
-      if (ref) {
-        if (ref == to) {
-          return true;
-        }
-        underlying = ref;
-      } else {
-        break;
-      }
-    } else {
-      UNREACHABLE
-    }
-  }
-
-  if (underlying->IsFixed()) {
-    if (underlying->IsArray()) {
-      auto array_ty = std::dynamic_pointer_cast<ArrayType>(underlying);
-      if (!to->IsArray()) return false;
-      auto to_array_ty = std::dynamic_pointer_cast<ArrayType>(to);
-      if (array_ty->size != to_array_ty->size) return false;
-      return TryResolve(array_ty->elem, to_array_ty->elem);
-    }
-    return *underlying == *to;
-  } else if (underlying->IsUntyped()) {
-    auto untyped = std::dynamic_pointer_cast<Untyped>(underlying);
-    if (untyped->Canbe(to)) {
-      untyped->SetRef(to);
-      return true;
-    }
-    return false;
-  }
-  UNREACHABLE
-}
-
-}  // namespace
-
 void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
   // Insert function decls
   decl_ck_.CheckGlobalLevel(file);
@@ -81,7 +19,7 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
   for (auto& fn : file->fn_decls) {
     auto decl = decl_ck_.LookupFuncDecl(fn->proto->name->val);
     ctx_.RecordDecl(fn->proto->name, decl);
-    current_func_ = std::dynamic_pointer_cast<FuncType>(decl->type);
+    current_func_ = std::dynamic_pointer_cast<FuncTy>(decl->type);
     std::cout << "Infer fn " << fn->proto->name->val << std::endl;
 
     decl_ck_.OpenScope();
@@ -106,7 +44,7 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
       // void function discards the value
       if (!current_func_->ret->IsVoid()) {
         // resolve type
-        if (!TryResolve(result.val, current_func_->ret)) {
+        if (!ctx_.TryResolve(result.val, current_func_->ret)) {
           throw LocError::Create(fn->block->End(), "mismatch ret type");
         }
       }
@@ -161,7 +99,7 @@ StmtResult<> TypeChecker::CheckRet(const std::unique_ptr<ast::RetStmt>& stmt) {
     if (result.IsNonValue()) {
       throw LocError::Create(stmt->expr->End(), "cannot return void type");
     } else if (result.IsExpr()) {
-      if (!TryResolve(result.val, current_func_->ret)) {
+      if (!ctx_.TryResolve(result.val, current_func_->ret)) {
         throw LocError::Create(stmt->expr->Begin(), "mismatch ret ty");
       }
     }
@@ -178,7 +116,7 @@ StmtResult<> TypeChecker::CheckVarDecl(
     throw LocError::Create(stmt->Begin(), "redeclared var %s", name.c_str());
   }
 
-  std::shared_ptr<Type> decl_ty = Unresolved();
+  std::shared_ptr<Ty> decl_ty = UnResolved();
   if (stmt->type_name) {
     // has type constraint
     decl_ty = decl_ck_.LookupType(stmt->type_name);
@@ -194,7 +132,8 @@ StmtResult<> TypeChecker::CheckVarDecl(
   auto expr_ty = stmt_ty.val;
 
   // resolve type constraints between decl and expr
-  if (!TryResolve(decl_ty, expr_ty) && !TryResolve(expr_ty, decl_ty)) {
+  if (!ctx_.TryResolve(decl_ty, expr_ty) &&
+      !ctx_.TryResolve(expr_ty, decl_ty)) {
     throw LocError::Create(stmt->expr->Begin(), "mismatched decl type %s, %s",
                            ToString(decl_ty).c_str(),
                            ToString(expr_ty).c_str());
@@ -226,7 +165,8 @@ StmtResult<> TypeChecker::CheckAssign(
   }
   auto expr_ty = stmt_ty.val;
 
-  if (!TryResolve(decl->type, expr_ty) && !TryResolve(expr_ty, decl->type)) {
+  if (!ctx_.TryResolve(decl->type, expr_ty) &&
+      !ctx_.TryResolve(expr_ty, decl->type)) {
     throw LocError::Create(
         stmt->expr->Begin(), "mismatched assign type %s = %s",
         ToString(decl->type).c_str(), ToString(expr_ty).c_str());
@@ -257,7 +197,7 @@ StmtResult<> TypeChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
 }
 
 StmtResult<> TypeChecker::CheckLit(const std::unique_ptr<ast::Lit>& lit) {
-  std::shared_ptr<Type> ty;
+  std::shared_ptr<Ty> ty;
   switch (lit->LitKind()) {
     case ast::Lit::Kind::BOOL:
       ty = kTypeBool;
@@ -299,16 +239,16 @@ StmtResult<> TypeChecker::CheckBinary(
   }
   auto rhs_ty = rhs_stmt_ty.val;
 
-  std::shared_ptr<Type> operand_ty;
-  if (TryResolve(lhs_ty, rhs_ty)) {
+  std::shared_ptr<Ty> operand_ty;
+  if (ctx_.TryResolve(lhs_ty, rhs_ty)) {
     operand_ty = rhs_ty;
-  } else if (TryResolve(rhs_ty, lhs_ty)) {
+  } else if (ctx_.TryResolve(rhs_ty, lhs_ty)) {
     operand_ty = lhs_ty;
   } else {
     throw LocError::Create(binary->lhs->Begin(), "unmatch type");
   }
 
-  std::shared_ptr<Type> ty;
+  std::shared_ptr<Ty> ty;
   switch (binary->op->op) {
     case ast::BinaryOp::Op::EQEQ:
     case ast::BinaryOp::Op::NEQ:
@@ -327,7 +267,7 @@ StmtResult<> TypeChecker::CheckBinary(
     case ast::BinaryOp::Op::SUB:
     case ast::BinaryOp::Op::MUL:
     case ast::BinaryOp::Op::DIV:
-      if (!operand_ty->IsUntyped() && !operand_ty->IsFixedNumeric()) {
+      if (!operand_ty->IsUntyped() && !operand_ty->IsNum()) {
         throw LocError::Create(binary->Begin(),
                                "cannot use non numeric type of binary");
       }
@@ -335,7 +275,7 @@ StmtResult<> TypeChecker::CheckBinary(
       break;
 
     case ast::BinaryOp::Op::MOD:
-      if (!operand_ty->IsUntyped() && !operand_ty->IsFixedInt()) {
+      if (!operand_ty->IsUntyped() && !operand_ty->IsInt()) {
         throw LocError::Create(binary->Begin(),
                                "cannot use non numeric type of binary");
       }
@@ -361,7 +301,7 @@ StmtResult<> TypeChecker::CheckCall(
     throw LocError::Create(call->Begin(), "undefined function %s",
                            call->ident->val.c_str());
   }
-  auto fn_type = decl->AsFuncType();
+  auto fn_type = decl->AsFuncTy();
   if (fn_type->args.size() != call->args.size()) {
     throw LocError::Create(call->Begin(), "args count doesn't match");
   }
@@ -373,7 +313,7 @@ StmtResult<> TypeChecker::CheckCall(
       throw LocError::Create(arg->Begin(), "non type arg ty");
     }
     auto arg_ty = stmt_ty.val;
-    if (!TryResolve(arg_ty, fn_type->args[i])) {
+    if (!ctx_.TryResolve(arg_ty, fn_type->args[i])) {
       throw LocError::Create(arg->Begin(), "mismatched arg ty");
     }
   }
@@ -384,18 +324,18 @@ StmtResult<> TypeChecker::CheckCall(
 StmtResult<> TypeChecker::CheckArray(
     const std::unique_ptr<ast::ArrayExpr>& array) {
   auto size = array->exprs.size();
-  auto elem_ty = Unresolved();
+  auto elem_ty = UnResolved();
   for (auto& expr : array->exprs) {
     auto stmt_ty = CheckExpr(expr);
     if (!stmt_ty.IsExpr()) {
       throw LocError::Create(expr->Begin(), "array expr not type");
     }
-    if (!TryResolve(elem_ty, stmt_ty.val)) {
+    if (!ctx_.TryResolve(elem_ty, stmt_ty.val)) {
       throw LocError::Create(expr->Begin(), "mismatch element type");
     }
   }
   return ctx_.RecordResult(
-      array, StmtResult<>::Expr(std::make_shared<ArrayType>(elem_ty, size)));
+      array, StmtResult<>::Expr(std::make_shared<ArrayTy>(elem_ty, size)));
 }
 
 StmtResult<> TypeChecker::CheckIf(const std::unique_ptr<ast::If>& e) {
@@ -404,7 +344,7 @@ StmtResult<> TypeChecker::CheckIf(const std::unique_ptr<ast::If>& e) {
     throw LocError::Create(e->cond->Begin(), "cond is not type");
   }
   auto cond_ty = cond_stmt_ty.val;
-  if (!TryResolve(cond_ty, kTypeBool)) {
+  if (!ctx_.TryResolve(cond_ty, kTypeBool)) {
     throw LocError::Create(e->cond->Begin(),
                            "if-statement condition must be bool type");
   }
@@ -434,7 +374,7 @@ StmtResult<> TypeChecker::CheckIf(const std::unique_ptr<ast::If>& e) {
     return ctx_.RecordResult(e, StmtResult<>::Ret());
   }
 
-  std::shared_ptr<Type> whole_ty = kTypeVoid;
+  std::shared_ptr<Ty> whole_ty = kTypeVoid;
   if (block_stmt_ty.IsRet()) {
     whole_ty = els_stmt_ty.val;
   } else if (els_stmt_ty.IsRet()) {
@@ -444,9 +384,9 @@ StmtResult<> TypeChecker::CheckIf(const std::unique_ptr<ast::If>& e) {
     // resolve type
     auto block_ty = block_stmt_ty.val;
     auto els_ty = els_stmt_ty.val;
-    if (TryResolve(block_ty, els_ty)) {
+    if (ctx_.TryResolve(block_ty, els_ty)) {
       whole_ty = els_ty;
-    } else if (TryResolve(els_ty, block_ty)) {
+    } else if (ctx_.TryResolve(els_ty, block_ty)) {
       whole_ty = block_ty;
     } else {
       throw LocError::Create(e->Begin(), "unmatched els branches types");

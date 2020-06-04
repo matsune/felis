@@ -3,6 +3,8 @@
 
 #include <sstream>
 
+#include "macro.h"
+
 namespace felis {
 
 std::string ToString(const Token::Kind &kind) {
@@ -113,54 +115,64 @@ std::string ToString(const ast::BinaryOp::Op &op) {
   }
 }
 
-std::string ToString(const std::shared_ptr<Type> &t) {
-  if (!t) return "null";
+std::string ToString(const Ty::Kind &kind) {
+  switch (kind) {
+    case Ty::Kind::UNRESOLVED:
+      return "UNRESOLVED";
+    case Ty::Kind::UNTYPED_INT:
+      return "UNTYPED_INT";
+    case Ty::Kind::UNTYPED_FLOAT:
+      return "UNTYPED_FLOAT";
+    case Ty::Kind::VOID:
+      return "VOID";
+    case Ty::Kind::I8:
+      return "I8";
+    case Ty::Kind::I16:
+      return "I16";
+    case Ty::Kind::I32:
+      return "I32";
+    case Ty::Kind::I64:
+      return "I64";
+    case Ty::Kind::F32:
+      return "F32";
+    case Ty::Kind::F64:
+      return "F64";
+    case Ty::Kind::BOOL:
+      return "BOOL";
+    case Ty::Kind::STRING:
+      return "STRING";
+    case Ty::Kind::FUNC:
+      return "FUNC";
+    case Ty::Kind::ARRAY:
+      return "ARRAY";
+    case Ty::Kind::PTR:
+      return "PTR";
+  };
+}
 
-  if (auto fixed_type = std::dynamic_pointer_cast<FixedType>(t)) {
-    if (auto func_type = std::dynamic_pointer_cast<FuncType>(fixed_type)) {
-      std::string str = "func(";
-      for (auto it = func_type->args.begin(); it != func_type->args.end();
-           ++it) {
-        bool is_begin = it == func_type->args.begin();
-        if (!is_begin) str += ", ";
-        str += ToString(*it);
+std::string ToString(const std::shared_ptr<Ty> &ty) {
+  std::stringstream ss;
+  if (auto func_ty = std::dynamic_pointer_cast<FuncTy>(ty)) {
+    ss << "func (";
+    for (auto it = func_ty->args.begin(); it != func_ty->args.end(); ++it) {
+      if (it != func_ty->args.begin()) {
+        ss << ", ";
       }
-      str += ")";
-      if (!func_type->ret->IsVoid()) {
-        str += " -> " + ToString(func_type->ret);
-      }
-      return str;
-    } else if (auto array_type =
-                   std::dynamic_pointer_cast<ArrayType>(fixed_type)) {
-      std::stringstream s;
-      s << "[" << ToString(array_type->elem) << ", " << array_type->size << "]";
-      return s.str();
-    } else if (auto ptr_type = std::dynamic_pointer_cast<PtrType>(fixed_type)) {
-      std::stringstream s;
-      s << ToString(ptr_type->elem) << "*";
-      return s.str();
-    } else {
-      if (t->IsVoid()) return "void";
-      if (t->IsI8()) return "i8";
-      if (t->IsI16()) return "i16";
-      if (t->IsI32()) return "i32";
-      if (t->IsI64()) return "i64";
-      if (t->IsF32()) return "f32";
-      if (t->IsF64()) return "f64";
-      if (t->IsBool()) return "bool";
-      if (t->IsString()) return "string";
+      ss << ToString(*it);
     }
-  } else if (auto untyped_type = std::dynamic_pointer_cast<Untyped>(t)) {
-    std::stringstream s;
-    if (t->IsUnresolved())
-      s << "unresolved (ref: " << untyped_type->Ref() << ")";
-    if (t->IsUntypedInt())
-      s << "untyped int (ref: " << untyped_type->Ref() << ")";
-    if (t->IsUntypedFloat())
-      s << "untyped float (ref: " << untyped_type->Ref() << ")";
-    return s.str();
+    ss << ") -> " << ToString(func_ty->ret);
+  } else if (auto array_ty = std::dynamic_pointer_cast<ArrayTy>(ty)) {
+    ss << "[" << ToString(array_ty->elem) << ", " << array_ty->size << "]";
+  } else if (auto ptr_ty = std::dynamic_pointer_cast<PtrTy>(ty)) {
+    ss << ToString(ptr_ty->elem) << "*";
+  } else {
+    ss << ToString(ty->kind);
   }
-  UNREACHABLE
+  return ss.str();
+}
+
+std::string ToString(std::shared_ptr<Ty> &ty) {
+  return ToString(const_cast<const std::shared_ptr<Ty> &>(ty));
 }
 
 std::string ToString(const ast::Stmt::Kind &kind) {
