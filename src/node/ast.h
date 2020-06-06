@@ -15,8 +15,6 @@ namespace felis {
 namespace ast {
 
 struct AstNode : public Node {
-  AstNode *parent = nullptr;
-
   virtual const Loc Begin() const = 0;
   virtual const Loc End() const = 0;
 
@@ -99,50 +97,6 @@ struct BinaryOp : public Operator {
 struct Stmt : public AstNode {
   enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
   virtual Stmt::Kind StmtKind() const = 0;
-
-  // A result of Stmt will be used for 3 ways.
-  //
-  // 1. RET_VALUE
-  //  Value of this expr will be a return value of that function.
-  // 2. EXPR_VALUE
-  //  This expr is a part of parent expr or stmt.
-  // 3. DISCARD
-  //  Expr is going to be evaluated but the result won't be used.
-  //
-  // ex.)
-  //  ```
-  //    fn hoge() -> i32 {
-  //      let b = 3 + 2
-  //      4
-  //    }
-  //  ```
-  //
-  // First statement is a VarDeclStmt which consists of Binary expr.
-  // Binary expr has 2 literals for operands. Each exprs (literals and binary
-  // expr) are EXPR_VALUE because they are parts of parent expr or stmt.
-  // Second statement, literal `4` is an independent expr so it's a
-  // DISCARD in the context of block. However, this is the last statement of
-  // parent block so `4` represents a value of parent block. Since parent block
-  // is a function block and this function requires return value, whole block is
-  // a RET_VALUE so `4` also becomes RET_VALUE.
-  //
-  enum Result {
-    RET_VALUE,
-    EXPR_VALUE,
-    DISCARD,
-  };
-
-  Stmt::Result StmtResult() const;
-
-  bool IsResultRetValue() const {
-    return StmtResult() == Stmt::Result::RET_VALUE;
-  }
-
-  bool IsResultExprValue() const {
-    return StmtResult() == Stmt::Result::EXPR_VALUE;
-  }
-
-  bool IsResultDiscard() const { return StmtResult() == Stmt::Result::DISCARD; }
 };
 
 struct Expr : public Stmt {
@@ -158,11 +112,7 @@ struct Block : public Expr {
   unique_deque<Stmt> stmts;
 
   Block(Loc begin, Loc end, unique_deque<Stmt> stmts)
-      : begin(begin), end(end), stmts(std::move(stmts)) {
-    for (auto &stmt : this->stmts) {
-      stmt->parent = this;
-    }
-  }
+      : begin(begin), end(end), stmts(std::move(stmts)) {}
 
   Expr::Kind ExprKind() const override { return Expr::Kind::BLOCK; }
 
@@ -182,11 +132,7 @@ struct If : public Expr {
       : begin(begin),
         cond(std::move(cond)),
         block(std::move(block)),
-        els(std::move(els)) {
-    this->cond->parent = this;
-    this->block->parent = this;
-    if (this->els) this->els->parent = this;
-  }
+        els(std::move(els)) {}
 
   inline bool HasElse() const { return els != nullptr; }
 
@@ -272,10 +218,7 @@ struct ArrayType : public Type {
       : begin(begin),
         end(end),
         elem(std::move(elem)),
-        size_lit(std::move(size_lit)) {
-    this->elem->parent = this;
-    this->size_lit->parent = this;
-  }
+        size_lit(std::move(size_lit)) {}
 
   const Loc Begin() const override { return begin; }
 
@@ -291,11 +234,7 @@ struct BinaryExpr : public Expr {
 
   BinaryExpr(std::unique_ptr<Expr> lhs, std::unique_ptr<BinaryOp> op,
              std::unique_ptr<Expr> rhs)
-      : lhs(std::move(lhs)), rhs(std::move(rhs)), op(std::move(op)) {
-    this->lhs->parent = this;
-    this->op->parent = this;
-    this->rhs->parent = this;
-  }
+      : lhs(std::move(lhs)), rhs(std::move(rhs)), op(std::move(op)) {}
 
   const Loc Begin() const override { return lhs->Begin(); }
 
@@ -310,12 +249,7 @@ struct CallExpr : public Expr {
   unique_deque<Expr> args;
 
   CallExpr(Loc end, std::unique_ptr<Ident> ident, unique_deque<Expr> args)
-      : end(end), ident(std::move(ident)), args(std::move(args)) {
-    this->ident->parent = this;
-    for (auto &arg : this->args) {
-      arg->parent = this;
-    }
-  }
+      : end(end), ident(std::move(ident)), args(std::move(args)) {}
 
   const Loc Begin() const override { return ident->Begin(); }
 
@@ -329,10 +263,7 @@ struct UnaryExpr : public Expr {
   std::unique_ptr<Expr> expr;
 
   UnaryExpr(std::unique_ptr<UnaryOp> op, std::unique_ptr<Expr> expr)
-      : op(std::move(op)), expr(std::move(expr)) {
-    this->op->parent = this;
-    this->expr->parent = this;
-  }
+      : op(std::move(op)), expr(std::move(expr)) {}
 
   const Loc Begin() const override { return op->Begin(); }
 
@@ -346,11 +277,7 @@ struct ArrayExpr : public Expr {
   unique_deque<Expr> exprs;
 
   ArrayExpr(Loc begin, Loc end, unique_deque<Expr> exprs)
-      : begin(begin), end(end), exprs(std::move(exprs)) {
-    for (auto &expr : this->exprs) {
-      expr->parent = this;
-    }
-  }
+      : begin(begin), end(end), exprs(std::move(exprs)) {}
 
   const Loc Begin() const override { return begin; }
 
@@ -365,9 +292,7 @@ struct RetStmt : public Stmt {
   std::unique_ptr<Expr> expr;  // nullable
 
   RetStmt(Loc begin, Loc end, std::unique_ptr<Expr> expr = nullptr)
-      : begin(begin), end(end), expr(std::move(expr)) {
-    if (this->expr) this->expr->parent = this;
-  }
+      : begin(begin), end(end), expr(std::move(expr)) {}
 
   const Loc Begin() const override { return begin; }
 
@@ -390,11 +315,7 @@ struct VarDeclStmt : public Stmt {
         is_let(is_let),
         name(std::move(name)),
         type_name(std::move(type_name)),
-        expr(std::move(expr)) {
-    this->name->parent = this;
-    if (this->type_name) this->type_name->parent = this;
-    this->expr->parent = this;
-  }
+        expr(std::move(expr)) {}
 
   const Loc Begin() const override { return begin; }
 
@@ -408,10 +329,7 @@ struct AssignStmt : public Stmt {
   std::unique_ptr<Expr> expr;
 
   AssignStmt(std::unique_ptr<Ident> name, std::unique_ptr<Expr> expr)
-      : name(std::move(name)), expr(std::move(expr)) {
-    this->name->parent = this;
-    this->expr->parent = this;
-  }
+      : name(std::move(name)), expr(std::move(expr)) {}
 
   const Loc Begin() const override { return name->Begin(); }
 
@@ -426,10 +344,7 @@ struct FnArg : public AstNode {
   std::unique_ptr<Ident> name;  // nullable
 
   FnArg(std::unique_ptr<Type> type_name, std::unique_ptr<Ident> name = nullptr)
-      : type_name(std::move(type_name)), name(std::move(name)) {
-    this->type_name->parent = this;
-    if (this->name) this->name->parent = this;
-  }
+      : type_name(std::move(type_name)), name(std::move(name)) {}
 
   bool WithName() const { return name != nullptr; }
 
@@ -446,11 +361,7 @@ struct FnArgs : public AstNode {
   std::vector<std::unique_ptr<FnArg>> list;
 
   FnArgs(Loc begin, Loc end, std::vector<std::unique_ptr<FnArg>> list)
-      : begin(begin), end(end), list(std::move(list)) {
-    for (auto &arg : this->list) {
-      arg->parent = this;
-    }
-  }
+      : begin(begin), end(end), list(std::move(list)) {}
 
   const Loc Begin() const override { return begin; }
 
@@ -469,13 +380,7 @@ struct FnProto : public AstNode {
       : begin(begin),
         name(std::move(name)),
         args(std::move(args)),
-        ret(std::move(ret)) {
-    std::cout << "FnProto init" << std::endl;
-    this->name->parent = this;
-    this->args->parent = this;
-    if (this->ret) this->ret->parent = this;
-    std::cout << "FnProto init end" << std::endl;
-  }
+        ret(std::move(ret)) {}
 
   const Loc Begin() const override { return begin; }
 
@@ -493,10 +398,7 @@ struct FnDecl : public AstNode {
   std::unique_ptr<Block> block;
 
   FnDecl(std::unique_ptr<FnProto> proto, std::unique_ptr<Block> block)
-      : proto(std::move(proto)), block(std::move(block)) {
-    this->proto->parent = this;
-    this->block->parent = this;
-  }
+      : proto(std::move(proto)), block(std::move(block)) {}
 
   const Loc Begin() const override { return proto->Begin(); }
 
@@ -509,9 +411,7 @@ struct Extern : public AstNode {
   std::unique_ptr<FnProto> proto;
 
   Extern(Loc begin, std::unique_ptr<FnProto> proto)
-      : begin(begin), proto(std::move(proto)) {
-    this->proto->parent = this;
-  }
+      : begin(begin), proto(std::move(proto)) {}
 
   const Loc Begin() const override { return begin; }
 

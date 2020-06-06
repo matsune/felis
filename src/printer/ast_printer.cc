@@ -108,7 +108,6 @@ void AstPrinter::PrintBlock(ast::Block *block) {
       auto &stmt = block->stmts.at(i);
       PrintStmt(stmt.get());
     }
-    Writeln("parent: %p, Result: %d", block->parent, block->StmtResult());
     PrintPtr(block);
   }
   Up("}");
@@ -123,7 +122,6 @@ void AstPrinter::PrintIdent(ast::Ident *ident) {
   Down("Ident {");
   {
     Writeln("Name: " + ident->val);
-    Writeln("parent: %p, Result: %d", ident->parent, ident->StmtResult());
     PrintPtr(ident);
     PrintLoc(ident);
   }
@@ -173,7 +171,6 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
         auto ret = dynamic_cast<ast::RetStmt *>(stmt);
         Write("Expr: ");
         PrintExpr(ret->expr.get());
-        Writeln("parent: %p, Result: %d", ret->parent, ret->StmtResult());
         PrintPtr(ret);
         PrintLoc(ret);
       }
@@ -190,8 +187,6 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
         PrintType(var_decl->type_name.get());
         Write("Expr: ");
         PrintExpr(var_decl->expr.get());
-        Writeln("parent: %p, Result: %d", var_decl->parent,
-                var_decl->StmtResult());
         PrintPtr(var_decl);
         PrintLoc(var_decl);
       }
@@ -205,7 +200,6 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
         PrintIdent(assign->name.get());
         Write("Expr: ");
         PrintExpr(assign->expr.get());
-        Writeln("parent: %p, Result: %d", assign->parent, assign->StmtResult());
         PrintPtr(assign);
         PrintLoc(assign);
       }
@@ -239,7 +233,6 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
         Writeln("Op: " + ToString(binary->op->op));
         Write("Right: ");
         PrintExpr(binary->rhs.get());
-        Writeln("parent: %p, Result: %d", binary->parent, binary->StmtResult());
         PrintPtr(binary);
         PrintLoc(binary);
       }
@@ -260,7 +253,6 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
           }
         }
         Up("]");
-        Writeln("parent: %p, Result: %d", call->parent, call->StmtResult());
         PrintPtr(call);
         PrintLoc(call);
       }
@@ -273,7 +265,6 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
         std::string op = unary->op->kind == ast::UnaryOp::NEG ? "-" : "!";
         Writeln("op: %s", op.c_str());
         PrintExpr(unary->expr.get());
-        Writeln("parent: %p, Result: %d", unary->parent, unary->StmtResult());
         PrintPtr(unary);
         PrintLoc(unary);
       }
@@ -288,8 +279,6 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
         PrintBlock(if_stmt->block.get());
         Write("Else: ");
         PrintExpr(if_stmt->els.get());
-        Writeln("parent: %p, Result: %d", if_stmt->parent,
-                if_stmt->StmtResult());
         PrintPtr(if_stmt);
         PrintLoc(if_stmt);
       }
@@ -307,7 +296,6 @@ void AstPrinter::PrintExpr(ast::Expr *expr) {
           auto expr = array->exprs.at(i).get();
           PrintExpr(expr);
         }
-        Writeln("parent: %p, Result: %d", array->parent, array->StmtResult());
         PrintPtr(array);
         PrintLoc(array);
       }
@@ -327,7 +315,6 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("Int: " + l->val);
-        Writeln("parent: %p, Result: %d", l->parent, l->StmtResult());
         PrintPtr(l);
         PrintLoc(l);
       }
@@ -338,7 +325,6 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("Float: " + l->val);
-        Writeln("parent: %p, Result: %d", l->parent, l->StmtResult());
         PrintPtr(l);
         PrintLoc(l);
       }
@@ -349,7 +335,6 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("Bool: " + l->val);
-        Writeln("parent: %p, Result: %d", l->parent, l->StmtResult());
         PrintPtr(l);
         PrintLoc(l);
       }
@@ -360,7 +345,6 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("Char: '" + l->val + "'");
-        Writeln("parent: %p, Result: %d", l->parent, l->StmtResult());
         PrintPtr(l);
         PrintLoc(l);
       }
@@ -371,7 +355,6 @@ void AstPrinter::PrintLit(ast::Lit *lit) {
       {
         auto l = dynamic_cast<ast::Lit *>(lit);
         Writeln("literal: \"" + l->val + "\"");
-        Writeln("parent: %p, Result: %d", l->parent, l->StmtResult());
         PrintPtr(l);
         PrintLoc(l);
       }
