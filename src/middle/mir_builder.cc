@@ -1,5 +1,8 @@
 #include "mir_builder.h"
 
+#include "macro.h"
+#include "string/string.h"
+
 namespace felis {
 
 std::shared_ptr<mir::BB> MIRBuilder::GetBeforeBB(std::shared_ptr<mir::BB> bb) {
@@ -35,96 +38,62 @@ std::shared_ptr<mir::BB> MIRBuilder::CreateBB(std::shared_ptr<mir::BB> after) {
   return insert_bb;
 }
 
-std::shared_ptr<mir::LValue> MIRBuilder::CreateAlloc(
-    std::shared_ptr<Decl> decl) {
-  auto id = current_bb->parent.GenLocalID();
-  auto lval = std::make_shared<mir::LValue>(
-      id, std::make_shared<PtrTy>(decl->type), decl->name);
-  auto inst = std::make_shared<mir::AllocInst>(lval);
-  current_bb->InsertInst(inst);
-  SetVar(decl, lval);
-  return lval;
+std::shared_ptr<mir::Var> MIRBuilder::CreateVar(std::shared_ptr<Ty> type,
+                                                bool alloc, std::string name) {
+  auto id = current_bb->parent.GenVarID();
+  auto var = std::make_shared<mir::Var>(id, type, alloc, name);
+  current_bb->parent.var_list.push_back(var);
+  return var;
 }
 
-std::shared_ptr<mir::LValue> MIRBuilder::CreateAlloc(std::shared_ptr<Ty> type) {
-  auto id = current_bb->parent.GenLocalID();
-  auto lval = std::make_shared<mir::LValue>(id, std::make_shared<PtrTy>(type));
-  auto inst = std::make_shared<mir::AllocInst>(lval);
-  current_bb->InsertInst(inst);
-  return lval;
+std::shared_ptr<mir::Var> MIRBuilder::CreateAlloc(std::shared_ptr<Decl> decl) {
+  auto var = CreateVar(decl->type, true, decl->name);
+  SetVar(decl, var);
+  return var;
 }
 
-std::shared_ptr<mir::Val> MIRBuilder::CreateVal(std::shared_ptr<Ty> type) {
-  auto id = current_bb->parent.GenLocalID();
-  return std::make_shared<mir::Val>(id, type);
-}
-
-std::shared_ptr<mir::Val> MIRBuilder::CreateLoad(std::shared_ptr<Decl> decl) {
-  auto val = CreateVal(decl->type);
-  auto lval = GetVar(decl);
-  current_bb->InsertInst(std::make_shared<mir::LoadInst>(val, lval));
-  return val;
-}
-
-std::shared_ptr<mir::Val> MIRBuilder::CreateLoad(
-    std::shared_ptr<mir::LValue> lval) {
-  auto val = CreateVal(lval->type);
-  current_bb->InsertInst(std::make_shared<mir::LoadInst>(val, lval));
-  return val;
-}
-
-void MIRBuilder::CreateStore(std::shared_ptr<mir::LValue> lval,
-                             std::shared_ptr<mir::RValue> rval) {
-  auto inst = std::make_shared<mir::StoreInst>(lval, rval);
+void MIRBuilder::CreateAssign(std::shared_ptr<mir::Value> into,
+                              std::shared_ptr<mir::Value> value) {
+  auto inst = std::make_shared<mir::AssignInst>(into, value);
   current_bb->InsertInst(inst);
 }
 
-std::shared_ptr<mir::Val> MIRBuilder::CreateUnary(
-    mir::UnaryInst::Op op, std::shared_ptr<mir::RValue> operand) {
-  auto val = CreateVal(operand->type);
-  auto binary = std::make_shared<mir::UnaryInst>(val, op, operand);
+std::shared_ptr<mir::Var> MIRBuilder::CreateUnary(
+    mir::UnaryInst::Op op, std::shared_ptr<mir::Value> operand) {
+  auto var = CreateVar(operand->type, false);
+  auto binary = std::make_shared<mir::UnaryInst>(var, op, operand);
   current_bb->InsertInst(binary);
-  return val;
+  return var;
 }
 
-std::shared_ptr<mir::Val> MIRBuilder::CreateBinary(
-    mir::BinaryInst::Op op, std::shared_ptr<mir::RValue> lhs,
-    std::shared_ptr<mir::RValue> rhs) {
-  auto val = CreateVal(lhs->type);
-  auto binary = std::make_shared<mir::BinaryInst>(val, op, lhs, rhs);
+std::shared_ptr<mir::Var> MIRBuilder::CreateBinary(
+    mir::BinaryInst::Op op, std::shared_ptr<mir::Value> lhs,
+    std::shared_ptr<mir::Value> rhs) {
+  auto var = CreateVar(lhs->type, false);
+  auto binary = std::make_shared<mir::BinaryInst>(var, op, lhs, rhs);
   current_bb->InsertInst(binary);
-  return val;
+  return var;
 }
 
-std::shared_ptr<mir::Val> MIRBuilder::CreateCmp(
-    mir::CmpInst::Op op, std::shared_ptr<mir::RValue> lhs,
-    std::shared_ptr<mir::RValue> rhs) {
-  auto val = CreateVal(kTypeBool);
-  auto cmp = std::make_shared<mir::CmpInst>(val, op, lhs, rhs);
+std::shared_ptr<mir::Var> MIRBuilder::CreateCmp(
+    mir::CmpInst::Op op, std::shared_ptr<mir::Value> lhs,
+    std::shared_ptr<mir::Value> rhs) {
+  auto var = CreateVar(kTypeBool, false);
+  auto cmp = std::make_shared<mir::CmpInst>(var, op, lhs, rhs);
   current_bb->InsertInst(cmp);
-  return val;
+  return var;
 }
 
-std::shared_ptr<mir::Val> MIRBuilder::CreateArray(
-    std::shared_ptr<ArrayTy> type,
-    std::vector<std::shared_ptr<mir::RValue>> values) {
-  auto val = CreateVal(type);
-  auto array = std::make_shared<mir::ArrayInst>(val, values);
-  current_bb->InsertInst(array);
-  return val;
-}
-
-std::shared_ptr<mir::Val> MIRBuilder::CreateCall(
-    std::shared_ptr<Decl> decl,
-    std::vector<std::shared_ptr<mir::RValue>> args) {
-  auto val = CreateVal(decl->AsFuncTy()->ret);
+std::shared_ptr<mir::Var> MIRBuilder::CreateCall(
+    std::shared_ptr<Decl> decl, std::vector<std::shared_ptr<mir::Value>> args) {
+  auto var = CreateVar(decl->AsFuncTy()->ret, false);
   auto func = GetFunction(decl);
-  current_bb->InsertInst(std::make_shared<mir::CallInst>(val, args, func));
-  return val;
+  current_bb->InsertInst(std::make_shared<mir::CallInst>(var, args, func));
+  return var;
 }
 
 std::shared_ptr<mir::BrInst> MIRBuilder::CreateCond(
-    std::shared_ptr<mir::RValue> cond, std::shared_ptr<mir::BB> then_bb,
+    std::shared_ptr<mir::Value> cond, std::shared_ptr<mir::BB> then_bb,
     std::shared_ptr<mir::BB> else_bb) {
   auto inst = std::make_shared<mir::BrInst>(cond, then_bb, else_bb);
   current_bb->InsertInst(inst);
@@ -136,7 +105,7 @@ void MIRBuilder::CreateGoto(std::shared_ptr<mir::BB> goto_bb) {
   current_bb->InsertInst(inst);
 }
 
-void MIRBuilder::CreateRet(std::shared_ptr<mir::RValue> val) {
+void MIRBuilder::CreateRet(std::shared_ptr<mir::Value> val) {
   auto inst = std::make_shared<mir::RetInst>(val);
   current_bb->InsertInst(inst);
 }

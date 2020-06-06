@@ -1,6 +1,9 @@
 #ifndef FELIS_NODE_MIR_H_
 #define FELIS_NODE_MIR_H_
 
+#include <map>
+
+#include "check/decl.h"
 #include "check/ty.h"
 #include "node/ast.h"
 
@@ -12,24 +15,24 @@ struct Func;
 struct Function;
 struct BB;
 
-struct RValue {
+struct Value {
   enum Kind {
     CONST_INT,
     CONST_FLOAT,
     CONST_STRING,
     CONST_BOOL,
-    VAL,
+    VAR,
   };
 
-  virtual RValue::Kind RValueKind() const = 0;
+  virtual Value::Kind ValueKind() const = 0;
 
   std::shared_ptr<Ty> type;
 
-  RValue(std::shared_ptr<Ty> type) : type(type) {}
+  Value(std::shared_ptr<Ty> type) : type(type) {}
 };
 
-struct Constant : RValue {
-  Constant(std::shared_ptr<Ty> type) : RValue(type){};
+struct Constant : Value {
+  Constant(std::shared_ptr<Ty> type) : Value(type){};
 };
 
 struct ConstantInt : Constant {
@@ -38,7 +41,7 @@ struct ConstantInt : Constant {
   ConstantInt(std::shared_ptr<Ty> type, int64_t val)
       : Constant(type), val(val){};
 
-  RValue::Kind RValueKind() const override { return RValue::Kind::CONST_INT; }
+  Value::Kind ValueKind() const override { return Value::Kind::CONST_INT; }
 };
 
 struct ConstantFloat : Constant {
@@ -47,7 +50,7 @@ struct ConstantFloat : Constant {
   ConstantFloat(std::shared_ptr<Ty> type, double val)
       : Constant(type), val(val){};
 
-  RValue::Kind RValueKind() const override { return RValue::Kind::CONST_FLOAT; }
+  Value::Kind ValueKind() const override { return Value::Kind::CONST_FLOAT; }
 };
 
 struct ConstantString : Constant {
@@ -55,9 +58,7 @@ struct ConstantString : Constant {
 
   ConstantString(std::string val) : Constant(kTypeString), val(val){};
 
-  RValue::Kind RValueKind() const override {
-    return RValue::Kind::CONST_STRING;
-  }
+  Value::Kind ValueKind() const override { return Value::Kind::CONST_STRING; }
 };
 
 struct ConstantBool : Constant {
@@ -65,107 +66,66 @@ struct ConstantBool : Constant {
 
   ConstantBool(bool val) : Constant(kTypeBool), val(val){};
 
-  RValue::Kind RValueKind() const override { return RValue::Kind::CONST_BOOL; }
+  Value::Kind ValueKind() const override { return Value::Kind::CONST_BOOL; }
 };
 
-struct Local {
+struct Var : Value {
   using ID = int;
   ID id;
-
-  Local(ID id) : id(id) {}
-};
-
-struct Val : RValue, Local {
-  Val(ID id, std::shared_ptr<Ty> type) : RValue(type), Local(id){};
-
-  RValue::Kind RValueKind() const override { return RValue::Kind::VAL; }
-};
-
-struct LValue : Local {
   std::string name;
-  std::shared_ptr<PtrTy> type;
+  bool alloc;
 
-  LValue(ID id, std::shared_ptr<PtrTy> type, std::string name = "")
-      : Local(id), type(type), name(name){};
+  Var(ID id, std::shared_ptr<Ty> type, bool alloc, std::string name = "")
+      : Value(type), id(id), alloc(alloc), name(name){};
+
+  Value::Kind ValueKind() const override { return Value::Kind::VAR; }
 };
 
 struct Inst {
-  enum Kind {
-    ALLOC,
-    LOAD,
-    STORE,
-    UNARY,
-    BINARY,
-    CMP,
-    ARRAY,
-    CALL,
-    BR,
-    GOTO,
-    RET
-  };
+  enum Kind { ASSIGN, UNARY, BINARY, CMP, GEP, CALL, BR, GOTO, RET };
 
   virtual Inst::Kind InstKind() const = 0;
 };
 
-// lval: *T = alloc T
-struct AllocInst : Inst {
-  std::shared_ptr<LValue> lval;
+// into: *T = store value: T
+struct AssignInst : Inst {
+  std::shared_ptr<Value> into;
+  std::shared_ptr<Value> value;
 
-  AllocInst(std::shared_ptr<LValue> lval) : lval(lval) {}
+  AssignInst(std::shared_ptr<Value> into, std::shared_ptr<Value> value)
+      : into(into), value(value) {}
 
-  Inst::Kind InstKind() const override { return Inst::Kind::ALLOC; }
+  Inst::Kind InstKind() const override { return Inst::Kind::ASSIGN; }
 };
 
-// val: T = load lval: *T
-struct LoadInst : Inst {
-  std::shared_ptr<Val> val;
-  std::shared_ptr<LValue> lval;
-
-  LoadInst(std::shared_ptr<Val> val, std::shared_ptr<LValue> lval)
-      : val(val), lval(lval) {}
-
-  Inst::Kind InstKind() const override { return Inst::Kind::LOAD; }
-};
-
-// lval: *T = store rval: T
-struct StoreInst : Inst {
-  std::shared_ptr<LValue> lval;
-  std::shared_ptr<RValue> rval;
-
-  StoreInst(std::shared_ptr<LValue> lval, std::shared_ptr<RValue> rval)
-      : lval(lval), rval(rval) {}
-
-  Inst::Kind InstKind() const override { return Inst::Kind::STORE; }
-};
-
-// val: T = Op(operand: T)
+// var: T = Op(operand: T)
 struct UnaryInst : Inst {
   enum Op { NEG, NOT };
-  std::shared_ptr<Val> val;
+  std::shared_ptr<Var> var;
   Op op;
-  std::shared_ptr<RValue> operand;
+  std::shared_ptr<Value> operand;
 
-  UnaryInst(std::shared_ptr<Val> val, Op op, std::shared_ptr<RValue> operand)
-      : val(val), op(op), operand(operand) {
-    assert(*val->type == *operand->type);
+  UnaryInst(std::shared_ptr<Var> var, Op op, std::shared_ptr<Value> operand)
+      : var(var), op(op), operand(operand) {
+    assert(*var->type == *operand->type);
   }
 
   Inst::Kind InstKind() const override { return Inst::Kind::UNARY; }
 };
 
-// val: T = Op(lhs: T, rhs: T)
+// var: T = Op(lhs: T, rhs: T)
 struct BinaryInst : Inst {
   enum Op { ADD, SUB, MUL, DIV, MOD };
-  std::shared_ptr<Val> val;
+  std::shared_ptr<Var> var;
   Op op;
-  std::shared_ptr<RValue> lhs;
-  std::shared_ptr<RValue> rhs;
+  std::shared_ptr<Value> lhs;
+  std::shared_ptr<Value> rhs;
 
-  BinaryInst(std::shared_ptr<Val> val, Op op, std::shared_ptr<RValue> lhs,
-             std::shared_ptr<RValue> rhs)
-      : val(val), op(op), lhs(lhs), rhs(rhs) {
-    assert(*val->type == *lhs->type);
-    assert(*val->type == *rhs->type);
+  BinaryInst(std::shared_ptr<Var> var, Op op, std::shared_ptr<Value> lhs,
+             std::shared_ptr<Value> rhs)
+      : var(var), op(op), lhs(lhs), rhs(rhs) {
+    assert(*var->type == *lhs->type);
+    assert(*var->type == *rhs->type);
   }
 
   Inst::Kind InstKind() const override { return Inst::Kind::BINARY; }
@@ -181,57 +141,51 @@ struct CmpInst : Inst {
     GT,
     GE,
   };
-  std::shared_ptr<Val> val;
+  std::shared_ptr<Var> var;
   Op op;
-  std::shared_ptr<RValue> lhs;
-  std::shared_ptr<RValue> rhs;
+  std::shared_ptr<Value> lhs;
+  std::shared_ptr<Value> rhs;
 
-  CmpInst(std::shared_ptr<Val> val, Op op, std::shared_ptr<RValue> lhs,
-          std::shared_ptr<RValue> rhs)
-      : val(val), op(op), lhs(lhs), rhs(rhs) {
-    assert(*val->type == *kTypeBool);
+  CmpInst(std::shared_ptr<Var> var, Op op, std::shared_ptr<Value> lhs,
+          std::shared_ptr<Value> rhs)
+      : var(var), op(op), lhs(lhs), rhs(rhs) {
+    assert(*var->type == *kTypeBool);
   }
 
   Inst::Kind InstKind() const override { return Inst::Kind::CMP; }
 };
 
-// val: [T, n] = [value: T, ...]
-struct ArrayInst : Inst {
-  std::shared_ptr<Val> val;
-  std::vector<std::shared_ptr<RValue>> values;
+struct GepInst : Inst {
+  std::shared_ptr<Var> var;
+  std::shared_ptr<Var> arr;
+  int idx;
 
-  ArrayInst(std::shared_ptr<Val> val,
-            std::vector<std::shared_ptr<RValue>> values)
-      : val(val), values(values) {}
+  GepInst(std::shared_ptr<Var> var, std::shared_ptr<Var> arr, int idx)
+      : var(var), arr(arr), idx(idx) {}
 
-  Inst::Kind InstKind() const override { return Inst::Kind::ARRAY; }
+  Inst::Kind InstKind() const override { return Inst::Kind::GEP; }
 };
 
-// val: T* = gep lval: [T], idx: int
-/* struct GepInst : Inst { */
-/*   std::shared_ptr<Val> val; */
-/* }; */
-
-// val: T = call func(arg: S, ...)
+// var: T = call func(args...) -> T
 struct CallInst : Inst {
-  std::shared_ptr<Val> val;
-  std::vector<std::shared_ptr<RValue>> args;
+  std::shared_ptr<Var> var;
+  std::vector<std::shared_ptr<Value>> args;
   std::shared_ptr<Func> func;
 
-  CallInst(std::shared_ptr<Val> val, std::vector<std::shared_ptr<RValue>> args,
+  CallInst(std::shared_ptr<Var> var, std::vector<std::shared_ptr<Value>> args,
            std::shared_ptr<Func> func)
-      : val(val), args(args), func(func) {}
+      : var(var), args(args), func(func) {}
 
   Inst::Kind InstKind() const override { return Inst::Kind::CALL; }
 };
 
 // br(cond: bool) [then: then_bb, otherwise: else_bb]
 struct BrInst : Inst {
-  std::shared_ptr<RValue> cond;
+  std::shared_ptr<Value> cond;
   std::shared_ptr<BB> then_bb;
   std::shared_ptr<BB> else_bb;
 
-  BrInst(std::shared_ptr<RValue> cond, std::shared_ptr<BB> then_bb,
+  BrInst(std::shared_ptr<Value> cond, std::shared_ptr<BB> then_bb,
          std::shared_ptr<BB> else_bb)
       : cond(cond), then_bb(then_bb), else_bb(else_bb) {
     assert(*cond->type == *kTypeBool);
@@ -251,9 +205,9 @@ struct GotoInst : Inst {
 
 // ret val: T?
 struct RetInst : Inst {
-  std::shared_ptr<RValue> val;
+  std::shared_ptr<Value> val;
 
-  RetInst(std::shared_ptr<RValue> val) : val(val) {}
+  RetInst(std::shared_ptr<Value> val) : val(val) {}
 
   Inst::Kind InstKind() const override { return Inst::Kind::RET; }
 };
@@ -287,22 +241,29 @@ struct Func {
 };
 
 struct Function : Func {
-  std::vector<std::shared_ptr<RValue>> args;
+  std::vector<std::shared_ptr<Value>> args;
   std::shared_ptr<BB> entry_bb;
+
+  std::map<std::shared_ptr<Decl>, std::shared_ptr<mir::Var>> var_map;
+  std::vector<std::shared_ptr<mir::Var>> var_list;
 
   Function(FunctionID id, std::string name, std::shared_ptr<FuncTy> type)
       : Func(id, name, type),
-        next_local_id(0),
+        next_var_id(0),
         next_bb_id(1),
         entry_bb(new BB(0, *this)) {}
 
   bool IsExt() override { return false; }
 
-  mir::Local::ID GenLocalID() { return next_local_id++; }
+  mir::Var::ID GenVarID() { return next_var_id++; }
   mir::BB::ID GenBBID() { return next_bb_id++; }
 
+  void SetVar(std::shared_ptr<Decl> decl, std::shared_ptr<mir::Var> var) {
+    var_map[decl] = var;
+  }
+
  private:
-  mir::Local::ID next_local_id;
+  mir::Var::ID next_var_id;
   mir::BB::ID next_bb_id;
 };
 

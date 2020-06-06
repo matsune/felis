@@ -114,11 +114,11 @@ void Lower::Lowering(std::unique_ptr<ast::File> file) {
 
     for (auto &arg : fn_decl->proto->args->list) {
       auto decl = ctx_.GetDecl(arg->name);
-      auto val = builder_.CreateVal(ctx_.ResolvedType(decl->type));
-      func->args.push_back(val);
+      auto var = builder_.CreateVar(ctx_.ResolvedType(decl->type), false);
+      func->args.push_back(var);
 
       auto lval = builder_.CreateAlloc(decl);
-      builder_.CreateStore(lval, val);
+      builder_.CreateAssign(lval, var);
     }
   }
 
@@ -130,62 +130,71 @@ void Lower::Lowering(std::unique_ptr<ast::File> file) {
         std::dynamic_pointer_cast<mir::Function>(builder_.GetFunction(decl));
     builder_.SetInsertBB(function->entry_bb);
 
-    auto result = LowerBlock(std::move(fn_decl->block));
-    if (result.IsExpr()) {
-      builder_.CreateRet(result.val);
-    } else if (result.IsNonValue()) {
-      builder_.CreateRet();
+    auto block_res = ctx_.GetResult(fn_decl->block);
+    auto val = LowerBlock(std::move(fn_decl->block));
+    if (!block_res.IsRet()) {
+      if (function->type->ret->IsVoid()) {
+        builder_.CreateRet(nullptr);
+      } else {
+        builder_.CreateRet(val);
+      }
     }
   }
   std::cout << "End Lowering" << std::endl;
 }
 
-LowStmtResult Lower::LowerStmt(std::unique_ptr<ast::Stmt> stmt) {
+std::shared_ptr<mir::Value> Lower::LowerStmt(std::unique_ptr<ast::Stmt> stmt) {
   std::cout << "LowerStmt " << ToString(stmt->StmtKind()) << std::endl;
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR:
       return LowerExpr(unique_cast<ast::Expr>(std::move(stmt)));
     case ast::Stmt::Kind::RET:
-      return LowerRet(unique_cast<ast::RetStmt>(std::move(stmt)));
+      LowerRet(unique_cast<ast::RetStmt>(std::move(stmt)));
+      break;
     case ast::Stmt::Kind::VAR_DECL:
-      return LowerVarDecl(unique_cast<ast::VarDeclStmt>(std::move(stmt)));
+      LowerVarDecl(unique_cast<ast::VarDeclStmt>(std::move(stmt)));
+      break;
     case ast::Stmt::Kind::ASSIGN:
-      return LowerAssign(unique_cast<ast::AssignStmt>(std::move(stmt)));
+      LowerAssign(unique_cast<ast::AssignStmt>(std::move(stmt)));
+      break;
   }
+  return nullptr;
 }
 
-LowStmtResult Lower::LowerRet(std::unique_ptr<ast::RetStmt> stmt) {
+void Lower::LowerRet(std::unique_ptr<ast::RetStmt> stmt) {
   if (stmt->expr) {
-    auto result = LowerExpr(std::move(stmt->expr));
-    if (result.IsExpr()) {
-      auto rval = result.val;
-      builder_.CreateRet(rval);
-    } else {
-      builder_.CreateRet();
-    }
+    auto val = LowerExpr(std::move(stmt->expr));
+    builder_.CreateRet(val);
   } else {
     builder_.CreateRet();
   }
-  return LowStmtResult::Ret();
 }
 
-LowStmtResult Lower::LowerVarDecl(std::unique_ptr<ast::VarDeclStmt> stmt) {
+void Lower::LowerVarDecl(std::unique_ptr<ast::VarDeclStmt> stmt) {
   auto decl = ctx_.GetDecl(stmt->name);
+
+  auto val = LowerExpr(std::move(stmt->expr));
+
+  if (auto var = std::dynamic_pointer_cast<mir::Var>(val)) {
+    if (var->alloc) {
+      builder_.SetVar(decl, var);
+      return;
+    }
+  }
+
   auto lval = builder_.CreateAlloc(decl);
-  auto rval = LowerExpr(std::move(stmt->expr)).val;
-  builder_.CreateStore(lval, rval);
-  return LowStmtResult::NonValue();
+  builder_.CreateAssign(lval, val);
+  builder_.SetVar(decl, lval);
 }
 
-LowStmtResult Lower::LowerAssign(std::unique_ptr<ast::AssignStmt> stmt) {
+void Lower::LowerAssign(std::unique_ptr<ast::AssignStmt> stmt) {
   auto decl = ctx_.GetDecl(stmt->name);
   auto lval = builder_.GetVar(decl);
-  auto rval = LowerExpr(std::move(stmt->expr)).val;
-  builder_.CreateStore(lval, rval);
-  return LowStmtResult::NonValue();
+  auto rval = LowerExpr(std::move(stmt->expr));
+  builder_.CreateAssign(lval, rval);
 }
 
-LowStmtResult Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
+std::shared_ptr<mir::Value> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
   std::cout << "LowerExpr " << ToString(expr->ExprKind()) << std::endl;
   switch (expr->ExprKind()) {
     case ast::Expr::Kind::IDENT:
@@ -207,13 +216,13 @@ LowStmtResult Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
   }
 }
 
-LowStmtResult Lower::LowerIdent(std::unique_ptr<ast::Ident> ident) {
+std::shared_ptr<mir::Value> Lower::LowerIdent(
+    std::unique_ptr<ast::Ident> ident) {
   auto decl = ctx_.GetDecl(ident);
-  auto val = builder_.CreateLoad(decl);
-  return LowStmtResult::Expr(val);
+  return builder_.GetVar(decl);
 }
 
-LowStmtResult Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
+std::shared_ptr<mir::Constant> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
   std::shared_ptr<mir::Constant> val;
   switch (lit->LitKind()) {
     case ast::Lit::Kind::CHAR: {
@@ -245,7 +254,7 @@ LowStmtResult Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
       val = std::make_unique<mir::ConstantString>(lit->val);
     } break;
   }
-  return LowStmtResult::Expr(val);
+  return val;
 }
 
 std::unique_ptr<mir::Constant> Lower::ParseIntLit(
@@ -292,59 +301,65 @@ std::unique_ptr<mir::ConstantFloat> Lower::ParseFloatLit(
   return std::make_unique<mir::ConstantFloat>(ty, n);
 }
 
-LowStmtResult Lower::LowerBinary(std::unique_ptr<ast::BinaryExpr> expr) {
-  auto lhs = LowerExpr(std::move(expr->lhs)).val;
-  auto rhs = LowerExpr(std::move(expr->rhs)).val;
-  std::shared_ptr<mir::RValue> val;
+std::shared_ptr<mir::Value> Lower::LowerBinary(
+    std::unique_ptr<ast::BinaryExpr> expr) {
+  auto lhs = LowerExpr(std::move(expr->lhs));
+  auto rhs = LowerExpr(std::move(expr->rhs));
   if (IsBinOp(expr->op->op)) {
     auto op = BinOp(expr->op->op);
-    val = builder_.CreateBinary(op, lhs, rhs);
+    return builder_.CreateBinary(op, lhs, rhs);
   } else if (IsCmpOp(expr->op->op)) {
     auto op = CmpOp(expr->op->op);
-    val = builder_.CreateCmp(op, lhs, rhs);
+    return builder_.CreateCmp(op, lhs, rhs);
   } else {
     UNREACHABLE
   }
-  return LowStmtResult::Expr(val);
 }
 
-LowStmtResult Lower::LowerCall(std::unique_ptr<ast::CallExpr> expr) {
+std::shared_ptr<mir::Value> Lower::LowerCall(
+    std::unique_ptr<ast::CallExpr> expr) {
   auto decl = ctx_.GetDecl(expr->ident);
-  std::vector<std::shared_ptr<mir::RValue>> args;
+  std::vector<std::shared_ptr<mir::Value>> args;
   while (!expr->args.empty()) {
-    args.push_back(LowerExpr(expr->args.move_front()).val);
+    args.push_back(LowerExpr(expr->args.move_front()));
   }
-  auto val = builder_.CreateCall(decl, std::move(args));
-  return LowStmtResult::Expr(val);
+  return builder_.CreateCall(decl, std::move(args));
 }
 
-LowStmtResult Lower::LowerUnary(std::unique_ptr<ast::UnaryExpr> unary) {
+std::shared_ptr<mir::Value> Lower::LowerUnary(
+    std::unique_ptr<ast::UnaryExpr> unary) {
   auto ty = ctx_.GetResult(unary).val;
-  auto expr = LowerExpr(std::move(unary->expr)).val;
-  auto val = builder_.CreateUnary(UnaryOp(unary->op->kind), expr);
-  return LowStmtResult::Expr(val);
+  auto expr = LowerExpr(std::move(unary->expr));
+  return builder_.CreateUnary(UnaryOp(unary->op->kind), expr);
 }
 
-LowStmtResult Lower::LowerArray(std::unique_ptr<ast::ArrayExpr> array) {
+std::shared_ptr<mir::Var> Lower::LowerArray(
+    std::unique_ptr<ast::ArrayExpr> array) {
   auto type = std::dynamic_pointer_cast<ArrayTy>(ctx_.GetResult(array).val);
-  std::vector<std::shared_ptr<mir::RValue>> values;
+  auto alloc_var = builder_.CreateVar(type, true);
+  auto idx = 0;
   while (!array->exprs.empty()) {
     auto expr = array->exprs.move_front();
-    values.push_back(LowerExpr(std::move(expr)).val);
+    auto res = LowerExpr(std::move(expr));
+
+    auto idx_var = builder_.CreateVar(ToPtr(type->elem), false);
+    builder_.current_bb->InsertInst(
+        std::make_shared<mir::GepInst>(idx_var, alloc_var, idx++));
+    builder_.CreateAssign(idx_var, res);
   }
-  return LowStmtResult::Expr(builder_.CreateArray(type, values));
+  return alloc_var;
 }
 
-LowStmtResult Lower::LowerIf(std::unique_ptr<ast::If> if_stmt) {
+std::shared_ptr<mir::Var> Lower::LowerIf(std::unique_ptr<ast::If> if_stmt) {
   bool has_else = if_stmt->HasElse();
 
   auto stmt_res = ctx_.GetResult(if_stmt);
-  std::shared_ptr<mir::LValue> lval = nullptr;
+  std::shared_ptr<mir::Var> lval = nullptr;
   if (stmt_res.IsExpr()) {
-    lval = builder_.CreateAlloc(stmt_res.val);
+    lval = builder_.CreateVar(stmt_res.val, true);
   }
 
-  auto cond_expr = LowerExpr(std::move(if_stmt->cond)).val;
+  auto cond_expr = LowerExpr(std::move(if_stmt->cond));
   auto then_bb = builder_.CreateBB();
 
   if (!has_else) {
@@ -352,12 +367,13 @@ LowStmtResult Lower::LowerIf(std::unique_ptr<ast::If> if_stmt) {
     auto end_bb = builder_.CreateBB(then_bb);
     auto cond = builder_.CreateCond(cond_expr, then_bb, end_bb);
     builder_.SetInsertBB(cond->then_bb);
+    auto block_res = ctx_.GetResult(if_stmt->block);
     auto then_result = LowerBlock(std::move(if_stmt->block));
-    if (!then_result.IsRet()) {
+    if (!block_res.IsRet()) {
       builder_.CreateGoto(end_bb);
     }
     builder_.SetInsertBB(end_bb);
-    return LowStmtResult::NonValue();
+    return nullptr;
   }
 
   if (stmt_res.IsRet()) {
@@ -372,53 +388,52 @@ LowStmtResult Lower::LowerIf(std::unique_ptr<ast::If> if_stmt) {
     } else {
       LowerBlock(unique_cast<ast::Block>(std::move(if_stmt->els)));
     }
-    return LowStmtResult::Ret();
+    return nullptr;
   }
 
   auto else_bb = builder_.CreateBB(then_bb);
   auto end_bb = builder_.CreateBB(else_bb);
   auto cond = builder_.CreateCond(cond_expr, then_bb, else_bb);
   builder_.SetInsertBB(then_bb);
-  auto then_result = LowerBlock(std::move(if_stmt->block));
-  if (!then_result.IsRet()) {
-    if (lval && then_result.IsExpr()) {
-      builder_.CreateStore(lval, then_result.val);
+  auto block_res = ctx_.GetResult(if_stmt->block);
+  auto block_val = LowerBlock(std::move(if_stmt->block));
+  if (!block_res.IsRet()) {
+    if (lval && block_val) {
+      builder_.CreateAssign(lval, block_val);
     }
     builder_.CreateGoto(end_bb);
   }
 
   builder_.SetInsertBB(else_bb);
-  auto else_result = LowStmtResult::NonValue();
+  auto else_res = ctx_.GetResult(if_stmt->els);
+  std::shared_ptr<mir::Value> else_val;
   if (if_stmt->IsElseIf()) {
-    else_result = LowerIf(unique_cast<ast::If>(std::move(if_stmt->els)));
+    else_val = LowerIf(unique_cast<ast::If>(std::move(if_stmt->els)));
   } else {
-    else_result = LowerBlock(unique_cast<ast::Block>(std::move(if_stmt->els)));
+    else_val = LowerBlock(unique_cast<ast::Block>(std::move(if_stmt->els)));
   }
-  if (!else_result.IsRet()) {
-    if (lval && else_result.IsExpr()) {
-      builder_.CreateStore(lval, else_result.val);
+  if (!else_res.IsRet()) {
+    if (lval && else_val) {
+      builder_.CreateAssign(lval, else_val);
     }
     builder_.CreateGoto(end_bb);
   }
 
   builder_.SetInsertBB(end_bb);
 
-  if (stmt_res.IsExpr()) {
-    return LowStmtResult::Expr(builder_.CreateLoad(lval));
-  } else {
-    return LowStmtResult::NonValue();
-  }
+  return lval;
 }
 
-LowStmtResult Lower::LowerBlock(std::unique_ptr<ast::Block> block) {
+std::shared_ptr<mir::Value> Lower::LowerBlock(
+    std::unique_ptr<ast::Block> block) {
   std::cout << "LowerBLOCK " << block.get() << std::endl;
-  LowStmtResult result = LowStmtResult::NonValue();
+  std::shared_ptr<mir::Value> val;
   while (!block->stmts.empty()) {
     auto stmt = block->stmts.move_front();
-    result = LowerStmt(std::move(stmt));
+    val = LowerStmt(std::move(stmt));
   }
   std::cout << "END LowerBLOCK " << block.get() << std::endl;
-  return result;
+  return val;
 }
 
 }  // namespace felis

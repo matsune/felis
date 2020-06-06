@@ -14,7 +14,7 @@ namespace felis {
 class TypeCheckCtx {
  public:
   using IdentDeclMap = std::map<const ast::Ident *, std::shared_ptr<Decl>>;
-  using ResultMap = std::map<const ast::Stmt *, StmtResult<>>;
+  using ResultMap = std::map<const ast::Expr *, StmtResult>;
 
   TypeCheckCtx(bool is_32bit) : is_32bit(is_32bit) {}
 
@@ -24,7 +24,7 @@ class TypeCheckCtx {
   }
 
   template <typename T>
-  StmtResult<> RecordResult(const std::unique_ptr<T> &n, StmtResult<> result) {
+  StmtResult RecordResult(const std::unique_ptr<T> &n, StmtResult result) {
     result_map_[n.get()] = result;
     return result;
   }
@@ -36,7 +36,7 @@ class TypeCheckCtx {
   }
 
   template <typename K>
-  StmtResult<> GetResult(const std::unique_ptr<K> &n) const {
+  StmtResult GetResult(const std::unique_ptr<K> &n) const {
     return result_map_.at(n.get());
   }
 

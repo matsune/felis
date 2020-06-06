@@ -9,6 +9,8 @@
 
 namespace felis {
 
+struct PtrTy;
+
 struct Ty {
   enum Kind {
     // untyped
@@ -70,6 +72,8 @@ struct Ty {
   }
 
   bool IsNum() const { return IsInt() || IsFloat(); }
+
+  std::shared_ptr<PtrTy> ToPtr();
 };
 
 struct FuncTy : Ty {
@@ -110,6 +114,8 @@ std::shared_ptr<Ty> ArchInt(bool);
 std::shared_ptr<Ty> UnResolved();
 std::shared_ptr<Ty> UntypedInt();
 std::shared_ptr<Ty> UntypedFloat();
+
+std::shared_ptr<Ty> ToPtr(std::shared_ptr<Ty>);
 
 }  // namespace felis
 

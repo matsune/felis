@@ -42,34 +42,29 @@ llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<Ty>& ty) {
   UNREACHABLE
 }
 
-llvm::Value* LLVMBuilder::GetRValue(std::shared_ptr<mir::RValue> rvalue) {
-  std::cout << "GetRValue " << rvalue.get() << std::endl;
-  switch (rvalue->RValueKind()) {
-    case mir::RValue::Kind::CONST_BOOL: {
-      auto v = std::dynamic_pointer_cast<mir::ConstantBool>(rvalue);
+llvm::Value* LLVMBuilder::GetValue(std::shared_ptr<mir::Value> value) {
+  std::cout << "GetValue " << value.get() << std::endl;
+  switch (value->ValueKind()) {
+    case mir::Value::Kind::CONST_BOOL: {
+      auto v = std::dynamic_pointer_cast<mir::ConstantBool>(value);
       return v->val ? llvm::ConstantInt::getTrue(ctx_)
                     : llvm::ConstantInt::getFalse(ctx_);
     } break;
-    case mir::RValue::Kind::CONST_INT: {
-      auto v = std::dynamic_pointer_cast<mir::ConstantInt>(rvalue);
+    case mir::Value::Kind::CONST_INT: {
+      auto v = std::dynamic_pointer_cast<mir::ConstantInt>(value);
       return llvm::ConstantInt::getSigned(LLVMType(v->type), v->val);
     } break;
-    case mir::RValue::Kind::CONST_FLOAT: {
-      auto v = std::dynamic_pointer_cast<mir::ConstantFloat>(rvalue);
+    case mir::Value::Kind::CONST_FLOAT: {
+      auto v = std::dynamic_pointer_cast<mir::ConstantFloat>(value);
       return llvm::ConstantFP::get(LLVMType(v->type), v->val);
     } break;
-    case mir::RValue::Kind::CONST_STRING: {
-      auto v = std::dynamic_pointer_cast<mir::ConstantString>(rvalue);
+    case mir::Value::Kind::CONST_STRING: {
+      auto v = std::dynamic_pointer_cast<mir::ConstantString>(value);
       return builder_.CreateGlobalStringPtr(v->val);
     } break;
-    case mir::RValue::Kind::VAL:
-      return rvalue_map_.at(rvalue);
+    case mir::Value::Kind::VAR:
+      return value_map_.at(std::dynamic_pointer_cast<mir::Var>(value));
   }
-}
-
-llvm::Value* LLVMBuilder::GetLValue(std::shared_ptr<mir::LValue> lvalue) {
-  std::cout << "GetLValue " << lvalue.get() << std::endl;
-  return lvalue_map_.at(lvalue);
 }
 
 llvm::BasicBlock* LLVMBuilder::GetBasicBlock(std::shared_ptr<mir::BB> bb) {
@@ -80,26 +75,6 @@ llvm::BasicBlock* LLVMBuilder::GetBasicBlock(std::shared_ptr<mir::BB> bb) {
       ctx_, "bb" + std::to_string(bb->id), current_func_);
   bb_map_[bb] = basic_block;
   return basic_block;
-}
-
-llvm::AllocaInst* LLVMBuilder::Alloca(std::shared_ptr<mir::LValue> lval) {
-  auto alloca = builder_.CreateAlloca(LLVMType(lval->type->ref));
-  SetLValue(lval, alloca);
-  return alloca;
-}
-
-void LLVMBuilder::Load(std::shared_ptr<mir::Val> val,
-                       std::shared_ptr<mir::LValue> lval) {
-  auto ptr = GetLValue(lval);
-  auto load = builder_.CreateLoad(ptr);
-  SetRValue(val, load);
-}
-
-void LLVMBuilder::Store(std::shared_ptr<mir::RValue> rval,
-                        std::shared_ptr<mir::LValue> lval) {
-  auto val = GetRValue(rval);
-  auto ptr = GetLValue(lval);
-  builder_.CreateStore(val, ptr);
 }
 
 void LLVMBuilder::Build(std::unique_ptr<mir::File> file) {
@@ -122,9 +97,17 @@ void LLVMBuilder::Build(std::unique_ptr<mir::File> file) {
     auto bb = function->entry_bb;
     builder_.SetInsertPoint(GetBasicBlock(bb));
 
+    std::cout << "VarMap " << func->name << std::endl;
+    for (auto it : bb->parent.var_list) {
+      if (it->alloc) {
+        auto alloca = builder_.CreateAlloca(LLVMType(it->type));
+        SetValue(it, alloca);
+      }
+    }
+
     auto arg_it = current_func_->arg_begin();
     for (auto arg : function->args) {
-      SetRValue(arg, arg_it);
+      SetValue(arg, arg_it);
       ++arg_it;
     }
 
@@ -157,17 +140,11 @@ void LLVMBuilder::BuildBB(std::shared_ptr<mir::BB> bb) {
 void LLVMBuilder::BuildInst(std::shared_ptr<mir::Inst> inst) {
   std::cout << "BuildInst " << inst->InstKind() << std::endl;
   switch (inst->InstKind()) {
-    case mir::Inst::ALLOC: {
-      auto alloc_inst = std::dynamic_pointer_cast<mir::AllocInst>(inst);
-      Alloca(alloc_inst->lval);
-    } break;
-    case mir::Inst::LOAD: {
-      auto load_inst = std::dynamic_pointer_cast<mir::LoadInst>(inst);
-      Load(load_inst->val, load_inst->lval);
-    } break;
-    case mir::Inst::STORE: {
-      auto store_inst = std::dynamic_pointer_cast<mir::StoreInst>(inst);
-      Store(store_inst->rval, store_inst->lval);
+    case mir::Inst::ASSIGN: {
+      auto store_inst = std::dynamic_pointer_cast<mir::AssignInst>(inst);
+      auto val = GetValue(store_inst->value);
+      auto into = GetValue(store_inst->into);
+      builder_.CreateStore(val, into);
     } break;
     case mir::Inst::UNARY: {
       auto unary_inst = std::dynamic_pointer_cast<mir::UnaryInst>(inst);
@@ -181,24 +158,21 @@ void LLVMBuilder::BuildInst(std::shared_ptr<mir::Inst> inst) {
       auto cmp_inst = std::dynamic_pointer_cast<mir::CmpInst>(inst);
       Cmp(cmp_inst);
     } break;
-    case mir::Inst::ARRAY: {
-      UNIMPLEMENTED
-    } break;
     case mir::Inst::CALL: {
       auto call_inst = std::dynamic_pointer_cast<mir::CallInst>(inst);
       auto func = func_map_.at(call_inst->func);
       std::vector<llvm::Value*> arg_values(call_inst->args.size());
       auto i = 0;
       for (auto arg : call_inst->args) {
-        auto val = GetRValue(arg);
+        auto val = GetValue(arg);
         arg_values[i++] = val;
       }
       auto val = builder_.CreateCall(func, arg_values);
-      SetRValue(call_inst->val, val);
+      SetValue(call_inst->var, val);
     } break;
     case mir::Inst::BR: {
       auto br_inst = std::dynamic_pointer_cast<mir::BrInst>(inst);
-      auto cond = GetRValue(br_inst->cond);
+      auto cond = GetValue(br_inst->cond);
       auto then_bb = GetBasicBlock(br_inst->then_bb);
       auto else_bb = GetBasicBlock(br_inst->else_bb);
       builder_.CreateCondBr(cond, then_bb, else_bb);
@@ -211,7 +185,7 @@ void LLVMBuilder::BuildInst(std::shared_ptr<mir::Inst> inst) {
     case mir::Inst::RET: {
       auto ret_inst = std::dynamic_pointer_cast<mir::RetInst>(inst);
       if (ret_inst->val)
-        builder_.CreateRet(GetRValue(ret_inst->val));
+        builder_.CreateRet(GetValue(ret_inst->val));
       else
         builder_.CreateRetVoid();
     } break;
@@ -219,8 +193,8 @@ void LLVMBuilder::BuildInst(std::shared_ptr<mir::Inst> inst) {
 }
 
 void LLVMBuilder::Unary(std::shared_ptr<mir::UnaryInst> inst) {
-  bool is_float = inst->val->type->IsFloat();
-  auto expr = GetRValue(inst->operand);
+  bool is_float = inst->var->type->IsFloat();
+  auto expr = GetValue(inst->operand);
   llvm::Value* val;
   switch (inst->op) {
     case mir::UnaryInst::Op::NEG:
@@ -235,12 +209,12 @@ void LLVMBuilder::Unary(std::shared_ptr<mir::UnaryInst> inst) {
       val = builder_.CreateXor(expr, llvm::ConstantInt::getTrue(ctx_));
       break;
   }
-  SetRValue(inst->val, val);
+  SetValue(inst->var, val);
 }
 
 void LLVMBuilder::Binary(std::shared_ptr<mir::BinaryInst> inst) {
-  auto lhs = GetRValue(inst->lhs);
-  auto rhs = GetRValue(inst->rhs);
+  auto lhs = GetValue(inst->lhs);
+  auto rhs = GetValue(inst->rhs);
   auto is_float = inst->lhs->type->IsFloat();
 
   llvm::Value* val;
@@ -265,12 +239,12 @@ void LLVMBuilder::Binary(std::shared_ptr<mir::BinaryInst> inst) {
       val = builder_.CreateSRem(lhs, rhs);
       break;
   }
-  SetRValue(inst->val, val);
+  SetValue(inst->var, val);
 }
 
 void LLVMBuilder::Cmp(std::shared_ptr<mir::CmpInst> inst) {
-  auto lhs = GetRValue(inst->lhs);
-  auto rhs = GetRValue(inst->rhs);
+  auto lhs = GetValue(inst->lhs);
+  auto rhs = GetValue(inst->rhs);
   auto is_float = inst->lhs->type->IsFloat();
 
   llvm::Value* val;
@@ -300,7 +274,7 @@ void LLVMBuilder::Cmp(std::shared_ptr<mir::CmpInst> inst) {
                      : builder_.CreateICmpSGE(lhs, rhs);
       break;
   }
-  SetRValue(inst->val, val);
+  SetValue(inst->var, val);
 }
 
 void LLVMBuilder::EmitLLVMIR(std::string filename) {

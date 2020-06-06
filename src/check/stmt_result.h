@@ -7,7 +7,6 @@
 
 namespace felis {
 
-template <typename T = Ty>
 class StmtResult {
  public:
   // NON_VALUE: assign, var/let statement
@@ -15,22 +14,22 @@ class StmtResult {
   // EXPR: expr statements
   enum Kind { NON_VALUE, RET, EXPR };
 
-  std::shared_ptr<T> val;
+  std::shared_ptr<Ty> val;
 
-  static StmtResult NonValue(std::shared_ptr<T> val = nullptr) {
+  static StmtResult NonValue(std::shared_ptr<Ty> val = nullptr) {
     return StmtResult(Kind::NON_VALUE, val);
   }
 
-  static StmtResult Ret(std::shared_ptr<T> val = nullptr) {
+  static StmtResult Ret(std::shared_ptr<Ty> val = nullptr) {
     return StmtResult(Kind::RET, val);
   }
 
-  static StmtResult Expr(std::shared_ptr<T> val) {
+  static StmtResult Expr(std::shared_ptr<Ty> val) {
     return StmtResult(Kind::EXPR, val);
   }
 
   StmtResult(StmtResult::Kind kind = StmtResult::Kind::NON_VALUE,
-             std::shared_ptr<T> val = nullptr)
+             std::shared_ptr<Ty> val = nullptr)
       : kind_(kind), val(val) {}
 
   bool IsNonValue() const { return kind_ == StmtResult::Kind::NON_VALUE; }

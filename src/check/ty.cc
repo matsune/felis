@@ -28,6 +28,10 @@ bool Ty::operator==(const Ty& other) const {
   return true;
 }
 
+std::shared_ptr<Ty> ToPtr(std::shared_ptr<Ty> ty) {
+  return std::make_shared<PtrTy>(ty);
+}
+
 std::shared_ptr<Ty> ArchInt(bool is_32bit) {
   return is_32bit ? kTypeI32 : kTypeI64;
 }

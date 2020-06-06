@@ -17,14 +17,10 @@ class MirPrinter : public Printer<mir::File> {
  private:
   void PrintFunc(const std::shared_ptr<mir::Func> &);
 
-  // Inst
-  void PrintAlloc(const std::shared_ptr<mir::AllocInst> &);
-  void PrintLoad(const std::shared_ptr<mir::LoadInst> &);
-  void PrintStore(const std::shared_ptr<mir::StoreInst> &);
+  void PrintAssign(const std::shared_ptr<mir::AssignInst> &);
   void PrintUnary(const std::shared_ptr<mir::UnaryInst> &);
   void PrintBinary(const std::shared_ptr<mir::BinaryInst> &);
   void PrintCmp(const std::shared_ptr<mir::CmpInst> &);
-  void PrintArray(const std::shared_ptr<mir::ArrayInst> &);
   void PrintCall(const std::shared_ptr<mir::CallInst> &);
   void PrintBr(const std::shared_ptr<mir::BrInst> &);
   void PrintGoto(const std::shared_ptr<mir::GotoInst> &);

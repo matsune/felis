@@ -2,12 +2,9 @@
 #define FELIS_MIDDLE_LOWER_H_
 
 #include "check/ctx.h"
-#include "check/stmt_result.h"
 #include "middle/mir_builder.h"
 
 namespace felis {
-
-using LowStmtResult = StmtResult<mir::RValue>;
 
 class Lower {
  public:
@@ -20,22 +17,22 @@ class Lower {
   TypeCheckCtx& ctx_;
   MIRBuilder builder_;
 
-  LowStmtResult LowerStmt(std::unique_ptr<ast::Stmt>);
-  LowStmtResult LowerRet(std::unique_ptr<ast::RetStmt>);
-  LowStmtResult LowerVarDecl(std::unique_ptr<ast::VarDeclStmt>);
-  LowStmtResult LowerAssign(std::unique_ptr<ast::AssignStmt>);
+  std::shared_ptr<mir::Value> LowerStmt(std::unique_ptr<ast::Stmt>);
+  void LowerRet(std::unique_ptr<ast::RetStmt>);
+  void LowerVarDecl(std::unique_ptr<ast::VarDeclStmt>);
+  void LowerAssign(std::unique_ptr<ast::AssignStmt>);
 
-  LowStmtResult LowerExpr(std::unique_ptr<ast::Expr>);
-  LowStmtResult LowerIdent(std::unique_ptr<ast::Ident>);
-  LowStmtResult LowerLit(std::unique_ptr<ast::Lit>);
+  std::shared_ptr<mir::Value> LowerExpr(std::unique_ptr<ast::Expr>);
+  std::shared_ptr<mir::Value> LowerIdent(std::unique_ptr<ast::Ident>);
+  std::shared_ptr<mir::Constant> LowerLit(std::unique_ptr<ast::Lit>);
   std::unique_ptr<mir::Constant> ParseIntLit(std::unique_ptr<ast::Lit>);
   std::unique_ptr<mir::ConstantFloat> ParseFloatLit(std::unique_ptr<ast::Lit>);
-  LowStmtResult LowerBinary(std::unique_ptr<ast::BinaryExpr>);
-  LowStmtResult LowerCall(std::unique_ptr<ast::CallExpr>);
-  LowStmtResult LowerUnary(std::unique_ptr<ast::UnaryExpr>);
-  LowStmtResult LowerArray(std::unique_ptr<ast::ArrayExpr>);
-  LowStmtResult LowerIf(std::unique_ptr<ast::If>);
-  LowStmtResult LowerBlock(std::unique_ptr<ast::Block>);
+  std::shared_ptr<mir::Value> LowerBinary(std::unique_ptr<ast::BinaryExpr>);
+  std::shared_ptr<mir::Value> LowerCall(std::unique_ptr<ast::CallExpr>);
+  std::shared_ptr<mir::Value> LowerUnary(std::unique_ptr<ast::UnaryExpr>);
+  std::shared_ptr<mir::Var> LowerArray(std::unique_ptr<ast::ArrayExpr>);
+  std::shared_ptr<mir::Var> LowerIf(std::unique_ptr<ast::If>);
+  std::shared_ptr<mir::Value> LowerBlock(std::unique_ptr<ast::Block>);
 };
 
 std::unique_ptr<mir::File> Lowering(std::unique_ptr<ast::File> file,

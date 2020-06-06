@@ -32,8 +32,7 @@ std::string ToString(const DeclKind&);
 std::string ToString(const std::shared_ptr<Decl>&);
 
 // MIR
-std::string ToString(const std::shared_ptr<mir::RValue>&);
-std::string ToString(const std::shared_ptr<mir::LValue>&);
+std::string ToString(const std::shared_ptr<mir::Value>&);
 std::string ToString(const mir::BinaryInst::Op&);
 std::string ToString(const mir::CmpInst::Op&);
 std::string ToString(const mir::UnaryInst::Op&);
