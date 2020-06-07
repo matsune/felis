@@ -303,7 +303,7 @@ void LLVMBuilder::EmitLLVMBC(std::string filename) {
 }
 
 void LLVMBuilder::EmitCodeGen(std::string filename,
-                              llvm::TargetMachine::CodeGenFileType ft) {
+                              llvm::CodeGenFileType ft) {
   std::error_code err_code;
   llvm::raw_fd_ostream out(filename, err_code);
   if (err_code) {
@@ -319,11 +319,11 @@ void LLVMBuilder::EmitCodeGen(std::string filename,
 
 void LLVMBuilder::EmitASM(std::string filename) {
   EmitCodeGen(filename,
-              llvm::TargetMachine::CodeGenFileType::CGFT_AssemblyFile);
+              llvm::CodeGenFileType::CGFT_AssemblyFile);
 }
 
 void LLVMBuilder::EmitOBJ(std::string filename) {
-  EmitCodeGen(filename, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
+  EmitCodeGen(filename, llvm::CodeGenFileType::CGFT_ObjectFile);
 }
 
 }  // namespace felis

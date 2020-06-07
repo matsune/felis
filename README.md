@@ -1,16 +1,8 @@
 # felis
+
 Felis Programming Language
 
-## Build (docker)
-```shell
-# build image
-$ docker build -t felis .
+## Build Dependencies
 
-# run image
-$ docker run -it --rm -v $(pwd):/felis felis
-/felis# mkdir -p build
-/felis# cd build
-/felis# cmake ..
-/felis# make
-/felis# ls ../bin
-```
+- cmake(>= 3.5.1)
+- LLVM

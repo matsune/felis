@@ -78,7 +78,7 @@ class LLVMBuilder {
   void Unary(std::shared_ptr<mir::UnaryInst>);
   void Binary(std::shared_ptr<mir::BinaryInst>);
   void Cmp(std::shared_ptr<mir::CmpInst>);
-  void EmitCodeGen(std::string, llvm::TargetMachine::CodeGenFileType);
+  void EmitCodeGen(std::string, llvm::CodeGenFileType);
 };
 
 }  // namespace felis

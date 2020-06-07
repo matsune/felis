@@ -1,4 +1,4 @@
 #!/bin/sh
-set -eu
+unlink compile_commands.json
 cmake -H. -BDebug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=YES
-cp ./Debug/compile_commands.json .
+ln -s Debug/compile_commands.json .

@@ -3,3 +3,4 @@ build/
 Debug/
 bin/
 compile_commands.json
+.vscode
