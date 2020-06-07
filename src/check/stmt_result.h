@@ -43,4 +43,3 @@ class StmtResult {
 }  // namespace felis
 
 #endif  // FELIS_CHECK_STMT_RESULT_H_
-

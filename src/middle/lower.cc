@@ -252,7 +252,7 @@ std::shared_ptr<mir::Constant> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
   return val;
 }
 
-std::unique_ptr<mir::Constant> Lower::ParseIntLit(
+std::shared_ptr<mir::Constant> Lower::ParseIntLit(
     std::unique_ptr<ast::Lit> lit) {
   int64_t n;
   std::string err;
@@ -285,7 +285,7 @@ std::unique_ptr<mir::Constant> Lower::ParseIntLit(
   }
 }
 
-std::unique_ptr<mir::ConstantFloat> Lower::ParseFloatLit(
+std::shared_ptr<mir::ConstantFloat> Lower::ParseFloatLit(
     std::unique_ptr<ast::Lit> lit) {
   std::string err;
   double n;

@@ -75,9 +75,15 @@ class LLVMBuilder {
   llvm::BasicBlock *GetOrCreateBasicBlock(std::shared_ptr<mir::BB>);
   void BuildBB(std::shared_ptr<mir::BB>);
   void BuildInst(std::shared_ptr<mir::Inst>);
+  void Assign(std::shared_ptr<mir::AssignInst>);
   void Unary(std::shared_ptr<mir::UnaryInst>);
   void Binary(std::shared_ptr<mir::BinaryInst>);
   void Cmp(std::shared_ptr<mir::CmpInst>);
+  void Gep(std::shared_ptr<mir::GepInst>);
+  void Call(std::shared_ptr<mir::CallInst>);
+  void Br(std::shared_ptr<mir::BrInst>);
+  void Goto(std::shared_ptr<mir::GotoInst>);
+  void Ret(std::shared_ptr<mir::RetInst>);
   void EmitCodeGen(std::string, llvm::CodeGenFileType);
 };
 

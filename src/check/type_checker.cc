@@ -396,4 +396,3 @@ StmtResult TypeChecker::CheckIf(const std::unique_ptr<ast::If>& e) {
 }
 
 }  // namespace felis
-

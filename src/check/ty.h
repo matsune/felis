@@ -38,8 +38,8 @@ struct Ty {
   Ty(Ty::Kind kind) : kind(kind){};
   virtual ~Ty(){};
 
-  bool operator==(const Ty& other) const;
-  bool operator!=(const Ty& other) const { return !(*this == other); }
+  bool operator==(const Ty &other) const;
+  bool operator!=(const Ty &other) const { return !(*this == other); }
 
   bool IsUnResolved() const { return kind == Ty::Kind::UNRESOLVED; }
   bool IsUntypedInt() const { return kind == Ty::Kind::UNTYPED_INT; }

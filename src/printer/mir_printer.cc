@@ -127,4 +127,3 @@ void MirPrinter::PrintRet(const std::shared_ptr<mir::RetInst>& inst) {
 }
 
 }  // namespace felis
-

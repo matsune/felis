@@ -8,13 +8,13 @@ namespace felis {
 
 class Lower {
  public:
-  Lower(TypeCheckCtx& ctx, std::unique_ptr<mir::File>& file)
+  Lower(TypeCheckCtx &ctx, std::unique_ptr<mir::File> &file)
       : ctx_(ctx), builder_(file) {}
 
   void Lowering(std::unique_ptr<ast::File>);
 
  private:
-  TypeCheckCtx& ctx_;
+  TypeCheckCtx &ctx_;
   MIRBuilder builder_;
 
   std::shared_ptr<mir::Value> LowerStmt(std::unique_ptr<ast::Stmt>);
@@ -24,8 +24,8 @@ class Lower {
 
   std::shared_ptr<mir::Value> LowerExpr(std::unique_ptr<ast::Expr>);
   std::shared_ptr<mir::Constant> LowerLit(std::unique_ptr<ast::Lit>);
-  std::unique_ptr<mir::Constant> ParseIntLit(std::unique_ptr<ast::Lit>);
-  std::unique_ptr<mir::ConstantFloat> ParseFloatLit(std::unique_ptr<ast::Lit>);
+  std::shared_ptr<mir::Constant> ParseIntLit(std::unique_ptr<ast::Lit>);
+  std::shared_ptr<mir::ConstantFloat> ParseFloatLit(std::unique_ptr<ast::Lit>);
   std::shared_ptr<mir::Var> LowerBinary(std::unique_ptr<ast::BinaryExpr>);
   std::shared_ptr<mir::Var> LowerCall(std::unique_ptr<ast::CallExpr>);
   std::shared_ptr<mir::Var> LowerUnary(std::unique_ptr<ast::UnaryExpr>);

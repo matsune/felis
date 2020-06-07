@@ -31,4 +31,3 @@ bool ParseFloat(const std::string &lit, double &n, std::string &err) {
 }
 
 }  // namespace felis
-

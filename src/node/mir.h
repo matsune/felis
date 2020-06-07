@@ -223,9 +223,9 @@ struct BB {
   ID id;
   std::vector<std::shared_ptr<Inst>> instructions;
   std::shared_ptr<BB> next_bb;
-  Function& parent;
+  Function &parent;
 
-  BB(ID id, Function& parent) : id(id), parent(parent) {}
+  BB(ID id, Function &parent) : id(id), parent(parent) {}
 
   void InsertInst(std::shared_ptr<Inst> inst) { instructions.push_back(inst); }
 };

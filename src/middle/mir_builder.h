@@ -10,7 +10,7 @@ namespace felis {
 
 class MIRBuilder {
  public:
-  MIRBuilder(std::unique_ptr<mir::File>& file) : file(file) {}
+  MIRBuilder(std::unique_ptr<mir::File> &file) : file(file) {}
 
   template <typename T = mir::Func>
   std::shared_ptr<T> GetDeclFunc(std::shared_ptr<Decl> decl) {
@@ -30,7 +30,7 @@ class MIRBuilder {
   }
 
   void SetInsertBB(std::shared_ptr<mir::BB> bb) { current_bb = bb; }
-  const std::shared_ptr<mir::BB>& GetInsertBB() const { return current_bb; }
+  const std::shared_ptr<mir::BB> &GetInsertBB() const { return current_bb; }
 
   std::shared_ptr<mir::BB> GetBeforeBB(std::shared_ptr<mir::BB>);
 
@@ -68,10 +68,12 @@ class MIRBuilder {
 
   void CreateRet(std::shared_ptr<mir::Value> = nullptr);
 
+  void Insert(std::shared_ptr<mir::Inst>);
+
   std::shared_ptr<mir::BB> current_bb;
 
  private:
-  std::unique_ptr<mir::File>& file;
+  std::unique_ptr<mir::File> &file;
 };
 
 }  // namespace felis
