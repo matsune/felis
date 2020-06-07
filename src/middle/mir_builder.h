@@ -12,21 +12,24 @@ class MIRBuilder {
  public:
   MIRBuilder(std::unique_ptr<mir::File>& file) : file(file) {}
 
-  inline std::shared_ptr<mir::Func> GetFunction(std::shared_ptr<Decl> decl) {
-    return fn_decls.at(decl);
+  template <typename T = mir::Func>
+  std::shared_ptr<T> GetDeclFunc(std::shared_ptr<Decl> decl) {
+    return std::dynamic_pointer_cast<T>(file->decl_fn_map.at(decl));
+  }
+  inline void SetDeclFunc(std::shared_ptr<Decl> decl,
+                          std::shared_ptr<mir::Func> func) {
+    file->decl_fn_map[decl] = func;
   }
 
-  inline std::shared_ptr<mir::Value> GetVar(std::shared_ptr<Decl> decl) {
-    return current_bb->parent.var_map.at(decl);
+  inline std::shared_ptr<mir::Var> GetDeclVar(std::shared_ptr<Decl> decl) {
+    return current_bb->parent.decl_var_map.at(decl);
   }
-
-  inline void SetVar(std::shared_ptr<Decl> decl,
-                     std::shared_ptr<mir::Var> var) {
-    current_bb->parent.SetVar(decl, var);
+  inline void SetDeclVar(std::shared_ptr<Decl> decl,
+                         std::shared_ptr<mir::Var> var) {
+    current_bb->parent.decl_var_map[decl] = var;
   }
 
   void SetInsertBB(std::shared_ptr<mir::BB> bb) { current_bb = bb; }
-
   const std::shared_ptr<mir::BB>& GetInsertBB() const { return current_bb; }
 
   std::shared_ptr<mir::BB> GetBeforeBB(std::shared_ptr<mir::BB>);
@@ -35,11 +38,13 @@ class MIRBuilder {
 
   std::shared_ptr<mir::BB> CreateBB(std::shared_ptr<mir::BB> after = nullptr);
 
-  std::shared_ptr<mir::Var> CreateVar(std::shared_ptr<Ty>, bool,
-                                      std::string = "");
+  std::shared_ptr<mir::Var> CreateVar(std::shared_ptr<Ty>, bool alloc = false,
+                                      std::string name = "");
+  std::shared_ptr<mir::Var> CreateAlloc(std::shared_ptr<Ty>,
+                                        std::string name = "");
 
-  std::shared_ptr<mir::Var> CreateAlloc(std::shared_ptr<Decl>);
-  void CreateAssign(std::shared_ptr<mir::Value>, std::shared_ptr<mir::Value>);
+  void CreateAssign(std::shared_ptr<mir::Var>, std::shared_ptr<mir::Value>);
+
   std::shared_ptr<mir::Var> CreateUnary(mir::UnaryInst::Op,
                                         std::shared_ptr<mir::Value>);
   std::shared_ptr<mir::Var> CreateBinary(mir::BinaryInst::Op,
@@ -67,12 +72,6 @@ class MIRBuilder {
 
  private:
   std::unique_ptr<mir::File>& file;
-  std::map<std::shared_ptr<Decl>, std::shared_ptr<mir::Func>> fn_decls;
-
-  inline void SetFunc(std::shared_ptr<Decl> decl,
-                      std::shared_ptr<mir::Func> func) {
-    fn_decls[decl] = func;
-  }
 };
 
 }  // namespace felis

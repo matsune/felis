@@ -17,13 +17,11 @@ std::shared_ptr<mir::BB> MIRBuilder::GetBeforeBB(std::shared_ptr<mir::BB> bb) {
 
 std::shared_ptr<mir::Func> MIRBuilder::CreateFunc(std::shared_ptr<Decl> decl) {
   bool is_ext = decl->kind == DeclKind::EXT;
-  mir::FunctionID id = fn_decls.size();
   auto func =
-      is_ext
-          ? std::make_shared<mir::Func>(id, decl->name, decl->AsFuncTy())
-          : std::make_shared<mir::Function>(id, decl->name, decl->AsFuncTy());
+      is_ext ? std::make_shared<mir::Func>(decl->name, decl->AsFuncTy())
+             : std::make_shared<mir::Function>(decl->name, decl->AsFuncTy());
   file->funcs.push_back(func);
-  SetFunc(decl, func);
+  SetDeclFunc(decl, func);
   return func;
 }
 
@@ -40,19 +38,18 @@ std::shared_ptr<mir::BB> MIRBuilder::CreateBB(std::shared_ptr<mir::BB> after) {
 
 std::shared_ptr<mir::Var> MIRBuilder::CreateVar(std::shared_ptr<Ty> type,
                                                 bool alloc, std::string name) {
-  auto id = current_bb->parent.GenVarID();
-  auto var = std::make_shared<mir::Var>(id, type, alloc, name);
+  auto var = std::make_shared<mir::Var>(current_bb->parent.GenVarID(), type,
+                                        alloc, name);
   current_bb->parent.var_list.push_back(var);
   return var;
 }
 
-std::shared_ptr<mir::Var> MIRBuilder::CreateAlloc(std::shared_ptr<Decl> decl) {
-  auto var = CreateVar(decl->type, true, decl->name);
-  SetVar(decl, var);
-  return var;
+std::shared_ptr<mir::Var> MIRBuilder::CreateAlloc(std::shared_ptr<Ty> type,
+                                                  std::string name) {
+  return CreateVar(type, true, name);
 }
 
-void MIRBuilder::CreateAssign(std::shared_ptr<mir::Value> into,
+void MIRBuilder::CreateAssign(std::shared_ptr<mir::Var> into,
                               std::shared_ptr<mir::Value> value) {
   auto inst = std::make_shared<mir::AssignInst>(into, value);
   current_bb->InsertInst(inst);
@@ -60,7 +57,7 @@ void MIRBuilder::CreateAssign(std::shared_ptr<mir::Value> into,
 
 std::shared_ptr<mir::Var> MIRBuilder::CreateUnary(
     mir::UnaryInst::Op op, std::shared_ptr<mir::Value> operand) {
-  auto var = CreateVar(operand->type, false);
+  auto var = CreateVar(operand->type);
   auto binary = std::make_shared<mir::UnaryInst>(var, op, operand);
   current_bb->InsertInst(binary);
   return var;
@@ -69,7 +66,7 @@ std::shared_ptr<mir::Var> MIRBuilder::CreateUnary(
 std::shared_ptr<mir::Var> MIRBuilder::CreateBinary(
     mir::BinaryInst::Op op, std::shared_ptr<mir::Value> lhs,
     std::shared_ptr<mir::Value> rhs) {
-  auto var = CreateVar(lhs->type, false);
+  auto var = CreateVar(lhs->type);
   auto binary = std::make_shared<mir::BinaryInst>(var, op, lhs, rhs);
   current_bb->InsertInst(binary);
   return var;
@@ -78,7 +75,7 @@ std::shared_ptr<mir::Var> MIRBuilder::CreateBinary(
 std::shared_ptr<mir::Var> MIRBuilder::CreateCmp(
     mir::CmpInst::Op op, std::shared_ptr<mir::Value> lhs,
     std::shared_ptr<mir::Value> rhs) {
-  auto var = CreateVar(kTypeBool, false);
+  auto var = CreateVar(kTypeBool);
   auto cmp = std::make_shared<mir::CmpInst>(var, op, lhs, rhs);
   current_bb->InsertInst(cmp);
   return var;
@@ -86,8 +83,8 @@ std::shared_ptr<mir::Var> MIRBuilder::CreateCmp(
 
 std::shared_ptr<mir::Var> MIRBuilder::CreateCall(
     std::shared_ptr<Decl> decl, std::vector<std::shared_ptr<mir::Value>> args) {
-  auto var = CreateVar(decl->AsFuncTy()->ret, false);
-  auto func = GetFunction(decl);
+  auto var = CreateVar(decl->AsFuncTy()->ret);
+  auto func = GetDeclFunc(decl);
   current_bb->InsertInst(std::make_shared<mir::CallInst>(var, args, func));
   return var;
 }

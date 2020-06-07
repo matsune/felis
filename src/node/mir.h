@@ -87,12 +87,14 @@ struct Inst {
   virtual Inst::Kind InstKind() const = 0;
 };
 
-// into: *T = store value: T
+// into: *T <= value: T
+//
+// Assign is not only for llvm store instruction, also for memcpy.
 struct AssignInst : Inst {
-  std::shared_ptr<Value> into;
+  std::shared_ptr<Var> into;
   std::shared_ptr<Value> value;
 
-  AssignInst(std::shared_ptr<Value> into, std::shared_ptr<Value> value)
+  AssignInst(std::shared_ptr<Var> into, std::shared_ptr<Value> value)
       : into(into), value(value) {}
 
   Inst::Kind InstKind() const override { return Inst::Kind::ASSIGN; }
@@ -155,6 +157,7 @@ struct CmpInst : Inst {
   Inst::Kind InstKind() const override { return Inst::Kind::CMP; }
 };
 
+// var: T* = gep arr: [T] at idx
 struct GepInst : Inst {
   std::shared_ptr<Var> var;
   std::shared_ptr<Var> arr;
@@ -227,15 +230,12 @@ struct BB {
   void InsertInst(std::shared_ptr<Inst> inst) { instructions.push_back(inst); }
 };
 
-using FunctionID = int;
-
 struct Func {
-  FunctionID id;
   std::string name;
   std::shared_ptr<FuncTy> type;
 
-  Func(FunctionID id, std::string name, std::shared_ptr<FuncTy> type)
-      : id(id), name(name), type(type) {}
+  Func(std::string name, std::shared_ptr<FuncTy> type)
+      : name(name), type(type) {}
 
   virtual bool IsExt() { return true; }
 };
@@ -244,11 +244,11 @@ struct Function : Func {
   std::vector<std::shared_ptr<Value>> args;
   std::shared_ptr<BB> entry_bb;
 
-  std::map<std::shared_ptr<Decl>, std::shared_ptr<mir::Var>> var_map;
+  std::map<std::shared_ptr<Decl>, std::shared_ptr<mir::Var>> decl_var_map;
   std::vector<std::shared_ptr<mir::Var>> var_list;
 
-  Function(FunctionID id, std::string name, std::shared_ptr<FuncTy> type)
-      : Func(id, name, type),
+  Function(std::string name, std::shared_ptr<FuncTy> type)
+      : Func(name, type),
         next_var_id(0),
         next_bb_id(1),
         entry_bb(new BB(0, *this)) {}
@@ -258,10 +258,6 @@ struct Function : Func {
   mir::Var::ID GenVarID() { return next_var_id++; }
   mir::BB::ID GenBBID() { return next_bb_id++; }
 
-  void SetVar(std::shared_ptr<Decl> decl, std::shared_ptr<mir::Var> var) {
-    var_map[decl] = var;
-  }
-
  private:
   mir::Var::ID next_var_id;
   mir::BB::ID next_bb_id;
@@ -269,6 +265,8 @@ struct Function : Func {
 
 struct File {
   std::vector<std::shared_ptr<Func>> funcs;
+
+  std::map<std::shared_ptr<Decl>, std::shared_ptr<mir::Func>> decl_fn_map;
 };
 
 }  // namespace mir

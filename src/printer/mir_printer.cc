@@ -14,12 +14,11 @@ void MirPrinter::Print(const std::unique_ptr<mir::File>& file) {
 
 void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
   if (func->IsExt()) {
-    Writeln("%d ext %s %s", func->id, func->name.c_str(),
-            ToString(func->type).c_str());
+    Writeln("ext %s %s", func->name.c_str(), ToString(func->type).c_str());
     return;
   }
 
-  Write("%d fn %s(", func->id, func->name.c_str());
+  Write("fn %s(", func->name.c_str());
   auto fn = std::dynamic_pointer_cast<mir::Function>(func);
   for (auto i = 0; i < fn->args.size(); ++i) {
     if (i > 0) {
@@ -98,8 +97,7 @@ void MirPrinter::PrintCmp(const std::shared_ptr<mir::CmpInst>& inst) {
 }
 
 void MirPrinter::PrintCall(const std::shared_ptr<mir::CallInst>& inst) {
-  Write("%s = call %d %s(", ToString(inst->var).c_str(), inst->func->id,
-        inst->func->name.c_str());
+  Write("%s = call %s(", ToString(inst->var).c_str(), inst->func->name.c_str());
   auto i = 0;
   for (auto& arg : inst->args) {
     if (i > 0) {

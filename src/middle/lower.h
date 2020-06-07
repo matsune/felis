@@ -23,13 +23,12 @@ class Lower {
   void LowerAssign(std::unique_ptr<ast::AssignStmt>);
 
   std::shared_ptr<mir::Value> LowerExpr(std::unique_ptr<ast::Expr>);
-  std::shared_ptr<mir::Value> LowerIdent(std::unique_ptr<ast::Ident>);
   std::shared_ptr<mir::Constant> LowerLit(std::unique_ptr<ast::Lit>);
   std::unique_ptr<mir::Constant> ParseIntLit(std::unique_ptr<ast::Lit>);
   std::unique_ptr<mir::ConstantFloat> ParseFloatLit(std::unique_ptr<ast::Lit>);
-  std::shared_ptr<mir::Value> LowerBinary(std::unique_ptr<ast::BinaryExpr>);
-  std::shared_ptr<mir::Value> LowerCall(std::unique_ptr<ast::CallExpr>);
-  std::shared_ptr<mir::Value> LowerUnary(std::unique_ptr<ast::UnaryExpr>);
+  std::shared_ptr<mir::Var> LowerBinary(std::unique_ptr<ast::BinaryExpr>);
+  std::shared_ptr<mir::Var> LowerCall(std::unique_ptr<ast::CallExpr>);
+  std::shared_ptr<mir::Var> LowerUnary(std::unique_ptr<ast::UnaryExpr>);
   std::shared_ptr<mir::Var> LowerArray(std::unique_ptr<ast::ArrayExpr>);
   std::shared_ptr<mir::Var> LowerIf(std::unique_ptr<ast::If>);
   std::shared_ptr<mir::Value> LowerBlock(std::unique_ptr<ast::Block>);

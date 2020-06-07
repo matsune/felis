@@ -114,11 +114,12 @@ void Lower::Lowering(std::unique_ptr<ast::File> file) {
 
     for (auto &arg : fn_decl->proto->args->list) {
       auto decl = ctx_.GetDecl(arg->name);
-      auto var = builder_.CreateVar(ctx_.ResolvedType(decl->type), false);
-      func->args.push_back(var);
+      auto arg_var = builder_.CreateVar(ctx_.ResolvedType(decl->type));
+      func->args.push_back(arg_var);
 
-      auto lval = builder_.CreateAlloc(decl);
-      builder_.CreateAssign(lval, var);
+      auto arg_alloc = builder_.CreateAlloc(decl->type, decl->name);
+      builder_.SetDeclVar(decl, arg_alloc);
+      builder_.CreateAssign(arg_alloc, arg_var);
     }
   }
 
@@ -126,8 +127,7 @@ void Lower::Lowering(std::unique_ptr<ast::File> file) {
   while (!file->fn_decls.empty()) {
     auto fn_decl = file->fn_decls.move_front();
     auto decl = ctx_.GetDecl(fn_decl->proto->name);
-    auto function =
-        std::dynamic_pointer_cast<mir::Function>(builder_.GetFunction(decl));
+    auto function = builder_.GetDeclFunc<mir::Function>(decl);
     builder_.SetInsertBB(function->entry_bb);
 
     auto block_res = ctx_.GetResult(fn_decl->block);
@@ -177,28 +177,29 @@ void Lower::LowerVarDecl(std::unique_ptr<ast::VarDeclStmt> stmt) {
 
   if (auto var = std::dynamic_pointer_cast<mir::Var>(val)) {
     if (var->alloc) {
-      builder_.SetVar(decl, var);
+      builder_.SetDeclVar(decl, var);
       return;
     }
   }
 
-  auto lval = builder_.CreateAlloc(decl);
-  builder_.CreateAssign(lval, val);
-  builder_.SetVar(decl, lval);
+  auto var = builder_.CreateAlloc(decl->type);
+  builder_.SetDeclVar(decl, var);
+  builder_.CreateAssign(var, val);
 }
 
 void Lower::LowerAssign(std::unique_ptr<ast::AssignStmt> stmt) {
   auto decl = ctx_.GetDecl(stmt->name);
-  auto lval = builder_.GetVar(decl);
-  auto rval = LowerExpr(std::move(stmt->expr));
-  builder_.CreateAssign(lval, rval);
+  auto var = builder_.GetDeclVar(decl);
+  auto val = LowerExpr(std::move(stmt->expr));
+  builder_.CreateAssign(var, val);
 }
 
 std::shared_ptr<mir::Value> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
   std::cout << "LowerExpr " << ToString(expr->ExprKind()) << std::endl;
   switch (expr->ExprKind()) {
     case ast::Expr::Kind::IDENT:
-      return LowerIdent(unique_cast<ast::Ident>(std::move(expr)));
+      return builder_.GetDeclVar(
+          ctx_.GetDecl(unique_cast<ast::Ident>(std::move(expr))));
     case ast::Expr::Kind::LIT:
       return LowerLit(unique_cast<ast::Lit>(std::move(expr)));
     case ast::Expr::Kind::BINARY:
@@ -214,12 +215,6 @@ std::shared_ptr<mir::Value> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
     case ast::Expr::Kind::IF:
       return LowerIf(unique_cast<ast::If>(std::move(expr)));
   }
-}
-
-std::shared_ptr<mir::Value> Lower::LowerIdent(
-    std::unique_ptr<ast::Ident> ident) {
-  auto decl = ctx_.GetDecl(ident);
-  return builder_.GetVar(decl);
 }
 
 std::shared_ptr<mir::Constant> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
@@ -301,22 +296,20 @@ std::unique_ptr<mir::ConstantFloat> Lower::ParseFloatLit(
   return std::make_unique<mir::ConstantFloat>(ty, n);
 }
 
-std::shared_ptr<mir::Value> Lower::LowerBinary(
+std::shared_ptr<mir::Var> Lower::LowerBinary(
     std::unique_ptr<ast::BinaryExpr> expr) {
   auto lhs = LowerExpr(std::move(expr->lhs));
   auto rhs = LowerExpr(std::move(expr->rhs));
   if (IsBinOp(expr->op->op)) {
-    auto op = BinOp(expr->op->op);
-    return builder_.CreateBinary(op, lhs, rhs);
+    return builder_.CreateBinary(BinOp(expr->op->op), lhs, rhs);
   } else if (IsCmpOp(expr->op->op)) {
-    auto op = CmpOp(expr->op->op);
-    return builder_.CreateCmp(op, lhs, rhs);
+    return builder_.CreateCmp(CmpOp(expr->op->op), lhs, rhs);
   } else {
     UNREACHABLE
   }
 }
 
-std::shared_ptr<mir::Value> Lower::LowerCall(
+std::shared_ptr<mir::Var> Lower::LowerCall(
     std::unique_ptr<ast::CallExpr> expr) {
   auto decl = ctx_.GetDecl(expr->ident);
   std::vector<std::shared_ptr<mir::Value>> args;
@@ -326,7 +319,7 @@ std::shared_ptr<mir::Value> Lower::LowerCall(
   return builder_.CreateCall(decl, std::move(args));
 }
 
-std::shared_ptr<mir::Value> Lower::LowerUnary(
+std::shared_ptr<mir::Var> Lower::LowerUnary(
     std::unique_ptr<ast::UnaryExpr> unary) {
   auto ty = ctx_.GetResult(unary).val;
   auto expr = LowerExpr(std::move(unary->expr));
