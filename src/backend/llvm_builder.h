@@ -39,7 +39,8 @@ class LLVMBuilder {
   llvm::Module module_;
   llvm::IRBuilder<> builder_;
   std::unique_ptr<llvm::TargetMachine> machine_;
-  llvm::Function *current_func_;
+
+  std::shared_ptr<mir::Function> current_func_;
   std::map<std::shared_ptr<mir::Func>, llvm::Function *> func_map_;
   std::map<std::shared_ptr<mir::BB>, llvm::BasicBlock *> bb_map_;
   std::map<std::shared_ptr<mir::Value>, llvm::Value *> value_map_;
@@ -54,9 +55,24 @@ class LLVMBuilder {
     value_map_.clear();
   }
 
+  void SetCurrentFunction(std::shared_ptr<mir::Function> function) {
+    std::cout << "function " << function->name << std::endl;
+    current_func_ = function;
+
+    ClearLocalMaps();
+
+    auto bb = function->entry_bb;
+    builder_.SetInsertPoint(GetOrCreateBasicBlock(bb));
+  }
+
+  llvm::Function *GetLLVMFunc(std::shared_ptr<mir::Func> func = nullptr) {
+    if (!func) func = current_func_;
+    return func_map_.at(func);
+  }
+
   llvm::Type *LLVMType(const std::shared_ptr<Ty> &);
-  llvm::Value *GetValue(std::shared_ptr<mir::Value>);
-  llvm::BasicBlock *GetBasicBlock(std::shared_ptr<mir::BB>);
+  llvm::Value *GetValue(std::shared_ptr<mir::Value>, bool);
+  llvm::BasicBlock *GetOrCreateBasicBlock(std::shared_ptr<mir::BB>);
   void BuildBB(std::shared_ptr<mir::BB>);
   void BuildInst(std::shared_ptr<mir::Inst>);
   void Unary(std::shared_ptr<mir::UnaryInst>);
