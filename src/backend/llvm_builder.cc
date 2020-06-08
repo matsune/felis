@@ -85,6 +85,11 @@ llvm::BasicBlock* LLVMBuilder::GetOrCreateBasicBlock(
   return basic_block;
 }
 
+llvm::Align GetAlign(llvm::Type* ty) {
+  if (ty->isArrayTy()) return GetAlign(ty->getArrayElementType());
+  return llvm::Align(ty->getPrimitiveSizeInBits() / 8);
+}
+
 void LLVMBuilder::Build(std::unique_ptr<mir::File> file) {
   std::cout << "[Build]" << std::endl;
   for (auto func : file->funcs) {
@@ -102,8 +107,8 @@ void LLVMBuilder::Build(std::unique_ptr<mir::File> file) {
     for (auto it : current_func_->var_list) {
       if (it->alloc) {
         auto ty = LLVMType(it->type);
-        auto align = llvm::Align(ty->getPrimitiveSizeInBits() / 8);
-        auto alloca = new llvm::AllocaInst(ty, 0, nullptr, align);
+        std::cout << ty->getScalarSizeInBits() << std::endl;
+        auto alloca = new llvm::AllocaInst(ty, 0, nullptr, GetAlign(ty));
         builder_.Insert(alloca);
         SetValue(it, alloca);
       }
