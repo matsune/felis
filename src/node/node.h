@@ -5,7 +5,9 @@
 
 namespace felis {
 
-struct Node {};
+struct Node {
+  virtual ~Node(){};
+};
 
 }  // namespace felis
 

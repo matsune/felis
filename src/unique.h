@@ -10,7 +10,9 @@ namespace felis {
 
 template <typename T>
 std::unique_ptr<T> unique_cast(std::unique_ptr<Node> ptr) {
-  return std::unique_ptr<T>(static_cast<T *>(ptr.release()));
+  auto t = dynamic_cast<T *>(ptr.release());
+  if (!t) return nullptr;
+  return std::unique_ptr<T>(t);
 }
 
 template <class T>

@@ -21,12 +21,12 @@ class MIRBuilder {
     file->decl_fn_map[decl] = func;
   }
 
-  inline std::shared_ptr<mir::Var> GetDeclVar(std::shared_ptr<Decl> decl) {
-    return current_bb->parent.decl_var_map.at(decl);
+  inline std::shared_ptr<mir::Value> GetDeclValue(std::shared_ptr<Decl> decl) {
+    return current_bb->parent.decl_value_map.at(decl);
   }
-  inline void SetDeclVar(std::shared_ptr<Decl> decl,
-                         std::shared_ptr<mir::Var> var) {
-    current_bb->parent.decl_var_map[decl] = var;
+  inline void SetDeclValue(std::shared_ptr<Decl> decl,
+                           std::shared_ptr<mir::Value> value) {
+    current_bb->parent.decl_value_map[decl] = value;
   }
 
   void SetInsertBB(std::shared_ptr<mir::BB> bb) { current_bb = bb; }

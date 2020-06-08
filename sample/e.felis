@@ -1,23 +1,10 @@
-fn a(b:int) ->int {
-  ret b 
-}
+ext fn puts(string) -> i32
 
-fn main() ->int {
-  let d =if false {
-    ret 3
-  } else {
-    4
-  }
-  /* let n = [[1,2,3], [2,3,4]] */
-  ret if false {
-    if 3 > 4 {
-      30 + 3
-    } else {
-      ret 4
-    }
-    4
-  } else {
-    if true { ret 32 } 
-    22
-  }
+fn main()  {
+ let a: i32 = 32
+ let b: i64 = 64
+ let c: f32 = 2
+ let d: f64 = 33
+ let e: string = "dadfs"
+ puts(e)
 }

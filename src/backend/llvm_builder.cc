@@ -99,10 +99,12 @@ void LLVMBuilder::Build(std::unique_ptr<mir::File> file) {
 
     SetCurrentFunction(std::dynamic_pointer_cast<mir::Function>(func));
 
-    std::cout << "VarMap " << func->name << std::endl;
     for (auto it : current_func_->var_list) {
       if (it->alloc) {
-        auto alloca = builder_.CreateAlloca(LLVMType(it->type));
+        auto ty = LLVMType(it->type);
+        auto align = llvm::Align(ty->getPrimitiveSizeInBits() / 8);
+        auto alloca = new llvm::AllocaInst(ty, 0, nullptr, align);
+        builder_.Insert(alloca);
         SetValue(it, alloca);
       }
     }
@@ -278,17 +280,12 @@ void LLVMBuilder::Cmp(std::shared_ptr<mir::CmpInst> inst) {
 }
 
 void LLVMBuilder::Gep(std::shared_ptr<mir::GepInst> inst) {
-  assert(inst->arr->alloc);
-  if (auto array_type = std::dynamic_pointer_cast<ArrayTy>(inst->arr->type)) {
-    auto value = builder_.CreateInBoundsGEP(
-        LLVMType(array_type), GetValue(inst->arr, false),
-        {llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(ctx_), 0),
-         llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(ctx_),
-                                      inst->idx)});
-    SetValue(inst->var, value);
-  } else {
-    UNIMPLEMENTED
-  }
+  auto arr_val = GetValue(inst->arr, false);
+  auto value = builder_.CreateInBoundsGEP(
+      arr_val->getType()->getPointerElementType(), arr_val,
+      {llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(ctx_), 0),
+       llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(ctx_), inst->idx)});
+  SetValue(inst->var, value);
 }
 
 void LLVMBuilder::Call(std::shared_ptr<mir::CallInst> inst) {

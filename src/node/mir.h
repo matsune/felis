@@ -29,6 +29,11 @@ struct Value {
   std::shared_ptr<Ty> type;
 
   Value(std::shared_ptr<Ty> type) : type(type) {}
+
+  bool IsString() const { return ValueKind() == Value::Kind::CONST_STRING; }
+  bool IsVar() const { return ValueKind() == Value::Kind::VAR; }
+
+  virtual bool Allocated() const { return false; }
 };
 
 struct Constant : Value {
@@ -59,6 +64,8 @@ struct ConstantString : Constant {
   ConstantString(std::string val) : Constant(kTypeString), val(val){};
 
   Value::Kind ValueKind() const override { return Value::Kind::CONST_STRING; }
+
+  bool Allocated() const override { return true; }
 };
 
 struct ConstantBool : Constant {
@@ -79,6 +86,8 @@ struct Var : Value {
       : Value(type), id(id), alloc(alloc), name(name){};
 
   Value::Kind ValueKind() const override { return Value::Kind::VAR; }
+
+  bool Allocated() const override { return alloc; }
 };
 
 struct Inst {
@@ -244,7 +253,7 @@ struct Function : Func {
   std::vector<std::shared_ptr<Value>> args;
   std::shared_ptr<BB> entry_bb;
 
-  std::map<std::shared_ptr<Decl>, std::shared_ptr<mir::Var>> decl_var_map;
+  std::map<std::shared_ptr<Decl>, std::shared_ptr<mir::Value>> decl_value_map;
   std::vector<std::shared_ptr<mir::Var>> var_list;
 
   Function(std::string name, std::shared_ptr<FuncTy> type)

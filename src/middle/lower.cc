@@ -118,7 +118,7 @@ void Lower::Lowering(std::unique_ptr<ast::File> file) {
       func->args.push_back(arg_var);
 
       auto arg_alloc = builder_.CreateAlloc(decl->type, decl->name);
-      builder_.SetDeclVar(decl, arg_alloc);
+      builder_.SetDeclValue(decl, arg_alloc);
       builder_.CreateAssign(arg_alloc, arg_var);
     }
   }
@@ -175,30 +175,29 @@ void Lower::LowerVarDecl(std::unique_ptr<ast::VarDeclStmt> stmt) {
 
   auto val = LowerExpr(std::move(stmt->expr));
 
-  if (auto var = std::dynamic_pointer_cast<mir::Var>(val)) {
-    if (var->alloc) {
-      builder_.SetDeclVar(decl, var);
-      return;
-    }
+  if (val->Allocated()) {
+    builder_.SetDeclValue(decl, val);
+    return;
   }
 
   auto var = builder_.CreateAlloc(decl->type);
-  builder_.SetDeclVar(decl, var);
+  builder_.SetDeclValue(decl, var);
   builder_.CreateAssign(var, val);
 }
 
 void Lower::LowerAssign(std::unique_ptr<ast::AssignStmt> stmt) {
   auto decl = ctx_.GetDecl(stmt->name);
-  auto var = builder_.GetDeclVar(decl);
-  auto val = LowerExpr(std::move(stmt->expr));
-  builder_.CreateAssign(var, val);
+  auto value = builder_.GetDeclValue(decl);
+  auto expr_value = LowerExpr(std::move(stmt->expr));
+  assert(value->IsVar());
+  builder_.CreateAssign(std::dynamic_pointer_cast<mir::Var>(value), expr_value);
 }
 
 std::shared_ptr<mir::Value> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
   std::cout << "LowerExpr " << ToString(expr->ExprKind()) << std::endl;
   switch (expr->ExprKind()) {
     case ast::Expr::Kind::IDENT:
-      return builder_.GetDeclVar(
+      return builder_.GetDeclValue(
           ctx_.GetDecl(unique_cast<ast::Ident>(std::move(expr))));
     case ast::Expr::Kind::LIT:
       return LowerLit(unique_cast<ast::Lit>(std::move(expr)));
