@@ -40,12 +40,6 @@ class Scope {
 
   bool IsTop() { return parent_ == nullptr; }
 
-  void Debug() {
-    for (auto &it : decl_map_) {
-      std::cout << it.first << ":" << ToString(it.second->kind) << std::endl;
-    }
-  }
-
  private:
   std::shared_ptr<Scope> parent_;
   std::map<std::string, std::shared_ptr<Decl>> decl_map_;

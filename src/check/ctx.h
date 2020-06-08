@@ -31,7 +31,6 @@ class TypeCheckCtx {
 
   const std::shared_ptr<Decl> &GetDecl(
       const std::unique_ptr<ast::Ident> &t) const {
-    std::cout << "GetDecl " << t.get() << std::endl;
     return ident_decl_map_.at(t.get());
   }
 
@@ -52,21 +51,14 @@ class TypeCheckCtx {
 
   void FinalizeType() {
     // finalize types
-    std::cout << "---------------" << std::endl;
     for (auto &it : ident_decl_map_) {
       it.second->type = ResolvedType(it.second->type);
-      std::cout << "ident: " << it.first << " decl: " << ToString(it.second)
-                << std::endl;
     }
-    std::cout << "---------------" << std::endl;
     for (auto &it : result_map_) {
       if (it.second.IsExpr()) {
         it.second.val = ResolvedType(it.second.val);
-        std::cout << "expr: " << it.first
-                  << " type: " << ToString(it.second.val) << std::endl;
       }
     }
-    std::cout << "---------------" << std::endl;
   }
 
  private:

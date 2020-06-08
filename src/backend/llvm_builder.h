@@ -46,7 +46,6 @@ class LLVMBuilder {
   std::map<std::shared_ptr<mir::Value>, llvm::Value *> value_map_;
 
   void SetValue(std::shared_ptr<mir::Value> val, llvm::Value *value) {
-    std::cout << "SetValue " << val.get() << " value: " << value << std::endl;
     value_map_[val] = value;
   }
 
@@ -56,7 +55,6 @@ class LLVMBuilder {
   }
 
   void SetCurrentFunction(std::shared_ptr<mir::Function> function) {
-    std::cout << "function " << function->name << std::endl;
     current_func_ = function;
 
     ClearLocalMaps();

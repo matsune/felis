@@ -2,6 +2,7 @@
 
 #include <sstream>
 
+#include "macro.h"
 #include "string/string.h"
 
 namespace felis {
@@ -206,8 +207,7 @@ void AstPrinter::PrintStmt(ast::Stmt *stmt) {
       Up("}");
       break;
     default:
-      std::cout << "unimplemented" << std::endl;
-      exit(1);
+      UNIMPLEMENTED
   }
 }
 

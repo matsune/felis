@@ -44,7 +44,6 @@ llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<Ty>& ty) {
 
 llvm::Value* LLVMBuilder::GetValue(std::shared_ptr<mir::Value> value,
                                    bool load) {
-  std::cout << "GetValue " << value.get() << std::endl;
   switch (value->ValueKind()) {
     case mir::Value::Kind::CONST_BOOL: {
       auto v = std::dynamic_pointer_cast<mir::ConstantBool>(value);
@@ -91,7 +90,6 @@ llvm::Align GetAlign(llvm::Type* ty) {
 }
 
 void LLVMBuilder::Build(std::unique_ptr<mir::File> file) {
-  std::cout << "[Build]" << std::endl;
   for (auto func : file->funcs) {
     auto ty = llvm::cast<llvm::FunctionType>(LLVMType(func->type));
     auto fn_value = llvm::Function::Create(
@@ -107,7 +105,6 @@ void LLVMBuilder::Build(std::unique_ptr<mir::File> file) {
     for (auto it : current_func_->var_list) {
       if (it->alloc) {
         auto ty = LLVMType(it->type);
-        std::cout << ty->getScalarSizeInBits() << std::endl;
         auto alloca = new llvm::AllocaInst(ty, 0, nullptr, GetAlign(ty));
         builder_.Insert(alloca);
         SetValue(it, alloca);
@@ -135,12 +132,9 @@ void LLVMBuilder::Build(std::unique_ptr<mir::File> file) {
       /* throw CompileError(s.str()); */
     }
   }
-
-  std::cout << "[End Build]" << std::endl;
 }
 
 void LLVMBuilder::BuildBB(std::shared_ptr<mir::BB> bb) {
-  std::cout << "Build BB" << bb->id << std::endl;
   auto basic_block = GetOrCreateBasicBlock(bb);
   builder_.SetInsertPoint(basic_block);
   for (auto inst : bb->instructions) {
@@ -149,7 +143,6 @@ void LLVMBuilder::BuildBB(std::shared_ptr<mir::BB> bb) {
 }
 
 void LLVMBuilder::BuildInst(std::shared_ptr<mir::Inst> inst) {
-  std::cout << "BuildInst " << inst->InstKind() << std::endl;
   switch (inst->InstKind()) {
     case mir::Inst::ASSIGN: {
       Assign(std::dynamic_pointer_cast<mir::AssignInst>(inst));

@@ -67,15 +67,12 @@ class Session {
     builder->Build(std::move(mir));
 
     if (opts->IsEmit(EmitType::LLVM_IR)) {
-      std::cout << "LLVMIR" << std::endl;
       builder->EmitLLVMIR(opts->OutputName(EmitType::LLVM_IR));
     }
     if (opts->IsEmit(EmitType::LLVM_BC)) {
-      std::cout << "LLVMBC" << std::endl;
       builder->EmitLLVMBC(opts->OutputName(EmitType::LLVM_BC));
     }
     if (opts->IsEmit(EmitType::ASM)) {
-      std::cout << "ASM" << std::endl;
       builder->EmitASM(opts->OutputName(EmitType::ASM));
     }
     bool emit_obj = opts->IsEmit(EmitType::OBJ);
@@ -88,12 +85,10 @@ class Session {
       has_obj = true;
     }
     if (emit_link) {
-      std::cout << "LINK" << std::endl;
       std::string out = opts->OutputName(EmitType::LINK);
       std::string s = "gcc " + obj_path + " -o " + out;
       system(s.c_str());
     }
-    std::cout << "END build" << std::endl;
   }
 
   int Run() {
@@ -109,7 +104,6 @@ class Session {
 
       if (opts->IsPrintAst()) felis::AstPrinter().Print(ast);
 
-      std::cout << "[Lowring]" << std::endl;
       auto mir = felis::Lowering(std::move(ast), is_32bit);
       if (!mir) return 1;
 
@@ -126,7 +120,6 @@ class Session {
       std::cerr << err.what() << std::endl;
       exit = 1;
     }
-    std::cout << "exit " << exit << std::endl;
     return exit;
   }
 

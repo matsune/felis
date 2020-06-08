@@ -20,7 +20,6 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
     auto decl = decl_ck_.LookupFuncDecl(fn->proto->name->val);
     ctx_.RecordDecl(fn->proto->name, decl);
     current_func_ = std::dynamic_pointer_cast<FuncTy>(decl->type);
-    std::cout << "Infer fn " << fn->proto->name->val << std::endl;
 
     decl_ck_.OpenScope();
 
@@ -109,7 +108,6 @@ StmtResult TypeChecker::CheckRet(const std::unique_ptr<ast::RetStmt>& stmt) {
 
 StmtResult TypeChecker::CheckVarDecl(
     const std::unique_ptr<ast::VarDeclStmt>& stmt) {
-  std::cout << "InferVarDecl" << std::endl;
   // name validation
   auto& name = stmt->name->val;
   if (decl_ck_.ExistsInThisScope(name)) {
@@ -175,7 +173,6 @@ StmtResult TypeChecker::CheckAssign(
 }
 
 StmtResult TypeChecker::CheckExpr(const std::unique_ptr<ast::Expr>& expr) {
-  std::cout << "InferExpr " << ToString(expr->ExprKind()) << std::endl;
   switch (expr->ExprKind()) {
     case ast::Expr::Kind::LIT:
       return CheckLit((std::unique_ptr<ast::Lit>&)expr);

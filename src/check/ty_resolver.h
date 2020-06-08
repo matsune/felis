@@ -16,8 +16,6 @@ class TyResolver {
   TyResolver() = default;
 
   bool TryResolve(std::shared_ptr<Ty> ty, std::shared_ptr<Ty> to) {
-    std::cout << "TryResolve " << ToString(ty) << " to " << ToString(to)
-              << std::endl;
     ty = Underlying(ty);
     to = Underlying(to);
     if (to == ty) return true;

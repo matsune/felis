@@ -100,9 +100,7 @@ std::unique_ptr<ast::Extern> Parser::ParseExtern() {
 }
 
 std::unique_ptr<ast::FnDecl> Parser::ParseFnDecl() {
-  std::cout << "ParseFnDecl" << std::endl;
   auto proto = ParseFnProto();
-  std::cout << "ParseBlock " << proto->name->val << std::endl;
   auto block = ParseBlock();
   return std::make_unique<ast::FnDecl>(std::move(proto), std::move(block));
 }
@@ -367,7 +365,6 @@ std::unique_ptr<ast::Expr> Parser::ParsePrimary() {
 }
 
 std::unique_ptr<ast::Stmt> Parser::ParseStmt() {
-  std::cout << "ParseStmt" << std::endl;
   if (Match(Token::Kind::KW_RET)) {
     // Ret
     auto& ret = Peek();
@@ -449,7 +446,6 @@ std::unique_ptr<ast::If> Parser::ParseIf() {
 }
 
 std::unique_ptr<ast::Block> Parser::ParseBlock() {
-  std::cout << "ParseBlock" << std::endl;
   if (!Match(Token::Kind::LBRACE)) {
     Throw("expected %s", ToString(Token::Kind::LBRACE).c_str());
   }

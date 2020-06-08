@@ -98,14 +98,12 @@ std::unique_ptr<mir::File> Lowering(std::unique_ptr<ast::File> file,
 }
 
 void Lower::Lowering(std::unique_ptr<ast::File> file) {
-  std::cout << "CreateFn ext" << std::endl;
   while (!file->externs.empty()) {
     auto ext = file->externs.move_front();
     auto decl = ctx_.GetDecl(ext->proto->name);
     builder_.CreateFunc(decl);
   }
 
-  std::cout << "CreateFn fn" << std::endl;
   for (auto &fn_decl : file->fn_decls) {
     auto decl = ctx_.GetDecl(fn_decl->proto->name);
     auto func =
@@ -123,7 +121,6 @@ void Lower::Lowering(std::unique_ptr<ast::File> file) {
     }
   }
 
-  std::cout << "Lower Fn" << std::endl;
   while (!file->fn_decls.empty()) {
     auto fn_decl = file->fn_decls.move_front();
     auto decl = ctx_.GetDecl(fn_decl->proto->name);
@@ -140,11 +137,9 @@ void Lower::Lowering(std::unique_ptr<ast::File> file) {
       }
     }
   }
-  std::cout << "End Lowering" << std::endl;
 }
 
 std::shared_ptr<mir::Value> Lower::LowerStmt(std::unique_ptr<ast::Stmt> stmt) {
-  std::cout << "LowerStmt " << ToString(stmt->StmtKind()) << std::endl;
   switch (stmt->StmtKind()) {
     case ast::Stmt::Kind::EXPR:
       return LowerExpr(unique_cast<ast::Expr>(std::move(stmt)));
@@ -194,7 +189,6 @@ void Lower::LowerAssign(std::unique_ptr<ast::AssignStmt> stmt) {
 }
 
 std::shared_ptr<mir::Value> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
-  std::cout << "LowerExpr " << ToString(expr->ExprKind()) << std::endl;
   switch (expr->ExprKind()) {
     case ast::Expr::Kind::IDENT:
       return builder_.GetDeclValue(
@@ -418,13 +412,11 @@ std::shared_ptr<mir::Var> Lower::LowerIf(std::unique_ptr<ast::If> if_stmt) {
 
 std::shared_ptr<mir::Value> Lower::LowerBlock(
     std::unique_ptr<ast::Block> block) {
-  std::cout << "LowerBLOCK " << block.get() << std::endl;
   std::shared_ptr<mir::Value> val;
   while (!block->stmts.empty()) {
     auto stmt = block->stmts.move_front();
     val = LowerStmt(std::move(stmt));
   }
-  std::cout << "END LowerBLOCK " << block.get() << std::endl;
   return val;
 }
 
