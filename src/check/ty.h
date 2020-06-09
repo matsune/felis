@@ -80,7 +80,7 @@ struct Ty {
            kind == Ty::Kind::BOOL;
   }
 
-  std::shared_ptr<PtrTy> ToPtr();
+  std::shared_ptr<Ty> GetPtrElement();
 };
 
 struct FuncTy : Ty {

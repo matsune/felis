@@ -16,9 +16,11 @@ struct Function;
 struct BB;
 
 struct Value {
+  using ID = int;
+  ID id;
   std::shared_ptr<Ty> type;
 
-  Value(std::shared_ptr<Ty> type) : type(type) {}
+  Value(std::shared_ptr<Ty> type, ID id = 0) : type(type), id(id) {}
 
   virtual bool IsRValue() const { return false; }
   virtual bool IsConst() const { return false; }
@@ -31,9 +33,7 @@ struct Value {
 };
 
 struct RValue : Value {
-  int id;
-
-  RValue(std::shared_ptr<Ty> type, int id = 0) : Value(type), id(id) {}
+  RValue(std::shared_ptr<Ty> type, Value::ID id = 0) : Value(type, id) {}
 
   bool IsRValue() const override { return true; }
 };
@@ -66,9 +66,7 @@ struct ConstBool : RValue {
 };
 
 struct LValue : Value {
-  int id;
-
-  LValue(std::shared_ptr<Ty> type, int id = 0) : Value(type), id(id) {
+  LValue(std::shared_ptr<Ty> type, Value::ID id = 0) : Value(type, id) {
     assert(type->IsPtr() || type->IsString());
   }
 
@@ -256,21 +254,25 @@ struct Function : Func {
   std::shared_ptr<BB> entry_bb;
 
   std::map<std::shared_ptr<Decl>, std::shared_ptr<mir::Value>> decl_value_map;
-  std::vector<std::shared_ptr<mir::Value>> value_list;
+  std::vector<std::shared_ptr<mir::Value>> alloc_list;
 
   Function(std::string name, std::shared_ptr<FuncTy> type)
       : Func(name, type),
-        next_var_id(1),
+        next_value_id(1),
         next_bb_id(1),
         entry_bb(new BB(0, *this)) {}
 
   bool IsExt() override { return false; }
 
-  int GenVarID() { return next_var_id++; }
+  void InsertAllocValue(std::shared_ptr<mir::Value> value) {
+    value->id = next_value_id++;
+    alloc_list.push_back(value);
+  }
+
   mir::BB::ID GenBBID() { return next_bb_id++; }
 
  private:
-  int next_var_id;
+  mir::Value::ID next_value_id;
   mir::BB::ID next_bb_id;
 };
 

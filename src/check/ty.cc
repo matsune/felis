@@ -28,6 +28,12 @@ bool Ty::operator==(const Ty& other) const {
   return true;
 }
 
+std::shared_ptr<Ty> Ty::GetPtrElement() {
+  assert(IsPtr());
+  auto ptr_ty = static_cast<PtrTy*>(this);
+  return ptr_ty->ref;
+}
+
 std::shared_ptr<Ty> ToPtr(std::shared_ptr<Ty> ty) {
   return std::make_shared<PtrTy>(ty);
 }

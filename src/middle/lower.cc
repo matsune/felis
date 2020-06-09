@@ -168,13 +168,13 @@ void Lower::LowerRet(std::unique_ptr<ast::RetStmt> stmt) {
 void Lower::LowerVarDecl(std::unique_ptr<ast::VarDeclStmt> stmt) {
   auto decl = ctx_.GetDecl(stmt->name);
   auto val = LowerExpr(std::move(stmt->expr));
-  
+
   if (val->IsRValue() && *ToPtr(decl->type) == *val->type) {
     // array
     builder_.SetDeclValue(decl, val);
     return;
   }
-  
+
   auto var = builder_.CreateAlloc(decl->type);
   builder_.SetDeclValue(decl, var);
   builder_.CreateAssign(var, val);
@@ -317,12 +317,8 @@ std::shared_ptr<mir::Value> Lower::LowerUnary(
 std::shared_ptr<mir::Value> Lower::LowerArray(
     std::unique_ptr<ast::ArrayExpr> array) {
   auto type = std::dynamic_pointer_cast<ArrayTy>(ctx_.GetResult(array).val);
+  auto var = builder_.CreateAllocatedRValue(type);
 
-  //  auto var = std::make_shared<mir::RValue>(ToPtr(type));
-  auto var = builder_.CreateRValue(ToPtr(type));
-  builder_.current_bb->parent.value_list.push_back(var);
-
-  //    auto var = builder_.CreateAlloc(type);
   std::vector<std::shared_ptr<mir::Value>> values;
   while (!array->exprs.empty()) {
     auto expr = array->exprs.move_front();

@@ -54,19 +54,25 @@ std::shared_ptr<mir::ConstString> MIRBuilder::CreateConstString(
 }
 
 std::shared_ptr<mir::LValue> MIRBuilder::CreateAlloc(std::shared_ptr<Ty> type) {
-  auto lval =
-      std::make_shared<mir::LValue>(ToPtr(type), current_bb->parent.GenVarID());
-  current_bb->parent.value_list.push_back(lval);
+  auto lval = std::make_shared<mir::LValue>(ToPtr(type));
+  current_bb->parent.InsertAllocValue(lval);
   return lval;
+}
+
+std::shared_ptr<mir::RValue> MIRBuilder::CreateRValue(std::shared_ptr<Ty> ty) {
+  return std::make_shared<mir::RValue>(ty);
+}
+
+std::shared_ptr<mir::RValue> MIRBuilder::CreateAllocatedRValue(
+    std::shared_ptr<Ty> ty) {
+  auto rval = std::make_shared<mir::RValue>(ToPtr(ty));
+  current_bb->parent.InsertAllocValue(rval);
+  return rval;
 }
 
 void MIRBuilder::CreateAssign(std::shared_ptr<mir::Value> into,
                               std::shared_ptr<mir::Value> value) {
   Insert(std::make_shared<mir::AssignInst>(into, value));
-}
-
-std::shared_ptr<mir::RValue> MIRBuilder::CreateRValue(std::shared_ptr<Ty> ty) {
-  return std::make_shared<mir::RValue>(ty, current_bb->parent.GenVarID());
 }
 
 std::shared_ptr<mir::ConstInt> MIRBuilder::CreateConstInt(

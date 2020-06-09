@@ -48,6 +48,7 @@ class MIRBuilder {
   std::shared_ptr<mir::LValue> CreateAlloc(std::shared_ptr<Ty>);
 
   std::shared_ptr<mir::RValue> CreateRValue(std::shared_ptr<Ty>);
+  std::shared_ptr<mir::RValue> CreateAllocatedRValue(std::shared_ptr<Ty>);
 
   void CreateAssign(std::shared_ptr<mir::Value>, std::shared_ptr<mir::Value>);
 
