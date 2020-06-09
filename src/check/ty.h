@@ -73,6 +73,13 @@ struct Ty {
 
   bool IsNum() const { return IsInt() || IsFloat(); }
 
+  bool IsPrimitive() const {
+    return kind == Ty::Kind::I8 || kind == Ty::Kind::I16 ||
+           kind == Ty::Kind::I32 || kind == Ty::Kind::I64 ||
+           kind == Ty::Kind::F32 || kind == Ty::Kind::F64 ||
+           kind == Ty::Kind::BOOL;
+  }
+
   std::shared_ptr<PtrTy> ToPtr();
 };
 

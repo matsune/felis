@@ -112,12 +112,12 @@ void Lower::Lowering(std::unique_ptr<ast::File> file) {
 
     for (auto &arg : fn_decl->proto->args->list) {
       auto decl = ctx_.GetDecl(arg->name);
-      auto arg_var = builder_.CreateVar(ctx_.ResolvedType(decl->type));
-      func->args.push_back(arg_var);
+      auto arg_value = builder_.CreateRValue(ctx_.ResolvedType(decl->type));
+      func->args.push_back(arg_value);
 
-      auto arg_alloc = builder_.CreateAlloc(decl->type, decl->name);
+      auto arg_alloc = builder_.CreateAlloc(decl->type);
       builder_.SetDeclValue(decl, arg_alloc);
-      builder_.CreateAssign(arg_alloc, arg_var);
+      builder_.CreateAssign(arg_alloc, arg_value);
     }
   }
 
@@ -167,14 +167,14 @@ void Lower::LowerRet(std::unique_ptr<ast::RetStmt> stmt) {
 
 void Lower::LowerVarDecl(std::unique_ptr<ast::VarDeclStmt> stmt) {
   auto decl = ctx_.GetDecl(stmt->name);
-
   auto val = LowerExpr(std::move(stmt->expr));
-
-  if (val->Allocated()) {
+  
+  if (val->IsRValue() && *ToPtr(decl->type) == *val->type) {
+    // array
     builder_.SetDeclValue(decl, val);
     return;
   }
-
+  
   auto var = builder_.CreateAlloc(decl->type);
   builder_.SetDeclValue(decl, var);
   builder_.CreateAssign(var, val);
@@ -184,8 +184,7 @@ void Lower::LowerAssign(std::unique_ptr<ast::AssignStmt> stmt) {
   auto decl = ctx_.GetDecl(stmt->name);
   auto value = builder_.GetDeclValue(decl);
   auto expr_value = LowerExpr(std::move(stmt->expr));
-  assert(value->IsVar());
-  builder_.CreateAssign(std::dynamic_pointer_cast<mir::Var>(value), expr_value);
+  builder_.CreateAssign(value, expr_value);
 }
 
 std::shared_ptr<mir::Value> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
@@ -210,8 +209,7 @@ std::shared_ptr<mir::Value> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
   }
 }
 
-std::shared_ptr<mir::Constant> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
-  std::shared_ptr<mir::Constant> val;
+std::shared_ptr<mir::Value> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
   switch (lit->LitKind()) {
     case ast::Lit::Kind::CHAR: {
       auto ty = ctx_.GetResult(lit).val;
@@ -221,64 +219,60 @@ std::shared_ptr<mir::Constant> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
       ss >> r;
 
       if (ty->IsI32() || ty->IsI64()) {
-        val = std::make_unique<mir::ConstantInt>(ty, r);
+        return builder_.CreateConstInt(ty, r);
       } else if (ty->IsF32() || ty->IsF64()) {
-        val = std::make_unique<mir::ConstantFloat>(ty, r);
+        return builder_.CreateConstFloat(ty, r);
       } else {
         UNREACHABLE
       }
-
     } break;
     case ast::Lit::Kind::INT: {
-      val = ParseIntLit(std::move(lit));
+      return ParseIntLit(std::move(lit));
     } break;
     case ast::Lit::Kind::FLOAT: {
-      val = ParseFloatLit(std::move(lit));
+      return ParseFloatLit(std::move(lit));
     } break;
     case ast::Lit::Kind::BOOL: {
-      val = std::make_unique<mir::ConstantBool>(lit->val == "true");
+      return builder_.CreateConstBool(lit->val == "true");
     } break;
     case ast::Lit::Kind::STRING: {
-      val = std::make_unique<mir::ConstantString>(lit->val);
+      return builder_.CreateConstString(lit->val);
     } break;
   }
-  return val;
 }
 
-std::shared_ptr<mir::Constant> Lower::ParseIntLit(
-    std::unique_ptr<ast::Lit> lit) {
+std::shared_ptr<mir::Value> Lower::ParseIntLit(std::unique_ptr<ast::Lit> lit) {
   int64_t n;
   std::string err;
   if (!ParseInt(lit->val, n, err)) {
     throw LocError::Create(lit->Begin(), err);
   }
-
   auto ty = ctx_.GetResult(lit).val;
   if (ty->IsI8()) {
     if (n < INT8_MIN || n > INT8_MAX) {
       throw LocError::Create(lit->Begin(), "overflow int8");
     }
-    return std::make_unique<mir::ConstantInt>(ty, n);
+    return builder_.CreateConstInt(ty, n);
   } else if (ty->IsI16()) {
     if (n < INT16_MIN || n > INT16_MAX) {
       throw LocError::Create(lit->Begin(), "overflow int16");
     }
-    return std::make_unique<mir::ConstantInt>(ty, n);
+    return builder_.CreateConstInt(ty, n);
   } else if (ty->IsI32()) {
     if (n < INT32_MIN || n > INT32_MAX) {
       throw LocError::Create(lit->Begin(), "overflow int32");
     }
-    return std::make_unique<mir::ConstantInt>(ty, n);
+    return builder_.CreateConstInt(ty, n);
   } else if (ty->IsI64()) {
-    return std::make_unique<mir::ConstantInt>(ty, n);
+    return builder_.CreateConstInt(ty, n);
   } else if (ty->IsF32() || ty->IsF64()) {
-    return std::make_unique<mir::ConstantFloat>(ty, n);
+    return builder_.CreateConstFloat(ty, n);
   } else {
     UNREACHABLE
   }
 }
 
-std::shared_ptr<mir::ConstantFloat> Lower::ParseFloatLit(
+std::shared_ptr<mir::Value> Lower::ParseFloatLit(
     std::unique_ptr<ast::Lit> lit) {
   std::string err;
   double n;
@@ -286,15 +280,16 @@ std::shared_ptr<mir::ConstantFloat> Lower::ParseFloatLit(
     throw LocError::Create(lit->Begin(), err);
   }
   auto ty = ctx_.GetResult(lit).val;
-  return std::make_unique<mir::ConstantFloat>(ty, n);
+  return builder_.CreateConstFloat(ty, n);
 }
 
-std::shared_ptr<mir::Var> Lower::LowerBinary(
+std::shared_ptr<mir::Value> Lower::LowerBinary(
     std::unique_ptr<ast::BinaryExpr> expr) {
+  auto ty = ctx_.GetResult(expr).val;
   auto lhs = LowerExpr(std::move(expr->lhs));
   auto rhs = LowerExpr(std::move(expr->rhs));
   if (IsBinOp(expr->op->op)) {
-    return builder_.CreateBinary(BinOp(expr->op->op), lhs, rhs);
+    return builder_.CreateBinary(ty, BinOp(expr->op->op), lhs, rhs);
   } else if (IsCmpOp(expr->op->op)) {
     return builder_.CreateCmp(CmpOp(expr->op->op), lhs, rhs);
   } else {
@@ -302,7 +297,7 @@ std::shared_ptr<mir::Var> Lower::LowerBinary(
   }
 }
 
-std::shared_ptr<mir::Var> Lower::LowerCall(
+std::shared_ptr<mir::Value> Lower::LowerCall(
     std::unique_ptr<ast::CallExpr> expr) {
   auto decl = ctx_.GetDecl(expr->ident);
   std::vector<std::shared_ptr<mir::Value>> args;
@@ -312,37 +307,39 @@ std::shared_ptr<mir::Var> Lower::LowerCall(
   return builder_.CreateCall(decl, std::move(args));
 }
 
-std::shared_ptr<mir::Var> Lower::LowerUnary(
+std::shared_ptr<mir::Value> Lower::LowerUnary(
     std::unique_ptr<ast::UnaryExpr> unary) {
   auto ty = ctx_.GetResult(unary).val;
   auto expr = LowerExpr(std::move(unary->expr));
-  return builder_.CreateUnary(UnaryOp(unary->op->kind), expr);
+  return builder_.CreateUnary(ty, UnaryOp(unary->op->kind), expr);
 }
 
-std::shared_ptr<mir::Var> Lower::LowerArray(
+std::shared_ptr<mir::Value> Lower::LowerArray(
     std::unique_ptr<ast::ArrayExpr> array) {
   auto type = std::dynamic_pointer_cast<ArrayTy>(ctx_.GetResult(array).val);
-  auto alloc_var = builder_.CreateVar(type, true);
-  auto idx = 0;
+
+  //  auto var = std::make_shared<mir::RValue>(ToPtr(type));
+  auto var = builder_.CreateRValue(ToPtr(type));
+  builder_.current_bb->parent.value_list.push_back(var);
+
+  //    auto var = builder_.CreateAlloc(type);
+  std::vector<std::shared_ptr<mir::Value>> values;
   while (!array->exprs.empty()) {
     auto expr = array->exprs.move_front();
-    auto res = LowerExpr(std::move(expr));
-
-    auto idx_var = builder_.CreateVar(ToPtr(type->elem), false);
-    builder_.current_bb->InsertInst(
-        std::make_shared<mir::GepInst>(idx_var, alloc_var, idx++));
-    builder_.CreateAssign(idx_var, res);
+    values.push_back(LowerExpr(std::move(expr)));
   }
-  return alloc_var;
+
+  builder_.Insert(std::make_shared<mir::ArrayInst>(var, values));
+  return var;
 }
 
-std::shared_ptr<mir::Var> Lower::LowerIf(std::unique_ptr<ast::If> if_stmt) {
+std::shared_ptr<mir::Value> Lower::LowerIf(std::unique_ptr<ast::If> if_stmt) {
   bool has_else = if_stmt->HasElse();
 
   auto stmt_res = ctx_.GetResult(if_stmt);
-  std::shared_ptr<mir::Var> lval = nullptr;
+  std::shared_ptr<mir::LValue> lval = nullptr;
   if (stmt_res.IsExpr()) {
-    lval = builder_.CreateVar(stmt_res.val, true);
+    lval = builder_.CreateAlloc(stmt_res.val);
   }
 
   auto cond_expr = LowerExpr(std::move(if_stmt->cond));

@@ -77,7 +77,7 @@ class LLVMBuilder {
   void Unary(std::shared_ptr<mir::UnaryInst>);
   void Binary(std::shared_ptr<mir::BinaryInst>);
   void Cmp(std::shared_ptr<mir::CmpInst>);
-  void Gep(std::shared_ptr<mir::GepInst>);
+  //  void Gep(std::shared_ptr<mir::GepInst>);
   void Call(std::shared_ptr<mir::CallInst>);
   void Br(std::shared_ptr<mir::BrInst>);
   void Goto(std::shared_ptr<mir::GotoInst>);

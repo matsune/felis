@@ -36,52 +36,82 @@ std::shared_ptr<mir::BB> MIRBuilder::CreateBB(std::shared_ptr<mir::BB> after) {
   return insert_bb;
 }
 
-std::shared_ptr<mir::Var> MIRBuilder::CreateVar(std::shared_ptr<Ty> type,
-                                                bool alloc, std::string name) {
-  auto var = std::make_shared<mir::Var>(current_bb->parent.GenVarID(), type,
-                                        alloc, name);
-  current_bb->parent.var_list.push_back(var);
-  return var;
+std::shared_ptr<mir::ConstInt> CreateConstInt(std::shared_ptr<Ty> ty,
+                                              int64_t val) {
+  return std::make_shared<mir::ConstInt>(ty, val);
+}
+std::shared_ptr<mir::ConstFloat> CreateConstFloat(std::shared_ptr<Ty> ty,
+                                                  double val) {
+  return std::make_shared<mir::ConstFloat>(ty, val);
+}
+std::shared_ptr<mir::ConstBool> CreateConstBool(bool val) {
+  return std::make_shared<mir::ConstBool>(val);
 }
 
-std::shared_ptr<mir::Var> MIRBuilder::CreateAlloc(std::shared_ptr<Ty> type,
-                                                  std::string name) {
-  return CreateVar(type, true, name);
+std::shared_ptr<mir::ConstString> MIRBuilder::CreateConstString(
+    std::string val) {
+  return std::make_shared<mir::ConstString>(val);
 }
 
-void MIRBuilder::CreateAssign(std::shared_ptr<mir::Var> into,
+std::shared_ptr<mir::LValue> MIRBuilder::CreateAlloc(std::shared_ptr<Ty> type) {
+  auto lval =
+      std::make_shared<mir::LValue>(ToPtr(type), current_bb->parent.GenVarID());
+  current_bb->parent.value_list.push_back(lval);
+  return lval;
+}
+
+void MIRBuilder::CreateAssign(std::shared_ptr<mir::Value> into,
                               std::shared_ptr<mir::Value> value) {
   Insert(std::make_shared<mir::AssignInst>(into, value));
 }
 
-std::shared_ptr<mir::Var> MIRBuilder::CreateUnary(
-    mir::UnaryInst::Op op, std::shared_ptr<mir::Value> operand) {
-  auto var = CreateVar(operand->type);
-  Insert(std::make_shared<mir::UnaryInst>(var, op, operand));
-  return var;
+std::shared_ptr<mir::RValue> MIRBuilder::CreateRValue(std::shared_ptr<Ty> ty) {
+  return std::make_shared<mir::RValue>(ty, current_bb->parent.GenVarID());
 }
 
-std::shared_ptr<mir::Var> MIRBuilder::CreateBinary(
-    mir::BinaryInst::Op op, std::shared_ptr<mir::Value> lhs,
-    std::shared_ptr<mir::Value> rhs) {
-  auto var = CreateVar(lhs->type);
-  Insert(std::make_shared<mir::BinaryInst>(var, op, lhs, rhs));
-  return var;
+std::shared_ptr<mir::ConstInt> MIRBuilder::CreateConstInt(
+    std::shared_ptr<Ty> ty, int64_t val) {
+  return std::make_shared<mir::ConstInt>(ty, val);
 }
 
-std::shared_ptr<mir::Var> MIRBuilder::CreateCmp(
+std::shared_ptr<mir::ConstFloat> MIRBuilder::CreateConstFloat(
+    std::shared_ptr<Ty> ty, double val) {
+  return std::make_shared<mir::ConstFloat>(ty, val);
+}
+
+std::shared_ptr<mir::ConstBool> MIRBuilder::CreateConstBool(bool val) {
+  return std::make_shared<mir::ConstBool>(val);
+}
+
+std::shared_ptr<mir::RValue> MIRBuilder::CreateUnary(
+    std::shared_ptr<Ty> ty, mir::UnaryInst::Op op,
+    std::shared_ptr<mir::Value> operand) {
+  auto val = CreateRValue(ty);
+  Insert(std::make_shared<mir::UnaryInst>(val, op, operand));
+  return val;
+}
+
+std::shared_ptr<mir::RValue> MIRBuilder::CreateBinary(
+    std::shared_ptr<Ty> ty, mir::BinaryInst::Op op,
+    std::shared_ptr<mir::Value> lhs, std::shared_ptr<mir::Value> rhs) {
+  auto val = CreateRValue(ty);
+  Insert(std::make_shared<mir::BinaryInst>(val, op, lhs, rhs));
+  return val;
+}
+
+std::shared_ptr<mir::RValue> MIRBuilder::CreateCmp(
     mir::CmpInst::Op op, std::shared_ptr<mir::Value> lhs,
     std::shared_ptr<mir::Value> rhs) {
-  auto var = CreateVar(kTypeBool);
-  Insert(std::make_shared<mir::CmpInst>(var, op, lhs, rhs));
-  return var;
+  auto val = CreateRValue(kTypeBool);
+  Insert(std::make_shared<mir::CmpInst>(val, op, lhs, rhs));
+  return val;
 }
 
-std::shared_ptr<mir::Var> MIRBuilder::CreateCall(
+std::shared_ptr<mir::RValue> MIRBuilder::CreateCall(
     std::shared_ptr<Decl> decl, std::vector<std::shared_ptr<mir::Value>> args) {
-  auto var = CreateVar(decl->AsFuncTy()->ret);
-  Insert(std::make_shared<mir::CallInst>(var, args, GetDeclFunc(decl)));
-  return var;
+  auto val = CreateRValue(decl->AsFuncTy()->ret);
+  Insert(std::make_shared<mir::CallInst>(val, args, GetDeclFunc(decl)));
+  return val;
 }
 
 std::shared_ptr<mir::BrInst> MIRBuilder::CreateCond(

@@ -51,7 +51,6 @@ class TyResolver {
     switch (ty->kind) {
       case Ty::Kind::UNRESOLVED:
         UNREACHABLE
-        return nullptr;
       case Ty::Kind::UNTYPED_INT:
         return is_32bit ? kTypeI32 : kTypeI64;
       case Ty::Kind::UNTYPED_FLOAT:

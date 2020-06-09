@@ -110,7 +110,7 @@ class Session {
       if (opts->IsPrintMir()) {
         felis::MirPrinter().Print(mir);
       }
-      Build(std::move(machine), std::move(mir));
+//      Build(std::move(machine), std::move(mir));
 
     } catch (felis::LocError &err) {
       exit = Report(err);

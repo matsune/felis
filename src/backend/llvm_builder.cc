@@ -44,33 +44,34 @@ llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<Ty>& ty) {
 
 llvm::Value* LLVMBuilder::GetValue(std::shared_ptr<mir::Value> value,
                                    bool load) {
-  switch (value->ValueKind()) {
-    case mir::Value::Kind::CONST_BOOL: {
-      auto v = std::dynamic_pointer_cast<mir::ConstantBool>(value);
-      return v->val ? llvm::ConstantInt::getTrue(ctx_)
-                    : llvm::ConstantInt::getFalse(ctx_);
-    } break;
-    case mir::Value::Kind::CONST_INT: {
-      auto v = std::dynamic_pointer_cast<mir::ConstantInt>(value);
-      return llvm::ConstantInt::getSigned(LLVMType(v->type), v->val);
-    } break;
-    case mir::Value::Kind::CONST_FLOAT: {
-      auto v = std::dynamic_pointer_cast<mir::ConstantFloat>(value);
-      return llvm::ConstantFP::get(LLVMType(v->type), v->val);
-    } break;
-    case mir::Value::Kind::CONST_STRING: {
-      auto v = std::dynamic_pointer_cast<mir::ConstantString>(value);
-      return builder_.CreateGlobalStringPtr(v->val);
-    } break;
-    case mir::Value::Kind::VAR:
-      auto llvm_value = value_map_.at(value);
-      if (load) {
-        auto var = std::dynamic_pointer_cast<mir::Var>(value);
-        if (var->alloc)
-          return builder_.CreateLoad(LLVMType(var->type), llvm_value);
-      }
-      return llvm_value;
-  }
+  //  switch (value->ValueKind()) {
+  //    case mir::Value::Kind::CONST_BOOL: {
+  //      auto v = std::dynamic_pointer_cast<mir::ConstantBool>(value);
+  //      return v->val ? llvm::ConstantInt::getTrue(ctx_)
+  //                    : llvm::ConstantInt::getFalse(ctx_);
+  //    } break;
+  //    case mir::Value::Kind::CONST_INT: {
+  //      auto v = std::dynamic_pointer_cast<mir::ConstantInt>(value);
+  //      return llvm::ConstantInt::getSigned(LLVMType(v->type), v->val);
+  //    } break;
+  //    case mir::Value::Kind::CONST_FLOAT: {
+  //      auto v = std::dynamic_pointer_cast<mir::ConstantFloat>(value);
+  //      return llvm::ConstantFP::get(LLVMType(v->type), v->val);
+  //    } break;
+  //    case mir::Value::Kind::CONST_STRING: {
+  //      auto v = std::dynamic_pointer_cast<mir::ConstantString>(value);
+  //      return builder_.CreateGlobalStringPtr(v->val);
+  //    } break;
+  //    case mir::Value::Kind::VAR:
+  //      auto llvm_value = value_map_.at(value);
+  //      if (load) {
+  //        auto var = std::dynamic_pointer_cast<mir::Var>(value);
+  //        //        if (var->alloc)
+  //        //          return builder_.CreateLoad(LLVMType(var->type),
+  //        llvm_value);
+  //      }
+  //      return llvm_value;
+  //  }
 }
 
 llvm::BasicBlock* LLVMBuilder::GetOrCreateBasicBlock(
@@ -102,14 +103,13 @@ void LLVMBuilder::Build(std::unique_ptr<mir::File> file) {
 
     SetCurrentFunction(std::dynamic_pointer_cast<mir::Function>(func));
 
-    for (auto it : current_func_->var_list) {
-      if (it->alloc) {
-        auto ty = LLVMType(it->type);
-        auto alloca = new llvm::AllocaInst(ty, 0, nullptr, GetAlign(ty));
-        builder_.Insert(alloca);
-        SetValue(it, alloca);
-      }
-    }
+    //    for (auto it : current_func_->var_list) {
+    //      if (it->alloc) {
+    //        auto ty = LLVMType(it->type);
+    //        auto alloca = new llvm::AllocaInst(ty, 0, nullptr,
+    //        GetAlign(ty)); builder_.Insert(alloca); SetValue(it, alloca);
+    //      }
+    //    }
 
     auto arg_it = GetLLVMFunc()->arg_begin();
     for (auto arg : current_func_->args) {
@@ -156,9 +156,9 @@ void LLVMBuilder::BuildInst(std::shared_ptr<mir::Inst> inst) {
     case mir::Inst::CMP: {
       Cmp(std::dynamic_pointer_cast<mir::CmpInst>(inst));
     } break;
-    case mir::Inst::GEP: {
-      Gep(std::dynamic_pointer_cast<mir::GepInst>(inst));
-    } break;
+      //    case mir::Inst::GEP: {
+      //      Gep(std::dynamic_pointer_cast<mir::GepInst>(inst));
+      //    } break;
     case mir::Inst::CALL: {
       Call(std::dynamic_pointer_cast<mir::CallInst>(inst));
     } break;
@@ -277,14 +277,15 @@ void LLVMBuilder::Cmp(std::shared_ptr<mir::CmpInst> inst) {
   SetValue(inst->var, val);
 }
 
-void LLVMBuilder::Gep(std::shared_ptr<mir::GepInst> inst) {
-  auto arr_val = GetValue(inst->arr, false);
-  auto value = builder_.CreateInBoundsGEP(
-      arr_val->getType()->getPointerElementType(), arr_val,
-      {llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(ctx_), 0),
-       llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(ctx_), inst->idx)});
-  SetValue(inst->var, value);
-}
+// void LLVMBuilder::Gep(std::shared_ptr<mir::GepInst> inst) {
+//  auto arr_val = GetValue(inst->arr, false);
+//  auto value = builder_.CreateInBoundsGEP(
+//      arr_val->getType()->getPointerElementType(), arr_val,
+//      {llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(ctx_), 0),
+//       llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(ctx_),
+//       inst->idx)});
+//  SetValue(inst->var, value);
+//}
 
 void LLVMBuilder::Call(std::shared_ptr<mir::CallInst> inst) {
   auto func = func_map_.at(inst->func);

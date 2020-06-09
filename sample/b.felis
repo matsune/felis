@@ -1,30 +1,29 @@
-fn d() -> i32 {  3 }
-fn e() -> i32 { ret if true { 3 } else { 4 } }
-fn c() { }
+fn a() -> [i32,2] {
+  [1,2]
+}
 
 fn main() -> i32 {
- var c = if true { 2 } else { ret 4 }
- c = if true { 4 } else if false { ret  3 } else { d() }
-
+ 
  let n = if true {
     4
  } else {
    ret 5
  }
+ n
 
- c = {
-   if true {
-     14
-   } else {
-      23
-   }
- }
+/*  c = { */
+/*    if true { */
+/*      14 */
+/*    } else { */
+/*       23 */
+/*    } */
+/*  } */
 
-  let b = 4
-  if false {
-   ret b
-  } else {
-    5
-  }
-  ret c
+/*   let b = 4 */
+/*   if false { */
+/*    ret b */
+/*   } else { */
+/*     5 */
+/*   } */
+/*   ret c */
 }

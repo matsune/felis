@@ -237,29 +237,29 @@ std::string ToString(const std::shared_ptr<Decl> &decl) {
 
 std::string ToString(const std::shared_ptr<mir::Value> &value) {
   std::stringstream s;
-  switch (value->ValueKind()) {
-    case mir::Value::Kind::CONST_INT: {
-      auto c = (const std::shared_ptr<mir::ConstantInt> &)value;
-      s << "const " << ToString(c->type) << " " << c->val;
-    } break;
-    case mir::Value::Kind::CONST_FLOAT: {
-      auto c = (const std::shared_ptr<mir::ConstantFloat> &)value;
-      s << "const " << ToString(c->type) << " " << c->val;
-    } break;
-    case mir::Value::Kind::CONST_BOOL: {
-      auto c = (const std::shared_ptr<mir::ConstantBool> &)value;
-      s << "const bool " << (c->val ? "true" : "false");
-    } break;
-    case mir::Value::Kind::CONST_STRING: {
-      auto c = (const std::shared_ptr<mir::ConstantString> &)value;
-      s << "const string " << c->val;
-    } break;
-    case mir::Value::Kind::VAR: {
-      auto c = (const std::shared_ptr<mir::Var> &)value;
-      s << (c->alloc ? "$" : "$_") << c->id << ": " << ToString(c->type);
-    } break;
+
+  if (auto rvalue = std::dynamic_pointer_cast<mir::RValue>(value)) {
+    if (auto const_int = std::dynamic_pointer_cast<mir::ConstInt>(rvalue)) {
+      s << "const " << ToString(const_int->type) << " " << const_int->val;
+    } else if (auto const_float =
+                   std::dynamic_pointer_cast<mir::ConstFloat>(rvalue)) {
+      s << "const " << ToString(const_float->type) << " " << const_float->val;
+    } else if (auto const_bool =
+                   std::dynamic_pointer_cast<mir::ConstBool>(rvalue)) {
+      s << "const " << ToString(const_bool->type) << " "
+        << (const_bool->val ? "true" : "false");
+    } else {
+      s << "$_" << rvalue->id << ": " << ToString(rvalue->type);
+    }
+  } else {
+    auto lvalue = std::dynamic_pointer_cast<mir::LValue>(value);
+    if (auto const_string =
+            std::dynamic_pointer_cast<mir::ConstString>(lvalue)) {
+      s << "const string \"" << const_string->val << "\"";
+    } else {
+      s << "$" << lvalue->id << ": " << ToString(lvalue->type);
+    }
   }
-  /* s << " " << value.get(); */
   return s.str();
 }
 

@@ -28,8 +28,8 @@ void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
   }
   Down(") -> %s {", ToString(fn->type->ret).c_str());
 
-  for (auto it : fn->var_list) {
-    if (it->alloc) Writeln(ToString(it));
+  for (auto it : fn->value_list) {
+    Writeln(ToString(it));
   }
 
   auto bb = fn->entry_bb;
@@ -49,11 +49,23 @@ void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
         case mir::Inst::Kind::CMP:
           PrintCmp((std::shared_ptr<mir::CmpInst>&)inst);
           break;
-        case mir::Inst::Kind::GEP: {
-          auto gep_inst = (std::shared_ptr<mir::GepInst>&)inst;
-          Writeln("%s = gep %s[%d]", ToString(gep_inst->var).c_str(),
-                  ToString(gep_inst->arr).c_str(), gep_inst->idx);
+        case mir::Inst::Kind::ARRAY: {
+          auto array_inst = (std::shared_ptr<mir::ArrayInst>&)inst;
+          Write("%s = [", ToString(array_inst->var).c_str());
+          auto i = 0;
+          for (auto value : array_inst->values) {
+            if (i > 0) Write(", ");
+            Write(ToString(value));
+            ++i;
+          }
+          Writeln("]");
         } break;
+          //        case mir::Inst::Kind::GEP: {
+          //          auto gep_inst = (std::shared_ptr<mir::GepInst>&)inst;
+          //          Writeln("%s = gep %s[%d]",
+          //          ToString(gep_inst->var).c_str(),
+          //                  ToString(gep_inst->arr).c_str(), gep_inst->idx);
+          //        } break;
         case mir::Inst::Kind::CALL:
           PrintCall((std::shared_ptr<mir::CallInst>&)inst);
           break;
@@ -75,7 +87,7 @@ void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
 }
 
 void MirPrinter::PrintAssign(const std::shared_ptr<mir::AssignInst>& inst) {
-  Writeln("%s <= %s", ToString(inst->into).c_str(),
+  Writeln("%s = %s", ToString(inst->into).c_str(),
           ToString(inst->value).c_str());
 }
 

@@ -31,18 +31,22 @@ fn o() {
 }
 
 fn main() ->i32 {
-  if true {
+  let n = if true {
     let b = 4
+    b
   } else {
     32
   }
-  var a = 'a';
-  let d = 関数1(a)
-  let vv =  3
-  o()
-  if true {
-    let str = "あいう"
-    puts(str)
-  }
-  ret d
+  var a = 'a'
+  let b = a
+  b
+  /* let c = n + a; */
+  /* let d = 関数1(c) */
+  /* let vv =  3 */
+  /* o() */
+  /* if true { */
+  /*   let str = "あいう" */
+  /*   puts(str) */
+  /* } */
+  /* ret d */
 }
