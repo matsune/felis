@@ -112,7 +112,7 @@ void Lower::Lowering(std::unique_ptr<ast::File> file) {
 
     for (auto &arg : fn_decl->proto->args->list) {
       auto decl = ctx_.GetDecl(arg->name);
-      auto arg_value = builder_.CreateRValue(ctx_.ResolvedType(decl->type));
+      auto arg_value = builder_.CreateResult(ctx_.ResolvedType(decl->type));
       func->args.push_back(arg_value);
 
       auto arg_alloc = builder_.CreateAlloc(decl->type);
@@ -169,11 +169,11 @@ void Lower::LowerVarDecl(std::unique_ptr<ast::VarDeclStmt> stmt) {
   auto decl = ctx_.GetDecl(stmt->name);
   auto val = LowerExpr(std::move(stmt->expr));
 
-  if (val->IsRValue() && *ToPtr(decl->type) == *val->type) {
-    // array
-    builder_.SetDeclValue(decl, val);
-    return;
-  }
+  //  if (val->IsRValue() && *ToPtr(decl->type) == *val->type) {
+  //    // array
+  //    builder_.SetDeclValue(decl, val);
+  //    return;
+  //  }
 
   auto var = builder_.CreateAlloc(decl->type);
   builder_.SetDeclValue(decl, var);
@@ -317,7 +317,7 @@ std::shared_ptr<mir::Value> Lower::LowerUnary(
 std::shared_ptr<mir::Value> Lower::LowerArray(
     std::unique_ptr<ast::ArrayExpr> array) {
   auto type = std::dynamic_pointer_cast<ArrayTy>(ctx_.GetResult(array).type);
-  auto var = builder_.CreateAllocatedRValue(type);
+  auto var = builder_.CreateAlloc(type);
 
   std::vector<std::shared_ptr<mir::Value>> values;
   while (!array->exprs.empty()) {
@@ -331,11 +331,12 @@ std::shared_ptr<mir::Value> Lower::LowerArray(
 
 std::shared_ptr<mir::Value> Lower::LowerIf(std::unique_ptr<ast::If> if_stmt) {
   bool has_else = if_stmt->HasElse();
-
   auto stmt_res = ctx_.GetResult(if_stmt);
-  std::shared_ptr<mir::LValue> lval = nullptr;
+
+  std::shared_ptr<mir::PhiInst> phi_inst = nullptr;
   if (stmt_res.IsExpr()) {
-    lval = builder_.CreateAlloc(stmt_res.type);
+    phi_inst =
+        std::make_shared<mir::PhiInst>(builder_.CreateResult(stmt_res.type));
   }
 
   auto cond_expr = LowerExpr(std::move(if_stmt->cond));
@@ -356,6 +357,7 @@ std::shared_ptr<mir::Value> Lower::LowerIf(std::unique_ptr<ast::If> if_stmt) {
   }
 
   if (stmt_res.IsRet()) {
+    // terminating
     auto else_bb = builder_.CreateBB(then_bb);
     auto cond = builder_.CreateCond(cond_expr, then_bb, else_bb);
     builder_.SetInsertBB(then_bb);
@@ -377,8 +379,10 @@ std::shared_ptr<mir::Value> Lower::LowerIf(std::unique_ptr<ast::If> if_stmt) {
   auto block_res = ctx_.GetResult(if_stmt->block);
   auto block_val = LowerBlock(std::move(if_stmt->block));
   if (!block_res.IsRet()) {
-    if (lval && block_val) {
-      builder_.CreateAssign(lval, block_val);
+    // needs goto
+    if (phi_inst && block_val) {
+      // phi
+      phi_inst->nodes.push_back(std::make_pair(block_val, then_bb));
     }
     builder_.CreateGoto(end_bb);
   }
@@ -392,15 +396,16 @@ std::shared_ptr<mir::Value> Lower::LowerIf(std::unique_ptr<ast::If> if_stmt) {
     else_val = LowerBlock(unique_cast<ast::Block>(std::move(if_stmt->els)));
   }
   if (!else_res.IsRet()) {
-    if (lval && else_val) {
-      builder_.CreateAssign(lval, else_val);
+    if (phi_inst && else_val) {
+      phi_inst->nodes.push_back(std::make_pair(else_val, else_bb));
     }
     builder_.CreateGoto(end_bb);
   }
 
   builder_.SetInsertBB(end_bb);
-
-  return lval;
+  builder_.Insert(phi_inst);
+  return phi_inst->result;
+  //  return lval;
 }
 
 std::shared_ptr<mir::Value> Lower::LowerBlock(

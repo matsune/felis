@@ -237,28 +237,27 @@ std::string ToString(const std::shared_ptr<Decl> &decl) {
 
 std::string ToString(const std::shared_ptr<mir::Value> &value) {
   std::stringstream s;
-
-  if (auto rvalue = std::dynamic_pointer_cast<mir::RValue>(value)) {
-    if (auto const_int = std::dynamic_pointer_cast<mir::ConstInt>(rvalue)) {
-      s << "const " << ToString(const_int->type) << " " << const_int->val;
-    } else if (auto const_float =
-                   std::dynamic_pointer_cast<mir::ConstFloat>(rvalue)) {
-      s << "const " << ToString(const_float->type) << " " << const_float->val;
-    } else if (auto const_bool =
-                   std::dynamic_pointer_cast<mir::ConstBool>(rvalue)) {
-      s << "const " << ToString(const_bool->type) << " "
-        << (const_bool->val ? "true" : "false");
-    } else {
-      s << "$_" << rvalue->id << ": " << ToString(rvalue->type);
-    }
+  if (value->IsConstInt()) {
+    auto const_int = std::dynamic_pointer_cast<mir::ConstInt>(value);
+    s << "const " << ToString(const_int->type) << " " << const_int->val;
+  } else if (value->IsConstFloat()) {
+    auto const_float = std::dynamic_pointer_cast<mir::ConstFloat>(value);
+    s << "const " << ToString(const_float->type) << " " << const_float->val;
+  } else if (value->IsConstBool()) {
+    auto const_bool = std::dynamic_pointer_cast<mir::ConstBool>(value);
+    s << "const " << ToString(const_bool->type) << " "
+      << (const_bool->val ? "true" : "false");
+  } else if (value->IsConstString()) {
+    auto const_string = std::dynamic_pointer_cast<mir::ConstString>(value);
+    s << "const string \"" << const_string->val << "\"";
+  } else if (value->IsResult()) {
+    auto result = std::dynamic_pointer_cast<mir::Result>(value);
+    s << "$" << result->id << ": " << ToString(result->type);
+  } else if (value->IsIndex()) {
+    auto index = std::dynamic_pointer_cast<mir::Index>(value);
+    s << ToString(index->val) << "[" << ToString(index->idx) << "]";
   } else {
-    auto lvalue = std::dynamic_pointer_cast<mir::LValue>(value);
-    if (auto const_string =
-            std::dynamic_pointer_cast<mir::ConstString>(lvalue)) {
-      s << "const string \"" << const_string->val << "\"";
-    } else {
-      s << "$" << lvalue->id << ": " << ToString(lvalue->type);
-    }
+    UNREACHABLE
   }
   return s.str();
 }

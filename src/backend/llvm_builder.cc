@@ -45,29 +45,23 @@ llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<Ty>& ty) {
 llvm::Value* LLVMBuilder::GetValue(std::shared_ptr<mir::Value> value,
                                    bool deref) {
   llvm::Value* v;
-  if (value->IsRValue()) {
-    auto rvalue = std::dynamic_pointer_cast<mir::RValue>(value);
-    if (auto const_int = std::dynamic_pointer_cast<mir::ConstInt>(rvalue)) {
-      v = llvm::ConstantInt::getSigned(LLVMType(const_int->type),
-                                       const_int->val);
-    } else if (auto const_float =
-                   std::dynamic_pointer_cast<mir::ConstFloat>(rvalue)) {
-      v = llvm::ConstantFP::get(LLVMType(const_float->type), const_float->val);
-    } else if (auto const_bool =
-                   std::dynamic_pointer_cast<mir::ConstBool>(rvalue)) {
-      v = const_bool->val ? llvm::ConstantInt::getTrue(ctx_)
-                          : llvm::ConstantInt::getFalse(ctx_);
-    } else {
-      v = value_map_.at(rvalue);
-    }
-  } else {
-    auto lvalue = std::dynamic_pointer_cast<mir::LValue>(value);
-    if (auto const_string =
-            std::dynamic_pointer_cast<mir::ConstString>(lvalue)) {
-      v = builder_.CreateGlobalStringPtr(const_string->val);
-    } else {
-      v = value_map_.at(lvalue);
-    }
+  if (value->IsConstInt()) {
+    auto const_int = std::dynamic_pointer_cast<mir::ConstInt>(value);
+    v = llvm::ConstantInt::getSigned(LLVMType(const_int->type), const_int->val);
+  } else if (value->IsConstFloat()) {
+    auto const_float = std::dynamic_pointer_cast<mir::ConstFloat>(value);
+    v = llvm::ConstantFP::get(LLVMType(const_float->type), const_float->val);
+  } else if (value->IsConstBool()) {
+    auto const_bool = std::dynamic_pointer_cast<mir::ConstBool>(value);
+    v = const_bool->val ? llvm::ConstantInt::getTrue(ctx_)
+                        : llvm::ConstantInt::getFalse(ctx_);
+  } else if (value->IsConstString()) {
+    auto const_string = std::dynamic_pointer_cast<mir::ConstString>(value);
+    v = builder_.CreateGlobalStringPtr(const_string->val);
+  } else if (value->IsResult()) {
+    v = value_map_.at(value);
+  } else if (value->IsIndex()) {
+    v = value_map_.at(value);
   }
   if (deref && v->getType()->isPointerTy()) {
     return builder_.CreateLoad(v->getType()->getPointerElementType(), v);
@@ -172,6 +166,9 @@ void LLVMBuilder::BuildInst(std::shared_ptr<mir::Inst> inst) {
     case mir::Inst::RET: {
       Ret(std::dynamic_pointer_cast<mir::RetInst>(inst));
     } break;
+    case mir::Inst::PHI: {
+      Phi(std::dynamic_pointer_cast<mir::PhiInst>(inst));
+    } break;
   }
 }
 
@@ -192,7 +189,7 @@ void LLVMBuilder::Assign(std::shared_ptr<mir::AssignInst> inst) {
 }
 
 void LLVMBuilder::Unary(std::shared_ptr<mir::UnaryInst> inst) {
-  bool is_float = inst->var->type->IsFloat();
+  bool is_float = inst->result->type->IsFloat();
   auto expr = GetValue(inst->operand, true);
   llvm::Value* val;
   switch (inst->op) {
@@ -208,7 +205,7 @@ void LLVMBuilder::Unary(std::shared_ptr<mir::UnaryInst> inst) {
       val = builder_.CreateXor(expr, llvm::ConstantInt::getTrue(ctx_));
       break;
   }
-  SetValue(inst->var, val);
+  SetValue(inst->result, val);
 }
 
 void LLVMBuilder::Binary(std::shared_ptr<mir::BinaryInst> inst) {
@@ -238,7 +235,7 @@ void LLVMBuilder::Binary(std::shared_ptr<mir::BinaryInst> inst) {
       val = builder_.CreateSRem(lhs, rhs);
       break;
   }
-  SetValue(inst->var, val);
+  SetValue(inst->result, val);
 }
 
 void LLVMBuilder::Cmp(std::shared_ptr<mir::CmpInst> inst) {
@@ -273,11 +270,11 @@ void LLVMBuilder::Cmp(std::shared_ptr<mir::CmpInst> inst) {
                      : builder_.CreateICmpSGE(lhs, rhs);
       break;
   }
-  SetValue(inst->var, val);
+  SetValue(inst->result, val);
 }
 
 void LLVMBuilder::Array(std::shared_ptr<mir::ArrayInst> inst) {
-  auto into = GetValue(inst->var, false);
+  auto into = GetValue(inst->result, false);
   for (unsigned long idx = 0; idx < inst->values.size(); ++idx) {
     auto gep = builder_.CreateInBoundsGEP(
         into->getType()->getPointerElementType(), into,
@@ -286,6 +283,16 @@ void LLVMBuilder::Array(std::shared_ptr<mir::ArrayInst> inst) {
     auto val = GetValue(inst->values.at(idx), true);
     builder_.CreateStore(val, gep);
   }
+}
+
+void LLVMBuilder::Phi(std::shared_ptr<mir::PhiInst> inst) {
+  auto phi =
+      builder_.CreatePHI(LLVMType(inst->result->type), inst->nodes.size());
+  for (auto pair : inst->nodes) {
+    phi->addIncoming(GetValue(pair.first, false),
+                     GetOrCreateBasicBlock(pair.second));
+  }
+  SetValue(inst->result, phi);
 }
 
 void LLVMBuilder::Call(std::shared_ptr<mir::CallInst> inst) {
@@ -297,7 +304,7 @@ void LLVMBuilder::Call(std::shared_ptr<mir::CallInst> inst) {
     arg_values[i++] = val;
   }
   auto val = builder_.CreateCall(func, arg_values);
-  SetValue(inst->var, val);
+  SetValue(inst->result, val);
 }
 
 void LLVMBuilder::Br(std::shared_ptr<mir::BrInst> inst) {

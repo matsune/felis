@@ -42,27 +42,25 @@ class MIRBuilder {
   std::shared_ptr<mir::ConstFloat> CreateConstFloat(std::shared_ptr<Ty>,
                                                     double);
   std::shared_ptr<mir::ConstBool> CreateConstBool(bool);
-
   std::shared_ptr<mir::ConstString> CreateConstString(std::string);
+  std::shared_ptr<mir::Result> CreateAlloc(std::shared_ptr<Ty>);
 
-  std::shared_ptr<mir::LValue> CreateAlloc(std::shared_ptr<Ty>);
-
-  std::shared_ptr<mir::RValue> CreateRValue(std::shared_ptr<Ty>);
-  std::shared_ptr<mir::RValue> CreateAllocatedRValue(std::shared_ptr<Ty>);
-
+  //  std::shared_ptr<mir::Value> CreateValue(std::shared_ptr<Ty>,bool);
+  //  std::shared_ptr<mir::RValue> CreateAllocatedRValue(std::shared_ptr<Ty>);
+  std::shared_ptr<mir::Result> CreateResult(std::shared_ptr<Ty>);
   void CreateAssign(std::shared_ptr<mir::Value>, std::shared_ptr<mir::Value>);
 
-  std::shared_ptr<mir::RValue> CreateUnary(std::shared_ptr<Ty>,
+  std::shared_ptr<mir::Result> CreateUnary(std::shared_ptr<Ty>,
                                            mir::UnaryInst::Op,
                                            std::shared_ptr<mir::Value>);
-  std::shared_ptr<mir::RValue> CreateBinary(std::shared_ptr<Ty>,
+  std::shared_ptr<mir::Result> CreateBinary(std::shared_ptr<Ty>,
                                             mir::BinaryInst::Op,
                                             std::shared_ptr<mir::Value>,
                                             std::shared_ptr<mir::Value>);
-  std::shared_ptr<mir::RValue> CreateCmp(mir::CmpInst::Op,
+  std::shared_ptr<mir::Result> CreateCmp(mir::CmpInst::Op,
                                          std::shared_ptr<mir::Value>,
                                          std::shared_ptr<mir::Value>);
-  std::shared_ptr<mir::RValue> CreateCall(
+  std::shared_ptr<mir::Result> CreateCall(
       std::shared_ptr<Decl>, std::vector<std::shared_ptr<mir::Value>>);
   //
   //  std::shared_ptr<mir::Var> CreateArray(

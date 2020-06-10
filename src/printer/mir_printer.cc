@@ -51,7 +51,7 @@ void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
           break;
         case mir::Inst::Kind::ARRAY: {
           auto array_inst = (std::shared_ptr<mir::ArrayInst>&)inst;
-          Write("%s = [", ToString(array_inst->var).c_str());
+          Write("%s = [", ToString(array_inst->result).c_str());
           auto i = 0;
           for (auto value : array_inst->values) {
             if (i > 0) Write(", ");
@@ -78,6 +78,19 @@ void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
         case mir::Inst::Kind::RET:
           PrintRet((std::shared_ptr<mir::RetInst>&)inst);
           break;
+        case mir::Inst::Kind::PHI: {
+          auto phi_inst = (std::shared_ptr<mir::PhiInst>&)inst;
+          Write("%s = phi ", ToString(phi_inst->result).c_str());
+          for (auto i = 0; i < phi_inst->nodes.size(); ++i) {
+            if (i > 0) {
+              Write(", ");
+            }
+            auto pair = phi_inst->nodes.at(i);
+            Write("[%s from bb%d]", ToString(pair.first).c_str(),
+                  pair.second->id);
+          }
+          Writeln("");
+        } break;
       }
     }
     Up("}");
@@ -92,24 +105,25 @@ void MirPrinter::PrintAssign(const std::shared_ptr<mir::AssignInst>& inst) {
 }
 
 void MirPrinter::PrintUnary(const std::shared_ptr<mir::UnaryInst>& inst) {
-  Writeln("%s = %s(%s)", ToString(inst->var).c_str(),
+  Writeln("%s = %s(%s)", ToString(inst->result).c_str(),
           ToString(inst->op).c_str(), ToString(inst->operand).c_str());
 }
 
 void MirPrinter::PrintBinary(const std::shared_ptr<mir::BinaryInst>& inst) {
-  Writeln("%s = %s(%s, %s)", ToString(inst->var).c_str(),
+  Writeln("%s = %s(%s, %s)", ToString(inst->result).c_str(),
           ToString(inst->op).c_str(), ToString(inst->lhs).c_str(),
           ToString(inst->rhs).c_str());
 }
 
 void MirPrinter::PrintCmp(const std::shared_ptr<mir::CmpInst>& inst) {
-  Writeln("%s = %s(%s, %s)", ToString(inst->var).c_str(),
+  Writeln("%s = %s(%s, %s)", ToString(inst->result).c_str(),
           ToString(inst->op).c_str(), ToString(inst->lhs).c_str(),
           ToString(inst->rhs).c_str());
 }
 
 void MirPrinter::PrintCall(const std::shared_ptr<mir::CallInst>& inst) {
-  Write("%s = call %s(", ToString(inst->var).c_str(), inst->func->name.c_str());
+  Write("%s = call %s(", ToString(inst->result).c_str(),
+        inst->func->name.c_str());
   auto i = 0;
   for (auto& arg : inst->args) {
     if (i > 0) {
