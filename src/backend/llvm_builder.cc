@@ -88,6 +88,7 @@ llvm::BasicBlock* LLVMBuilder::GetOrCreateBasicBlock(
 
 llvm::Align GetAlign(llvm::Type* ty) {
   if (ty->isArrayTy()) return GetAlign(ty->getArrayElementType());
+  if (ty->isPointerTy()) return GetAlign(ty->getPointerElementType());
   return llvm::Align(ty->getPrimitiveSizeInBits() / 8);
 }
 
@@ -176,14 +177,18 @@ void LLVMBuilder::BuildInst(std::shared_ptr<mir::Inst> inst) {
 
 void LLVMBuilder::Assign(std::shared_ptr<mir::AssignInst> inst) {
   auto into = GetValue(inst->into, false);
-  auto val = GetValue(inst->value, true);
-  if (!val->getType()->isPointerTy()) {
+
+  auto into_ty = inst->into->type;
+  auto val_ty = inst->value->type;
+
+  if (*into_ty == *ToPtr(val_ty)) {
+    auto val = GetValue(inst->value, false);
     builder_.CreateStore(val, into);
     return;
   }
-  auto elem_ty = val->getType()->getPointerElementType();
-  auto loaded_val = builder_.CreateLoad(elem_ty, val);
-  builder_.CreateStore(loaded_val, into);
+
+  auto val = GetValue(inst->value, true);
+  builder_.CreateStore(val, into);
 }
 
 void LLVMBuilder::Unary(std::shared_ptr<mir::UnaryInst> inst) {

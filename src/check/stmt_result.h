@@ -16,13 +16,9 @@ class StmtResult {
 
   std::shared_ptr<Ty> type;
 
-  static StmtResult NonValue() {
-    return StmtResult(Kind::NON_VALUE, nullptr);
-  }
+  static StmtResult NonValue() { return StmtResult(Kind::NON_VALUE, nullptr); }
 
-  static StmtResult Ret() {
-    return StmtResult(Kind::RET, nullptr);
-  }
+  static StmtResult Ret() { return StmtResult(Kind::RET, nullptr); }
 
   static StmtResult Expr(std::shared_ptr<Ty> type) {
     return StmtResult(Kind::EXPR, type);
