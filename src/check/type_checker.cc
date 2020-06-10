@@ -43,7 +43,7 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
       // void function discards the value
       if (!current_func_->ret->IsVoid()) {
         // resolve type
-        if (!ctx_.TryResolve(result.val, current_func_->ret)) {
+        if (!ctx_.TryResolve(result.type, current_func_->ret)) {
           throw LocError::Create(fn->block->End(), "mismatch ret type");
         }
       }
@@ -98,7 +98,7 @@ StmtResult TypeChecker::CheckRet(const std::unique_ptr<ast::RetStmt>& stmt) {
     if (result.IsNonValue()) {
       throw LocError::Create(stmt->expr->End(), "cannot return void type");
     } else if (result.IsExpr()) {
-      if (!ctx_.TryResolve(result.val, current_func_->ret)) {
+      if (!ctx_.TryResolve(result.type, current_func_->ret)) {
         throw LocError::Create(stmt->expr->Begin(), "mismatch ret ty");
       }
     }
@@ -127,7 +127,7 @@ StmtResult TypeChecker::CheckVarDecl(
   if (!stmt_ty.IsExpr()) {
     throw LocError::Create(stmt->Begin(), "cannot decl no type var");
   }
-  auto expr_ty = stmt_ty.val;
+  auto expr_ty = stmt_ty.type;
 
   // resolve type constraints between decl and expr
   if (!ctx_.TryResolve(decl_ty, expr_ty) &&
@@ -161,7 +161,7 @@ StmtResult TypeChecker::CheckAssign(
   if (!stmt_ty.IsExpr()) {
     throw LocError::Create(stmt->Begin(), "cannot assign no type var");
   }
-  auto expr_ty = stmt_ty.val;
+  auto expr_ty = stmt_ty.type;
 
   if (!ctx_.TryResolve(decl->type, expr_ty) &&
       !ctx_.TryResolve(expr_ty, decl->type)) {
@@ -229,12 +229,12 @@ StmtResult TypeChecker::CheckBinary(
   if (!lhs_stmt_ty.IsExpr()) {
     throw LocError::Create(binary->lhs->Begin(), "non type lhs ty");
   }
-  auto lhs_ty = lhs_stmt_ty.val;
+  auto lhs_ty = lhs_stmt_ty.type;
   auto rhs_stmt_ty = CheckExpr(binary->rhs);
   if (!rhs_stmt_ty.IsExpr()) {
     throw LocError::Create(binary->rhs->Begin(), "non type rhs ty");
   }
-  auto rhs_ty = rhs_stmt_ty.val;
+  auto rhs_ty = rhs_stmt_ty.type;
 
   std::shared_ptr<Ty> operand_ty;
   if (ctx_.TryResolve(lhs_ty, rhs_ty)) {
@@ -288,7 +288,7 @@ StmtResult TypeChecker::CheckUnary(
   if (!stmt_ty.IsExpr()) {
     throw LocError::Create(unary->Begin(), "non type unary ty");
   }
-  return ctx_.RecordResult(unary, StmtResult::Expr(stmt_ty.val));
+  return ctx_.RecordResult(unary, StmtResult::Expr(stmt_ty.type));
 }
 
 StmtResult TypeChecker::CheckCall(const std::unique_ptr<ast::CallExpr>& call) {
@@ -308,7 +308,7 @@ StmtResult TypeChecker::CheckCall(const std::unique_ptr<ast::CallExpr>& call) {
     if (!stmt_ty.IsExpr()) {
       throw LocError::Create(arg->Begin(), "non type arg ty");
     }
-    auto arg_ty = stmt_ty.val;
+    auto arg_ty = stmt_ty.type;
     if (!ctx_.TryResolve(arg_ty, fn_type->args[i])) {
       throw LocError::Create(arg->Begin(), "mismatched arg ty");
     }
@@ -326,10 +326,10 @@ StmtResult TypeChecker::CheckArray(
     if (!stmt_ty.IsExpr()) {
       throw LocError::Create(expr->Begin(), "array expr not type");
     }
-    if (!ctx_.TryResolve(elem_ty, stmt_ty.val)) {
+    if (!ctx_.TryResolve(elem_ty, stmt_ty.type)) {
       throw LocError::Create(expr->Begin(), "mismatch element type");
     }
-    elem_ty = stmt_ty.val;
+    elem_ty = stmt_ty.type;
   }
   return ctx_.RecordResult(
       array, StmtResult::Expr(std::make_shared<ArrayTy>(elem_ty, size)));
@@ -340,7 +340,7 @@ StmtResult TypeChecker::CheckIf(const std::unique_ptr<ast::If>& e) {
   if (!cond_stmt_ty.IsExpr()) {
     throw LocError::Create(e->cond->Begin(), "cond is not type");
   }
-  auto cond_ty = cond_stmt_ty.val;
+  auto cond_ty = cond_stmt_ty.type;
   if (!ctx_.TryResolve(cond_ty, kTypeBool)) {
     throw LocError::Create(e->cond->Begin(),
                            "if-statement condition must be bool type");
@@ -373,14 +373,14 @@ StmtResult TypeChecker::CheckIf(const std::unique_ptr<ast::If>& e) {
 
   std::shared_ptr<Ty> whole_ty = kTypeVoid;
   if (block_stmt_ty.IsRet()) {
-    whole_ty = els_stmt_ty.val;
+    whole_ty = els_stmt_ty.type;
   } else if (els_stmt_ty.IsRet()) {
-    whole_ty = block_stmt_ty.val;
+    whole_ty = block_stmt_ty.type;
   } else {
     // expr and expr
     // resolve type
-    auto block_ty = block_stmt_ty.val;
-    auto els_ty = els_stmt_ty.val;
+    auto block_ty = block_stmt_ty.type;
+    auto els_ty = els_stmt_ty.type;
     if (ctx_.TryResolve(block_ty, els_ty)) {
       whole_ty = els_ty;
     } else if (ctx_.TryResolve(els_ty, block_ty)) {

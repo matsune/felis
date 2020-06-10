@@ -212,7 +212,7 @@ std::shared_ptr<mir::Value> Lower::LowerExpr(std::unique_ptr<ast::Expr> expr) {
 std::shared_ptr<mir::Value> Lower::LowerLit(std::unique_ptr<ast::Lit> lit) {
   switch (lit->LitKind()) {
     case ast::Lit::Kind::CHAR: {
-      auto ty = ctx_.GetResult(lit).val;
+      auto ty = ctx_.GetResult(lit).type;
 
       std::stringstream ss(lit->val);
       rune r;
@@ -247,7 +247,7 @@ std::shared_ptr<mir::Value> Lower::ParseIntLit(std::unique_ptr<ast::Lit> lit) {
   if (!ParseInt(lit->val, n, err)) {
     throw LocError::Create(lit->Begin(), err);
   }
-  auto ty = ctx_.GetResult(lit).val;
+  auto ty = ctx_.GetResult(lit).type;
   if (ty->IsI8()) {
     if (n < INT8_MIN || n > INT8_MAX) {
       throw LocError::Create(lit->Begin(), "overflow int8");
@@ -279,13 +279,13 @@ std::shared_ptr<mir::Value> Lower::ParseFloatLit(
   if (!ParseFloat(lit->val, n, err)) {
     throw LocError::Create(lit->Begin(), err);
   }
-  auto ty = ctx_.GetResult(lit).val;
+  auto ty = ctx_.GetResult(lit).type;
   return builder_.CreateConstFloat(ty, n);
 }
 
 std::shared_ptr<mir::Value> Lower::LowerBinary(
     std::unique_ptr<ast::BinaryExpr> expr) {
-  auto ty = ctx_.GetResult(expr).val;
+  auto ty = ctx_.GetResult(expr).type;
   auto lhs = LowerExpr(std::move(expr->lhs));
   auto rhs = LowerExpr(std::move(expr->rhs));
   if (IsBinOp(expr->op->op)) {
@@ -309,14 +309,14 @@ std::shared_ptr<mir::Value> Lower::LowerCall(
 
 std::shared_ptr<mir::Value> Lower::LowerUnary(
     std::unique_ptr<ast::UnaryExpr> unary) {
-  auto ty = ctx_.GetResult(unary).val;
+  auto ty = ctx_.GetResult(unary).type;
   auto expr = LowerExpr(std::move(unary->expr));
   return builder_.CreateUnary(ty, UnaryOp(unary->op->kind), expr);
 }
 
 std::shared_ptr<mir::Value> Lower::LowerArray(
     std::unique_ptr<ast::ArrayExpr> array) {
-  auto type = std::dynamic_pointer_cast<ArrayTy>(ctx_.GetResult(array).val);
+  auto type = std::dynamic_pointer_cast<ArrayTy>(ctx_.GetResult(array).type);
   auto var = builder_.CreateAllocatedRValue(type);
 
   std::vector<std::shared_ptr<mir::Value>> values;
@@ -335,7 +335,7 @@ std::shared_ptr<mir::Value> Lower::LowerIf(std::unique_ptr<ast::If> if_stmt) {
   auto stmt_res = ctx_.GetResult(if_stmt);
   std::shared_ptr<mir::LValue> lval = nullptr;
   if (stmt_res.IsExpr()) {
-    lval = builder_.CreateAlloc(stmt_res.val);
+    lval = builder_.CreateAlloc(stmt_res.type);
   }
 
   auto cond_expr = LowerExpr(std::move(if_stmt->cond));

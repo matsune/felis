@@ -56,7 +56,7 @@ class TypeCheckCtx {
     }
     for (auto &it : result_map_) {
       if (it.second.IsExpr()) {
-        it.second.val = ResolvedType(it.second.val);
+        it.second.type = ResolvedType(it.second.type);
       }
     }
   }

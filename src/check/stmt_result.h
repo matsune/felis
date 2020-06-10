@@ -14,23 +14,23 @@ class StmtResult {
   // EXPR: expr statements
   enum Kind { NON_VALUE, RET, EXPR };
 
-  std::shared_ptr<Ty> val;
+  std::shared_ptr<Ty> type;
 
-  static StmtResult NonValue(std::shared_ptr<Ty> val = nullptr) {
-    return StmtResult(Kind::NON_VALUE, val);
+  static StmtResult NonValue() {
+    return StmtResult(Kind::NON_VALUE, nullptr);
   }
 
-  static StmtResult Ret(std::shared_ptr<Ty> val = nullptr) {
-    return StmtResult(Kind::RET, val);
+  static StmtResult Ret() {
+    return StmtResult(Kind::RET, nullptr);
   }
 
-  static StmtResult Expr(std::shared_ptr<Ty> val) {
-    return StmtResult(Kind::EXPR, val);
+  static StmtResult Expr(std::shared_ptr<Ty> type) {
+    return StmtResult(Kind::EXPR, type);
   }
 
   StmtResult(StmtResult::Kind kind = StmtResult::Kind::NON_VALUE,
-             std::shared_ptr<Ty> val = nullptr)
-      : kind_(kind), val(val) {}
+             std::shared_ptr<Ty> type = nullptr)
+      : kind_(kind), type(type) {}
 
   bool IsNonValue() const { return kind_ == StmtResult::Kind::NON_VALUE; }
   bool IsRet() const { return kind_ == StmtResult::Kind::RET; }
