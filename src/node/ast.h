@@ -2,7 +2,6 @@
 #define FELIS_NODE_AST_H_
 
 #include <cassert>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -15,42 +14,28 @@ namespace felis {
 namespace ast {
 
 struct AstNode : public Node {
-  virtual const Loc Begin() const = 0;
-  virtual const Loc End() const = 0;
+  Loc begin;
+  Loc end;
 
-  template <typename T>
-  T *As() {
-    return dynamic_cast<T *>(this);
-  }
-
-  template <typename T>
-  const T *As() const {
-    return dynamic_cast<const T *>(this);
-  }
+  AstNode(Loc begin, Loc end) : begin(begin), end(end) {}
+  virtual ~AstNode(){};
 };
 
 struct Operator : public AstNode {
-  enum Kind { UNARY, BINARY };
-  virtual Operator::Kind OpKind() const = 0;
+  Operator(Loc begin, Loc end) : AstNode(begin, end) {}
 };
 
 struct UnaryOp : public Operator {
   enum Kind { NEG, NOT };
 
-  const Loc begin;
-  const UnaryOp::Kind kind;
+  UnaryOp::Kind kind;
 
-  UnaryOp(Loc begin, UnaryOp::Kind kind) : begin(begin), kind(kind) {}
-
-  Operator::Kind OpKind() const override { return Operator::Kind::UNARY; }
-
-  const Loc Begin() const override { return begin; }
-
-  const Loc End() const override { return begin; }
+  UnaryOp(Loc begin, Loc end, UnaryOp::Kind kind)
+      : Operator(begin, end), kind(kind) {}
 };
 
 struct BinaryOp : public Operator {
-  enum Op {
+  enum Kind {
     EQEQ = 1,
     NEQ = 2,
     LT = 3,
@@ -66,361 +51,338 @@ struct BinaryOp : public Operator {
     MOD = 23
   };
 
-  const BinaryOp::Op op;
-  const Loc begin;
+  BinaryOp::Kind kind;
 
-  BinaryOp(Loc begin, BinaryOp::Op op) : begin(begin), op(op) {}
+  BinaryOp(Loc begin, Loc end, BinaryOp::Kind kind)
+      : Operator(begin, end), kind(kind) {}
+};
 
-  Operator::Kind OpKind() const override { return Operator::Kind::BINARY; }
+struct Block : public AstNode {
+  std::deque<AstNode*> stmts;
 
-  const Loc Begin() const override { return begin; }
+  Block(Loc begin, Loc end, std::deque<AstNode*> stmts)
+      : AstNode(begin, end), stmts(stmts) {}
 
-  const Loc End() const override {
-    switch (op) {
-      case BinaryOp::Op::EQEQ:
-      case BinaryOp::Op::NEQ:
-      case BinaryOp::Op::LE:
-      case BinaryOp::Op::GE:
-        return begin + 1;
-      case BinaryOp::Op::LT:
-      case BinaryOp::Op::GT:
-      case BinaryOp::Op::ADD:
-      case BinaryOp::Op::SUB:
-      case BinaryOp::Op::MUL:
-      case BinaryOp::Op::DIV:
-      case BinaryOp::Op::MOD:
-        return begin;
-    }
+  ~Block() {
+    for (auto e : stmts) delete e;
+    stmts.clear();
   }
 };
 
-struct Stmt : public AstNode {
-  enum Kind { EXPR, RET, VAR_DECL, ASSIGN };
-  virtual Stmt::Kind StmtKind() const = 0;
-};
-
-struct Expr : public Stmt {
-  enum Kind { IDENT, BINARY, LIT, CALL, UNARY, BLOCK, IF, ARRAY };
-  virtual Expr::Kind ExprKind() const = 0;
-
-  Stmt::Kind StmtKind() const override { return Stmt::Kind::EXPR; }
-};
-
-struct Block : public Expr {
-  const Loc begin;
-  const Loc end;
-  unique_deque<Stmt> stmts;
-
-  Block(Loc begin, Loc end, unique_deque<Stmt> stmts)
-      : begin(begin), end(end), stmts(std::move(stmts)) {}
-
-  Expr::Kind ExprKind() const override { return Expr::Kind::BLOCK; }
-
-  const Loc Begin() const override { return begin; }
-
-  const Loc End() const override { return end; }
-};
-
-struct If : public Expr {
+struct If : public AstNode {
   Loc begin;
-  std::unique_ptr<Expr> cond;
-  std::unique_ptr<Block> block;
-  std::unique_ptr<Expr> els;  // block or if
+  AstNode* cond;
+  Block* block;
+  AstNode* els;  // block or if
 
-  If(Loc begin, std::unique_ptr<Expr> cond, std::unique_ptr<Block> block,
-     std::unique_ptr<Expr> els = nullptr)
-      : begin(begin),
-        cond(std::move(cond)),
-        block(std::move(block)),
-        els(std::move(els)) {}
+  If(Loc begin, Loc end, AstNode* cond, Block* block, AstNode* els = nullptr)
+      : AstNode(begin, end), cond(cond), block(block), els(els) {}
+  ~If() {
+    delete cond;
+    delete block;
+    if (els) delete els;
 
-  inline bool HasElse() const { return els != nullptr; }
+    cond = nullptr;
+    block = nullptr;
+    els = nullptr;
+  }
 
-  inline bool IsElseIf() const {
+  bool HasElse() const { return els != nullptr; }
+
+  bool IsElseIf() const {
     assert(HasElse());
     if (els)
-      return els->ExprKind() == Expr::Kind::IF;
+      return node_isa<If>(els);
     else
       return false;
   }
+};
 
-  Expr::Kind ExprKind() const override { return Expr::Kind::IF; }
+struct Ident : public AstNode {
+  std::string val;
 
-  const Loc Begin() const override { return begin; }
+  Ident(Loc begin, Loc end, std::string val) : AstNode(begin, end), val(val) {}
+};
 
-  const Loc End() const override {
-    if (els) {
-      return els->End();
-    } else {
-      return block->End();
-    }
+struct Literal : public AstNode {
+  enum Kind { INT, FLOAT, CHAR, BOOL, STRING };
+  Literal::Kind kind;
+  std::string val;
+  rune r;
+
+  Literal(Loc begin, Loc end, Literal::Kind kind, std::string val)
+      : AstNode(begin, end), kind(kind), val(val), r(0) {}
+
+  Literal(Loc begin, Loc end, Literal::Kind kind, rune r)
+      : AstNode(begin, end), kind(kind), val(""), r(r) {}
+
+  static Literal* Int(Loc begin, Loc end, std::string val) {
+    return new Literal(begin, end, Literal::Kind::INT, val);
+  }
+
+  static Literal* Float(Loc begin, Loc end, std::string val) {
+    return new Literal(begin, end, Literal::Kind::FLOAT, val);
+  }
+
+  static Literal* Char(Loc begin, Loc end, rune r) {
+    return new Literal(begin, end, Literal::Kind::CHAR, r);
+  }
+
+  static Literal* Bool(Loc begin, Loc end, std::string val) {
+    return new Literal(begin, end, Literal::Kind::BOOL, val);
+  }
+
+  static Literal* String(Loc begin, Loc end, std::string val) {
+    return new Literal(begin, end, Literal::Kind::STRING, val);
   }
 };
 
-struct Ident : public Expr {
-  const Loc begin;
-  std::string val;
+// ArrayType ::= [T, size]
+//
+// T ::= Ident
+//     | ArrayType
+struct ArrayType : public AstNode {
+  AstNode* elem;
+  Literal* size_lit;
 
-  Ident(Loc begin, std::string val) : begin(begin), val(val) {}
+  ArrayType(Loc begin, Loc end, AstNode* elem, Literal* size_lit)
+      : AstNode(begin, end), elem(elem), size_lit(size_lit) {
+    assert(node_isa<Ident>(elem) || node_isa<ArrayType>(elem));
+  }
 
-  const Loc Begin() const override { return begin; }
+  ~ArrayType() {
+    delete elem;
+    delete size_lit;
 
-  const Loc End() const override { return begin + val.size(); }
-
-  Expr::Kind ExprKind() const override { return Expr::Kind::IDENT; }
+    elem = nullptr;
+    size_lit = nullptr;
+  }
 };
 
-struct Lit : public Expr {
-  enum Kind { INT, FLOAT, CHAR, BOOL, STRING };
-  const Loc begin;
-  const Lit::Kind kind;
-  std::string val;
+struct Binary : public AstNode {
+  AstNode* lhs;
+  AstNode* rhs;
+  BinaryOp* op;
 
-  Lit(Loc begin, Lit::Kind kind, std::string val = "")
-      : begin(begin), kind(kind), val(val) {}
+  Binary(Loc begin, Loc end, AstNode* lhs, AstNode* rhs, BinaryOp* op)
+      : AstNode(begin, end), lhs(lhs), rhs(rhs), op(op) {}
 
-  Lit::Kind LitKind() { return kind; }
+  ~Binary() {
+    delete lhs;
+    delete rhs;
+    delete op;
 
-  const Loc Begin() const override { return begin; }
-
-  const Loc End() const override { return begin + val.size() + 2; }
-
-  Expr::Kind ExprKind() const override { return Expr::Kind::LIT; }
+    lhs = nullptr;
+    rhs = nullptr;
+    op = nullptr;
+  }
 };
 
-struct Type : public AstNode {
-  enum Kind { IDENT, ARRAY };
-  virtual Type::Kind TypeKind() const = 0;
+struct Call : public AstNode {
+  Ident* ident;
+  std::deque<AstNode*> args;
+
+  Call(Loc begin, Loc end, Ident* ident, std::deque<AstNode*> args)
+      : AstNode(begin, end), ident(ident), args(args) {}
+
+  ~Call() {
+    delete ident;
+    for (auto e : args) delete e;
+
+    ident = nullptr;
+    args.clear();
+  }
 };
 
-struct TypeIdent : public Type {
-  const Loc begin;
-  std::string val;
+struct Index : public AstNode {
+  AstNode* expr;
+  AstNode* idx_expr;
 
-  TypeIdent(Loc begin, std::string val) : begin(begin), val(val) {}
+  Index(Loc begin, Loc end, AstNode* expr, AstNode* idx_expr)
+      : AstNode(begin, end), expr(expr), idx_expr(idx_expr) {}
 
-  Type::Kind TypeKind() const override { return Type::Kind::IDENT; }
+  ~Index() {
+    delete expr;
+    delete idx_expr;
 
-  const Loc Begin() const override { return begin; }
-
-  const Loc End() const override { return begin + val.size(); }
+    expr = nullptr;
+    idx_expr = nullptr;
+  }
 };
 
-// [T, n]
-struct ArrayType : public Type {
-  const Loc begin;
-  const Loc end;
-  std::unique_ptr<Type> elem;
-  std::unique_ptr<Lit> size_lit;
+struct Unary : public AstNode {
+  UnaryOp* op;
+  AstNode* expr;
 
-  ArrayType(Loc begin, Loc end, std::unique_ptr<Type> elem,
-            std::unique_ptr<Lit> size_lit)
-      : begin(begin),
-        end(end),
-        elem(std::move(elem)),
-        size_lit(std::move(size_lit)) {}
+  Unary(Loc begin, Loc end, UnaryOp* op, AstNode* expr)
+      : AstNode(begin, end), op(op), expr(expr) {}
 
-  const Loc Begin() const override { return begin; }
+  ~Unary() {
+    delete op;
+    delete expr;
 
-  const Loc End() const override { return end; }
-
-  Type::Kind TypeKind() const override { return Type::Kind::ARRAY; }
+    op = nullptr;
+    expr = nullptr;
+  }
 };
 
-struct BinaryExpr : public Expr {
-  std::unique_ptr<Expr> lhs;
-  std::unique_ptr<Expr> rhs;
-  std::unique_ptr<BinaryOp> op;
+struct Array : public AstNode {
+  std::deque<AstNode*> exprs;
 
-  BinaryExpr(std::unique_ptr<Expr> lhs, std::unique_ptr<BinaryOp> op,
-             std::unique_ptr<Expr> rhs)
-      : lhs(std::move(lhs)), rhs(std::move(rhs)), op(std::move(op)) {}
+  Array(Loc begin, Loc end, std::deque<AstNode*> exprs)
+      : AstNode(begin, end), exprs(exprs) {}
 
-  const Loc Begin() const override { return lhs->Begin(); }
-
-  const Loc End() const override { return rhs->End(); }
-
-  Expr::Kind ExprKind() const override { return Expr::Kind::BINARY; }
+  ~Array() {
+    for (auto e : exprs) delete e;
+    exprs.clear();
+  }
 };
 
-struct CallExpr : public Expr {
-  const Loc end;
-  std::unique_ptr<Ident> ident;
-  unique_deque<Expr> args;
+struct RetStmt : public AstNode {
+  AstNode* expr;  // nullable
 
-  CallExpr(Loc end, std::unique_ptr<Ident> ident, unique_deque<Expr> args)
-      : end(end), ident(std::move(ident)), args(std::move(args)) {}
+  RetStmt(Loc begin, Loc end, AstNode* expr = nullptr)
+      : AstNode(begin, end), expr(expr) {}
 
-  const Loc Begin() const override { return ident->Begin(); }
-
-  const Loc End() const override { return end; }
-
-  Expr::Kind ExprKind() const override { return Expr::Kind::CALL; }
-};
-
-struct UnaryExpr : public Expr {
-  std::unique_ptr<UnaryOp> op;
-  std::unique_ptr<Expr> expr;
-
-  UnaryExpr(std::unique_ptr<UnaryOp> op, std::unique_ptr<Expr> expr)
-      : op(std::move(op)), expr(std::move(expr)) {}
-
-  const Loc Begin() const override { return op->Begin(); }
-
-  const Loc End() const override { return expr->End(); }
-
-  Expr::Kind ExprKind() const override { return Expr::Kind::UNARY; }
-};
-
-struct ArrayExpr : public Expr {
-  Loc begin, end;
-  unique_deque<Expr> exprs;
-
-  ArrayExpr(Loc begin, Loc end, unique_deque<Expr> exprs)
-      : begin(begin), end(end), exprs(std::move(exprs)) {}
-
-  const Loc Begin() const override { return begin; }
-
-  const Loc End() const override { return end; }
-
-  Expr::Kind ExprKind() const override { return Expr::Kind::ARRAY; }
-};
-
-struct RetStmt : public Stmt {
-  const Loc begin;
-  const Loc end;
-  std::unique_ptr<Expr> expr;  // nullable
-
-  RetStmt(Loc begin, Loc end, std::unique_ptr<Expr> expr = nullptr)
-      : begin(begin), end(end), expr(std::move(expr)) {}
-
-  const Loc Begin() const override { return begin; }
-
-  const Loc End() const override { return end; }
-
-  Stmt::Kind StmtKind() const override { return Stmt::Kind::RET; }
+  ~RetStmt() {
+    if (expr) delete expr;
+    expr = nullptr;
+  }
 };
 
 // [var|let] <name> (':' <type_name>)? = <expr>
-struct VarDeclStmt : public Stmt {
-  const Loc begin;
-  const bool is_let;
-  std::unique_ptr<Ident> name;
-  std::unique_ptr<Type> type_name;  // nullable
-  std::unique_ptr<Expr> expr;
+struct VarDeclStmt : public AstNode {
+  bool is_let;
+  Ident* name;
+  AstNode* type;  // nullable
+  AstNode* expr;
 
-  VarDeclStmt(Loc begin, bool is_let, std::unique_ptr<Ident> name,
-              std::unique_ptr<Type> type_name, std::unique_ptr<Expr> expr)
-      : begin(begin),
+  VarDeclStmt(Loc begin, Loc end, bool is_let, Ident* name, AstNode* type,
+              AstNode* expr)
+      : AstNode(begin, end),
         is_let(is_let),
-        name(std::move(name)),
-        type_name(std::move(type_name)),
-        expr(std::move(expr)) {}
+        name(name),
+        type(type),
+        expr(expr) {}
 
-  const Loc Begin() const override { return begin; }
+  ~VarDeclStmt() {
+    delete name;
+    if (type) delete type;
+    delete expr;
 
-  const Loc End() const override { return expr->End(); }
-
-  Stmt::Kind StmtKind() const override { return Stmt::Kind::VAR_DECL; }
+    name = nullptr;
+    type = nullptr;
+    expr = nullptr;
+  }
 };
 
-struct AssignStmt : public Stmt {
-  std::unique_ptr<Ident> name;
-  std::unique_ptr<Expr> expr;
+// <assign-stmt> ::= <expr> '=' <expr>
+struct AssignStmt : public AstNode {
+  AstNode* left;
+  AstNode* expr;
 
-  AssignStmt(std::unique_ptr<Ident> name, std::unique_ptr<Expr> expr)
-      : name(std::move(name)), expr(std::move(expr)) {}
+  AssignStmt(Loc begin, Loc end, AstNode* left, AstNode* expr)
+      : AstNode(begin, end), left(left), expr(expr) {}
 
-  const Loc Begin() const override { return name->Begin(); }
+  ~AssignStmt() {
+    delete left;
+    delete expr;
 
-  const Loc End() const override { return expr->End(); }
-
-  Stmt::Kind StmtKind() const override { return Stmt::Kind::ASSIGN; }
+    left = nullptr;
+    expr = nullptr;
+  }
 };
 
 // (<name> ':')? <type_name>
 struct FnArg : public AstNode {
-  std::unique_ptr<Type> type_name;
-  std::unique_ptr<Ident> name;  // nullable
+  Ident* name;  // nullable
+  AstNode* type;
 
-  FnArg(std::unique_ptr<Type> type_name, std::unique_ptr<Ident> name = nullptr)
-      : type_name(std::move(type_name)), name(std::move(name)) {}
+  FnArg(Loc begin, Loc end, Ident* name, AstNode* type)
+      : AstNode(begin, end), name(name), type(type) {}
+  ~FnArg() {
+    if (name) delete name;
+    delete type;
 
-  bool WithName() const { return name != nullptr; }
-
-  const Loc Begin() const override {
-    return WithName() ? name->Begin() : type_name->Begin();
+    name = nullptr;
+    type = nullptr;
   }
 
-  const Loc End() const override { return type_name->End(); }
+  bool HasName() const { return name != nullptr; }
 };
 
+// <fn-args> ::= <fn-arg>*
 struct FnArgs : public AstNode {
-  const Loc begin;
-  const Loc end;
-  std::vector<std::unique_ptr<FnArg>> list;
+  std::vector<FnArg*> list;
 
-  FnArgs(Loc begin, Loc end, std::vector<std::unique_ptr<FnArg>> list)
-      : begin(begin), end(end), list(std::move(list)) {}
-
-  const Loc Begin() const override { return begin; }
-
-  const Loc End() const override { return end; }
-};
-
-// <name> '(' <args> ')' ('->' <ret>)?
-struct FnProto : public AstNode {
-  const Loc begin;
-  std::unique_ptr<Ident> name;
-  std::unique_ptr<FnArgs> args;
-  std::unique_ptr<Type> ret;  // nullable
-
-  FnProto(Loc begin, std::unique_ptr<Ident> name, std::unique_ptr<FnArgs> args,
-          std::unique_ptr<Type> ret = nullptr)
-      : begin(begin),
-        name(std::move(name)),
-        args(std::move(args)),
-        ret(std::move(ret)) {}
-
-  const Loc Begin() const override { return begin; }
-
-  const Loc End() const override {
-    if (ret)
-      return ret->End();
-    else
-      return args->End();
+  FnArgs(Loc begin, Loc end, std::vector<FnArg*> list)
+      : AstNode(begin, end), list(list) {}
+  ~FnArgs() {
+    for (auto e : list) delete e;
+    list.clear();
   }
 };
 
-// 'fn' <proto> <block>
-struct FnDecl : public AstNode {
-  std::unique_ptr<FnProto> proto;
-  std::unique_ptr<Block> block;
+// 'fn' <name> '(' <args> ')' ('->' <ret>)?
+struct FnProto : public AstNode {
+  Ident* name;
+  FnArgs* args;
+  AstNode* ret;  // nullable
 
-  FnDecl(std::unique_ptr<FnProto> proto, std::unique_ptr<Block> block)
-      : proto(std::move(proto)), block(std::move(block)) {}
+  FnProto(Loc begin, Loc end, Ident* name, FnArgs* args, AstNode* ret = nullptr)
+      : AstNode(begin, end), name(name), args(args), ret(ret) {}
 
-  const Loc Begin() const override { return proto->Begin(); }
+  ~FnProto() {
+    delete name;
+    delete args;
+    if (ret) delete ret;
 
-  const Loc End() const override { return block->End(); }
+    name = nullptr;
+    args = nullptr;
+    ret = nullptr;
+  }
+};
+
+// <proto> <block>
+struct Func : public AstNode {
+  FnProto* proto;
+  Block* block;
+
+  Func(Loc begin, Loc end, FnProto* proto, Block* block)
+      : AstNode(begin, end), proto(proto), block(block) {}
+
+  ~Func() {
+    delete proto;
+    delete block;
+    proto = nullptr;
+    block = nullptr;
+  }
 };
 
 // 'ext' <proto>
 struct Extern : public AstNode {
-  const Loc begin;
-  std::unique_ptr<FnProto> proto;
+  FnProto* proto;
 
-  Extern(Loc begin, std::unique_ptr<FnProto> proto)
-      : begin(begin), proto(std::move(proto)) {}
+  Extern(Loc begin, Loc end, FnProto* proto)
+      : AstNode(begin, end), proto(proto) {}
 
-  const Loc Begin() const override { return begin; }
-
-  const Loc End() const override { return proto->End(); }
+  ~Extern() {
+    delete proto;
+    proto = nullptr;
+  }
 };
 
 struct File {
-  unique_deque<Extern> externs;
-  unique_deque<FnDecl> fn_decls;
+  std::deque<Extern*> externs;
+  std::deque<Func*> funcs;
+
+  ~File() {
+    for (auto e : externs) delete e;
+    for (auto e : funcs) delete e;
+
+    externs.clear();
+    funcs.clear();
+  }
 };
 
 }  // namespace ast

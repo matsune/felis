@@ -160,8 +160,7 @@ rune Lexer::Escape() {
   return c;
 }
 
-void Lexer::EatChar(std::string &val) {
-  rune r;
+void Lexer::EatChar(rune &r) {
   switch (peek_) {
     case '\\': {
       Bump();
@@ -180,7 +179,6 @@ void Lexer::EatChar(std::string &val) {
   if (peek_ != '\'') {
     Throw("more than one character");
   }
-  val.append(r);
   Bump();
 }
 
@@ -222,7 +220,7 @@ std::unique_ptr<Token> Lexer::Next() {
       tok->kind = Token::Kind::END;
     } else if (BumpIf('\'')) {
       tok->kind = Token::Kind::LIT_CHAR;
-      EatChar(tok->val);
+      EatChar(tok->r);
     } else if (BumpIf('"')) {
       tok->kind = Token::Kind::LIT_STR;
       EatString(tok->val);

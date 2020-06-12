@@ -88,29 +88,29 @@ std::string ToString(const Token::Kind &kind) {
   }
 }
 
-std::string ToString(const ast::BinaryOp::Op &op) {
+std::string ToString(const ast::BinaryOp::Kind &op) {
   switch (op) {
-    case ast::BinaryOp::Op::EQEQ:
+    case ast::BinaryOp::Kind::EQEQ:
       return "==";
-    case ast::BinaryOp::Op::NEQ:
+    case ast::BinaryOp::Kind::NEQ:
       return "!=";
-    case ast::BinaryOp::Op::LT:
+    case ast::BinaryOp::Kind::LT:
       return "<";
-    case ast::BinaryOp::Op::LE:
+    case ast::BinaryOp::Kind::LE:
       return "<=";
-    case ast::BinaryOp::Op::GT:
+    case ast::BinaryOp::Kind::GT:
       return ">";
-    case ast::BinaryOp::Op::GE:
+    case ast::BinaryOp::Kind::GE:
       return ">=";
-    case ast::BinaryOp::Op::ADD:
+    case ast::BinaryOp::Kind::ADD:
       return "+";
-    case ast::BinaryOp::Op::SUB:
+    case ast::BinaryOp::Kind::SUB:
       return "-";
-    case ast::BinaryOp::Op::MUL:
+    case ast::BinaryOp::Kind::MUL:
       return "*";
-    case ast::BinaryOp::Op::DIV:
+    case ast::BinaryOp::Kind::DIV:
       return "/";
-    case ast::BinaryOp::Op::MOD:
+    case ast::BinaryOp::Kind::MOD:
       return "%";
   }
 }
@@ -173,40 +173,6 @@ std::string ToString(const std::shared_ptr<Ty> &ty) {
 
 std::string ToString(std::shared_ptr<Ty> &ty) {
   return ToString(const_cast<const std::shared_ptr<Ty> &>(ty));
-}
-
-std::string ToString(const ast::Stmt::Kind &kind) {
-  switch (kind) {
-    case ast::Stmt::Kind::ASSIGN:
-      return "ASSIGN";
-    case ast::Stmt::Kind::EXPR:
-      return "EXPR";
-    case ast::Stmt::Kind::RET:
-      return "RET";
-    case ast::Stmt::Kind::VAR_DECL:
-      return "VAR_DECL";
-  }
-}
-
-std::string ToString(const ast::Expr::Kind &kind) {
-  switch (kind) {
-    case ast::Expr::Kind::IDENT:
-      return "IDENT";
-    case ast::Expr::Kind::BINARY:
-      return "BINARY";
-    case ast::Expr::Kind::LIT:
-      return "LIT";
-    case ast::Expr::Kind::CALL:
-      return "CALL";
-    case ast::Expr::Kind::UNARY:
-      return "UNARY";
-    case ast::Expr::Kind::BLOCK:
-      return "BLOCK";
-    case ast::Expr::Kind::IF:
-      return "IF";
-    case ast::Expr::Kind::ARRAY:
-      return "ARRAY";
-  }
 }
 
 std::string ToString(const DeclKind &kind) {

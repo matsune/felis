@@ -33,7 +33,7 @@ class Lexer {
   rune Bump();
   bool BumpIf(char);
   bool BumpIf(std::function<bool(rune)>);
-  void EatChar(std::string &);
+  void EatChar(rune &);
   rune Escape();
   void EatString(std::string &);
   void EatLineComment();

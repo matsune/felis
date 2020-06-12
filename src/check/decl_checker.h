@@ -32,7 +32,7 @@ class DeclChecker {
 
   std::shared_ptr<Decl> LookupVarDecl(const std::string &);
   std::shared_ptr<Decl> LookupFuncDecl(const std::string &);
-  std::shared_ptr<Ty> LookupType(const std::unique_ptr<ast::Type> &);
+  std::shared_ptr<Ty> LookupType(const ast::AstNode *);
 
   void InsertDecl(std::string name, std::shared_ptr<Decl> decl) {
     current_scope_->InsertDecl(name, decl);
@@ -51,8 +51,7 @@ class DeclChecker {
   // - Function name uniqueness
   // - Arg type name validity
   // - Return type name validity
-  std::shared_ptr<Decl> MakeFnDecl(bool isExt,
-                                   const std::unique_ptr<ast::FnProto> &);
+  std::shared_ptr<Decl> MakeFnDecl(bool isExt, const ast::FnProto *);
 };
 
 }  // namespace felis

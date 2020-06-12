@@ -22,20 +22,19 @@ class TypeChecker {
   DeclChecker decl_ck_;
   std::shared_ptr<FuncTy> current_func_;
 
-  StmtResult CheckBlock(const std::unique_ptr<ast::Block> &,
-                        bool open_scope = true);
-  StmtResult CheckStmt(const std::unique_ptr<ast::Stmt> &);
-  StmtResult CheckRet(const std::unique_ptr<ast::RetStmt> &);
-  StmtResult CheckVarDecl(const std::unique_ptr<ast::VarDeclStmt> &);
-  StmtResult CheckAssign(const std::unique_ptr<ast::AssignStmt> &);
-  StmtResult CheckExpr(const std::unique_ptr<ast::Expr> &);
-  StmtResult CheckLit(const std::unique_ptr<ast::Lit> &);
-  StmtResult CheckIdent(const std::unique_ptr<ast::Ident> &);
-  StmtResult CheckBinary(const std::unique_ptr<ast::BinaryExpr> &);
-  StmtResult CheckUnary(const std::unique_ptr<ast::UnaryExpr> &);
-  StmtResult CheckCall(const std::unique_ptr<ast::CallExpr> &);
-  StmtResult CheckArray(const std::unique_ptr<ast::ArrayExpr> &);
-  StmtResult CheckIf(const std::unique_ptr<ast::If> &);
+  StmtResult CheckBlock(const ast::Block *, bool open_scope = true);
+  StmtResult CheckStmt(const ast::AstNode *);
+  StmtResult CheckRet(const ast::RetStmt *);
+  StmtResult CheckVarDecl(const ast::VarDeclStmt *);
+  StmtResult CheckAssign(const ast::AssignStmt *);
+  StmtResult CheckExpr(const ast::AstNode *);
+  StmtResult CheckLit(const ast::Literal *);
+  StmtResult CheckIdent(const ast::Ident *);
+  StmtResult CheckBinary(const ast::Binary *);
+  StmtResult CheckUnary(const ast::Unary *);
+  StmtResult CheckCall(const ast::Call *);
+  StmtResult CheckArray(const ast::Array *);
+  StmtResult CheckIf(const ast::If *);
 };
 
 }  // namespace felis

@@ -14,29 +14,25 @@ namespace felis {
 class TypeCheckCtx {
  public:
   using IdentDeclMap = std::map<const ast::Ident *, std::shared_ptr<Decl>>;
-  using ResultMap = std::map<const ast::Expr *, StmtResult>;
+  using ResultMap = std::map<const ast::AstNode *, StmtResult>;
 
   TypeCheckCtx(bool is_32bit) : is_32bit(is_32bit) {}
 
-  template <typename T>
-  void RecordDecl(const std::unique_ptr<T> &n, std::shared_ptr<Decl> ty) {
-    ident_decl_map_[n.get()] = ty;
+  void RecordDecl(const ast::Ident *n, std::shared_ptr<Decl> ty) {
+    ident_decl_map_[n] = ty;
   }
 
-  template <typename T>
-  StmtResult RecordResult(const std::unique_ptr<T> &n, StmtResult result) {
-    result_map_[n.get()] = result;
+  StmtResult RecordResult(const ast::AstNode *n, StmtResult result) {
+    result_map_[n] = result;
     return result;
   }
 
-  const std::shared_ptr<Decl> &GetDecl(
-      const std::unique_ptr<ast::Ident> &t) const {
-    return ident_decl_map_.at(t.get());
+  const std::shared_ptr<Decl> &GetDecl(const ast::Ident *t) const {
+    return ident_decl_map_.at(t);
   }
 
-  template <typename K>
-  StmtResult GetResult(const std::unique_ptr<K> &n) const {
-    return result_map_.at(n.get());
+  StmtResult GetResult(const ast::AstNode *n) const {
+    return result_map_.at(n);
   }
 
   bool Is32bit() const { return is_32bit; }

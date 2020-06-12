@@ -22,28 +22,55 @@ class Parser {
 
  private:
   unique_deque<Token> tokens_;
-  inline const std::unique_ptr<Token> &Peek() const;
-  inline const std::unique_ptr<Token> &Peek2() const;
-  inline std::unique_ptr<Token> Bump();
-  inline bool Match(Token::Kind);
 
-  std::unique_ptr<ast::Extern> ParseExtern();
-  std::unique_ptr<ast::FnDecl> ParseFnDecl();
-  std::unique_ptr<ast::FnProto> ParseFnProto();
-  std::unique_ptr<ast::FnArgs> ParseFnArgs();
-  std::unique_ptr<ast::FnArg> ParseFnArg();
-  std::unique_ptr<ast::Type> ParseType();
-  std::unique_ptr<ast::Expr> ParseExpr(uint8_t prec = 0);
-  std::unique_ptr<ast::Expr> ParsePrimary();
-  std::unique_ptr<ast::If> ParseIf();
-  std::unique_ptr<ast::Block> ParseBlock();
-  std::unique_ptr<ast::Stmt> ParseStmt();
+  inline const std::unique_ptr<Token>& Peek() const { return tokens_.front(); }
+
+  inline const std::unique_ptr<Token>& Peek2() const { return tokens_[1]; }
+
+  inline std::unique_ptr<Token> Bump() { return tokens_.move_front(); }
+
+  // Test next token
+  inline bool Match(Token::Kind kind) { return Peek()->kind == kind; }
+
+  // Throw error if next token doesn't match
+  inline std::unique_ptr<Token> Must(Token::Kind kind) {
+    if (!Match(kind)) {
+      Throw("expected %s (got %s)", ToString(kind).c_str(),
+            ToString(Peek()->kind).c_str());
+    }
+    return Bump();
+  }
+
+  ast::Extern* Extern();
+  ast::Func* Func();
+  ast::FnProto* FnProto();
+  ast::FnArgs* FnArgs();
+  ast::FnArg* FnArg();
+  // Parse type name
+  // Returns Ident or ArrayType
+  ast::AstNode* TypeName();
+
+  ast::AstNode* PrimaryExpr();
+  ast::AstNode* PostfixExpr();
+  ast::AstNode* UnaryExpr();
+  ast::AstNode* MulExpr();
+  ast::AstNode* AddExpr();
+  ast::AstNode* RelExpr();
+  ast::AstNode* EqExpr();
+  ast::AstNode* Expr();
+  ast::RetStmt* RetStmt();
+  ast::VarDeclStmt* VarDeclStmt();
+  ast::AstNode* Stmt();
+
+  ast::If* If();
+  ast::Block* Block();
+  ast::Array* Array();
 
   template <typename... Args>
-  void Throw(const std::string &fmt, Args... args);
+  void Throw(const std::string& fmt, Args... args);
 };
 
-std::unique_ptr<felis::ast::File> ParseAst(std::ifstream &);
+std::unique_ptr<ast::File> ParseAst(std::ifstream&);
 
 }  // namespace felis
 

@@ -68,9 +68,10 @@ struct Token {
   bool ws;
   bool nl;
   std::string val;
+  rune r;
 
   Token(Kind kind = Kind::END)
-      : kind(kind), begin(0), end(0), ws(false), nl(false), val("") {}
+      : kind(kind), begin(0), end(0), ws(false), nl(false), val(""), r(0) {}
 };
 
 }  // namespace felis

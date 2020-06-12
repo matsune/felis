@@ -17,25 +17,24 @@ class Lower {
   TypeCheckCtx &ctx_;
   MIRBuilder builder_;
 
-  std::shared_ptr<mir::Value> LowerStmt(std::unique_ptr<ast::Stmt>);
-  void LowerRet(std::unique_ptr<ast::RetStmt>);
-  void LowerVarDecl(std::unique_ptr<ast::VarDeclStmt>);
-  void LowerAssign(std::unique_ptr<ast::AssignStmt>);
+  std::shared_ptr<mir::Value> LowerStmt(ast::AstNode *);
+  void LowerRet(ast::RetStmt *);
+  void LowerVarDecl(ast::VarDeclStmt *);
+  void LowerAssign(ast::AssignStmt *);
 
-  std::shared_ptr<mir::Value> LowerExpr(std::unique_ptr<ast::Expr>);
-  std::shared_ptr<mir::Value> LowerLit(std::unique_ptr<ast::Lit>);
-  std::shared_ptr<mir::Value> ParseIntLit(std::unique_ptr<ast::Lit>);
-  std::shared_ptr<mir::Value> ParseFloatLit(std::unique_ptr<ast::Lit>);
-  std::shared_ptr<mir::Value> LowerBinary(std::unique_ptr<ast::BinaryExpr>);
-  std::shared_ptr<mir::Value> LowerCall(std::unique_ptr<ast::CallExpr>);
-  std::shared_ptr<mir::Value> LowerUnary(std::unique_ptr<ast::UnaryExpr>);
-  std::shared_ptr<mir::Value> LowerArray(std::unique_ptr<ast::ArrayExpr>);
-  std::shared_ptr<mir::Value> LowerIf(std::unique_ptr<ast::If>);
-  std::shared_ptr<mir::Value> LowerBlock(std::unique_ptr<ast::Block>);
+  std::shared_ptr<mir::Value> LowerExpr(ast::AstNode *);
+  std::shared_ptr<mir::Value> LowerLit(ast::Literal *);
+  std::shared_ptr<mir::Value> ParseIntLit(ast::Literal *);
+  std::shared_ptr<mir::Value> ParseFloatLit(ast::Literal *);
+  std::shared_ptr<mir::Value> LowerBinary(ast::Binary *);
+  std::shared_ptr<mir::Value> LowerCall(ast::Call *);
+  std::shared_ptr<mir::Value> LowerUnary(ast::Unary *);
+  std::shared_ptr<mir::Value> LowerArray(ast::Array *);
+  std::shared_ptr<mir::Value> LowerIf(ast::If *);
+  std::shared_ptr<mir::Value> LowerBlock(ast::Block *);
 };
 
-std::unique_ptr<mir::File> Lowering(std::unique_ptr<ast::File> file,
-                                    bool is_32bit);
+std::unique_ptr<mir::File> Lowering(std::unique_ptr<ast::File>, bool is_32bit);
 }  // namespace felis
 
 #endif  // FELIS_MIDDLE_LOWER_H_

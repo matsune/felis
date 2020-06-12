@@ -15,21 +15,29 @@ class AstPrinter : public Printer<ast::File> {
   void Print(const std::unique_ptr<ast::File> &) override;
 
  private:
-  void PrintIdent(ast::Ident *ident);
-  void PrintType(ast::Type *ty);
-  void PrintStmt(ast::Stmt *stmt);
-  void PrintExpr(ast::Expr *expr);
-  void PrintLit(ast::Lit *lit);
-  void PrintBlock(ast::Block *block);
-  void PrintIndex(int idx);
   void PrintExtern(ast::Extern *);
+  void PrintFunc(ast::Func *);
   void PrintProto(ast::FnProto *);
   void PrintFnArg(ast::FnArg *);
-  void PrintFnDecl(ast::FnDecl *fn);
+  void PrintBlock(ast::Block *);
+  void PrintIdent(ast::Ident *);
+  void PrintTypeName(ast::AstNode *);
+  void PrintRet(ast::RetStmt *);
+  void PrintVarDecl(ast::VarDeclStmt *);
+  void PrintAssign(ast::AssignStmt *);
+  void PrintStmt(ast::AstNode *);
+  void PrintExpr(ast::AstNode *);
+  void PrintLit(ast::Literal *);
+  void PrintBinary(ast::Binary *);
+  void PrintCall(ast::Call *);
+  void PrintUnary(ast::Unary *);
+  void PrintIf(ast::If *);
+  void PrintArray(ast::Array *);
+  void PrintIndex(ast::Index *);
 
-  void PrintLoc(ast::AstNode *n) {
-    Writeln("Loc: %d-%d", n->Begin(), n->End());
-  }
+  void PrintArrayIndex(int);
+
+  void PrintLoc(ast::AstNode *n) { Writeln("Loc: %d-%d", n->begin, n->end); }
 };
 
 }  // namespace felis

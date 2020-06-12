@@ -7,6 +7,12 @@
 
 namespace felis {
 
+#define NULL_CHECK(ptr) \
+  if (!ptr) {           \
+    Writeln("null");    \
+    return;             \
+  }
+
 namespace {
 
 inline std::string bool_str(bool f) { return f ? "true" : "false"; }
@@ -16,80 +22,65 @@ inline std::string bool_str(bool f) { return f ? "true" : "false"; }
 void AstPrinter::Print(const std::unique_ptr<ast::File> &file) {
   WriteLineNum();
   for (int i = 0; i < file->externs.size(); i++) {
-    PrintIndex(i);
-    PrintExtern(file->externs.at(i).get());
+    PrintArrayIndex(i);
+    PrintExtern(file->externs.at(i));
   }
-  for (int i = 0; i < file->fn_decls.size(); i++) {
-    PrintIndex(i);
-    PrintFnDecl(file->fn_decls.at(i).get());
+  for (int i = 0; i < file->funcs.size(); i++) {
+    PrintArrayIndex(i);
+    PrintFunc(file->funcs.at(i));
   }
   printf("\n");
 }
 
-void AstPrinter::PrintIndex(int idx) { Write("[%d] ", idx); }
+void AstPrinter::PrintArrayIndex(int idx) { Write("[%d] ", idx); }
 
 void AstPrinter::PrintExtern(ast::Extern *ext) {
-  if (!ext) {
-    Writeln("null");
-    return;
-  }
+  NULL_CHECK(ext)
 
   Down("Extern {");
   {
-    PrintProto(ext->proto.get());
+    PrintProto(ext->proto);
     PrintLoc(ext);
   }
   Up("}");
 }
 
-void AstPrinter::PrintFnDecl(ast::FnDecl *fn) {
-  if (!fn) {
-    Writeln("null");
-    return;
-  }
+void AstPrinter::PrintFunc(ast::Func *fn) {
+  NULL_CHECK(fn)
 
-  Down("FnDecl {");
+  Down("Func {");
   {
-    PrintProto(fn->proto.get());
-    PrintBlock(fn->block.get());
+    PrintProto(fn->proto);
+    PrintBlock(fn->block);
     PrintLoc(fn);
   }
   Up("}");
 }
 
 void AstPrinter::PrintProto(ast::FnProto *proto) {
-  if (!proto) {
-    Writeln("null");
-    return;
-  }
+  NULL_CHECK(proto)
 
-  PrintIdent(proto->name.get());
+  PrintIdent(proto->name);
   Down("FnArgs [");
   {
     for (int i = 0; i < proto->args->list.size(); i++) {
-      PrintIndex(i);
-      auto arg = proto->args->list.at(i).get();
-      PrintFnArg(arg);
+      PrintArrayIndex(i);
+      PrintFnArg(proto->args->list.at(i));
     }
   }
   Up("]");
-  if (proto->ret) {
-    PrintType(proto->ret.get());
-  }
+  PrintTypeName(proto->ret);
 }
 
 void AstPrinter::PrintFnArg(ast::FnArg *arg) {
-  if (!arg) {
-    Writeln("null");
-    return;
-  }
+  NULL_CHECK(arg);
 
   Down("FnArg {");
   {
     Write("Name: ");
-    PrintIdent(arg->name.get());
-    Write("Ty: ");
-    PrintType(arg->type_name.get());
+    PrintIdent(arg->name);
+    Write("Type: ");
+    PrintTypeName(arg->type);
     PrintPtr(arg);
     PrintLoc(arg);
   }
@@ -97,17 +88,13 @@ void AstPrinter::PrintFnArg(ast::FnArg *arg) {
 }
 
 void AstPrinter::PrintBlock(ast::Block *block) {
-  if (!block) {
-    Writeln("null");
-    return;
-  }
+  NULL_CHECK(block);
 
   Down("Block {");
   {
     for (int i = 0; i < block->stmts.size(); i++) {
-      PrintIndex(i);
-      auto &stmt = block->stmts.at(i);
-      PrintStmt(stmt.get());
+      PrintArrayIndex(i);
+      PrintStmt(block->stmts.at(i));
     }
     PrintPtr(block);
   }
@@ -115,10 +102,7 @@ void AstPrinter::PrintBlock(ast::Block *block) {
 }
 
 void AstPrinter::PrintIdent(ast::Ident *ident) {
-  if (!ident) {
-    Writeln("null");
-    return;
-  }
+  NULL_CHECK(ident);
 
   Down("Ident {");
   {
@@ -129,26 +113,20 @@ void AstPrinter::PrintIdent(ast::Ident *ident) {
   Up("}");
 }
 
-void AstPrinter::PrintType(ast::Type *ty) {
-  if (!ty) {
-    Writeln("null");
-    return;
-  }
+void AstPrinter::PrintTypeName(ast::AstNode *ty) {
+  NULL_CHECK(ty);
 
   Down("Type {");
   {
-    switch (ty->TypeKind()) {
-      case ast::Type::Kind::IDENT: {
-        auto ident = dynamic_cast<ast::TypeIdent *>(ty);
-        Writeln("Name: " + ident->val);
-      } break;
-      case ast::Type::Kind::ARRAY: {
-        auto array = dynamic_cast<ast::ArrayType *>(ty);
-        Write("Elem: ");
-        PrintType(array->elem.get());
-        Write("Size: ");
-        PrintLit(array->size_lit.get());
-      } break;
+    if (auto ident = node_cast_ornull<ast::Ident>(ty)) {
+      Writeln("Name: " + ident->val);
+    } else if (auto array = node_cast_ornull<ast::ArrayType>(ty)) {
+      Write("Elem: ");
+      PrintTypeName(array->elem);
+      Write("Size: ");
+      PrintLit(array->size_lit);
+    } else {
+      UNREACHABLE
     }
     PrintPtr(ty);
     PrintLoc(ty);
@@ -156,211 +134,202 @@ void AstPrinter::PrintType(ast::Type *ty) {
   Up("}");
 }
 
-void AstPrinter::PrintStmt(ast::Stmt *stmt) {
-  if (!stmt) {
-    Writeln("null");
-    return;
+void AstPrinter::PrintRet(ast::RetStmt *stmt) {
+  Down("Ret {");
+  {
+    Write("Expr: ");
+    PrintExpr(stmt->expr);
+    PrintPtr(stmt);
+    PrintLoc(stmt);
   }
+  Up("}");
+}
 
-  switch (stmt->StmtKind()) {
-    case ast::Stmt::Kind::EXPR:
-      PrintExpr(dynamic_cast<ast::Expr *>(stmt));
-      break;
-    case ast::Stmt::Kind::RET:
-      Down("Ret {");
-      {
-        auto ret = dynamic_cast<ast::RetStmt *>(stmt);
-        Write("Expr: ");
-        PrintExpr(ret->expr.get());
-        PrintPtr(ret);
-        PrintLoc(ret);
-      }
-      Up("}");
-      break;
-    case ast::Stmt::Kind::VAR_DECL:
-      Down("VarDecl {");
-      {
-        auto var_decl = dynamic_cast<ast::VarDeclStmt *>(stmt);
-        Writeln("Decl: %s", var_decl->is_let ? "let" : "var");
-        Write("Name: ");
-        PrintIdent(var_decl->name.get());
-        Write("Ty: ");
-        PrintType(var_decl->type_name.get());
-        Write("Expr: ");
-        PrintExpr(var_decl->expr.get());
-        PrintPtr(var_decl);
-        PrintLoc(var_decl);
-      }
-      Up("}");
-      break;
-    case ast::Stmt::Kind::ASSIGN:
-      Down("Assign {");
-      {
-        auto assign = dynamic_cast<ast::AssignStmt *>(stmt);
-        Write("Name: ");
-        PrintIdent(assign->name.get());
-        Write("Expr: ");
-        PrintExpr(assign->expr.get());
-        PrintPtr(assign);
-        PrintLoc(assign);
-      }
-      Up("}");
-      break;
-    default:
-      UNIMPLEMENTED
+void AstPrinter::PrintVarDecl(ast::VarDeclStmt *stmt) {
+  Down("VarDecl {");
+  {
+    Writeln("Decl: %s", stmt->is_let ? "let" : "var");
+    Write("Name: ");
+    PrintIdent(stmt->name);
+    Write("Ty: ");
+    PrintTypeName(stmt->type);
+    Write("Expr: ");
+    PrintExpr(stmt->expr);
+    PrintPtr(stmt);
+    PrintLoc(stmt);
+  }
+  Up("}");
+}
+
+void AstPrinter::PrintAssign(ast::AssignStmt *stmt) {
+  Down("Assign {");
+  {
+    Write("Left: ");
+    PrintExpr(stmt->left);
+    Write("Expr: ");
+    PrintExpr(stmt->expr);
+    PrintPtr(stmt);
+    PrintLoc(stmt);
+  }
+  Up("}");
+}
+
+void AstPrinter::PrintStmt(ast::AstNode *stmt) {
+  NULL_CHECK(stmt)
+
+  if (auto ret_stmt = node_cast_ornull<ast::RetStmt>(stmt)) {
+    PrintRet(ret_stmt);
+  } else if (auto var_decl_stmt = node_cast_ornull<ast::VarDeclStmt>(stmt)) {
+    PrintVarDecl(var_decl_stmt);
+  } else if (auto assign_stmt = node_cast_ornull<ast::AssignStmt>(stmt)) {
+    PrintAssign(assign_stmt);
+  } else {
+    PrintExpr(stmt);
   }
 }
 
-void AstPrinter::PrintExpr(ast::Expr *expr) {
-  if (!expr) {
-    Writeln("null");
-    return;
-  }
+void AstPrinter::PrintExpr(ast::AstNode *expr) {
+  NULL_CHECK(expr)
 
-  switch (expr->ExprKind()) {
-    case ast::Expr::Kind::IDENT:
-      PrintIdent(dynamic_cast<ast::Ident *>(expr));
-      break;
-    case ast::Expr::Kind::LIT:
-      PrintLit(dynamic_cast<ast::Lit *>(expr));
-      break;
-    case ast::Expr::Kind::BINARY:
-      Down("BinaryExpr {");
-      {
-        auto binary = dynamic_cast<ast::BinaryExpr *>(expr);
-        Write("Left: ");
-        PrintExpr(binary->lhs.get());
-        Writeln("Op: " + ToString(binary->op->op));
-        Write("Right: ");
-        PrintExpr(binary->rhs.get());
-        PrintPtr(binary);
-        PrintLoc(binary);
-      }
-      Up("}");
-      break;
-    case ast::Expr::Kind::CALL:
-      Down("Call {");
-      {
-        auto call = dynamic_cast<ast::CallExpr *>(expr);
-        Write("Ident: ");
-        PrintIdent(call->ident.get());
-        Down("Args [");
-        {
-          for (int i = 0; i < call->args.size(); i++) {
-            PrintIndex(i);
-            auto &arg = call->args.at(i);
-            PrintExpr(arg.get());
-          }
-        }
-        Up("]");
-        PrintPtr(call);
-        PrintLoc(call);
-      }
-      Up("}");
-      break;
-    case ast::Expr::Kind::UNARY:
-      Down("Unary {");
-      {
-        auto unary = dynamic_cast<ast::UnaryExpr *>(expr);
-        std::string op = unary->op->kind == ast::UnaryOp::NEG ? "-" : "!";
-        Writeln("op: %s", op.c_str());
-        PrintExpr(unary->expr.get());
-        PrintPtr(unary);
-        PrintLoc(unary);
-      }
-      Up("}");
-      break;
-    case ast::Expr::Kind::IF:
-      Down("If {");
-      {
-        auto if_stmt = dynamic_cast<ast::If *>(expr);
-        Write("Cond: ");
-        PrintExpr(if_stmt->cond.get());
-        PrintBlock(if_stmt->block.get());
-        Write("Else: ");
-        PrintExpr(if_stmt->els.get());
-        PrintPtr(if_stmt);
-        PrintLoc(if_stmt);
-      }
-      Up("}");
-      break;
-    case ast::Expr::Kind::BLOCK:
-      PrintBlock(dynamic_cast<ast::Block *>(expr));
-      break;
-    case ast::Expr::Kind::ARRAY:
-      Down("Array [");
-      {
-        auto array = dynamic_cast<ast::ArrayExpr *>(expr);
-        for (int i = 0; i < array->exprs.size(); i++) {
-          PrintIndex(i);
-          auto expr = array->exprs.at(i).get();
-          PrintExpr(expr);
-        }
-        PrintPtr(array);
-        PrintLoc(array);
-      }
-      Up("]");
+  if (auto ident = node_cast_ornull<ast::Ident>(expr)) {
+    PrintIdent(ident);
+  } else if (auto lit = node_cast_ornull<ast::Literal>(expr)) {
+    PrintLit(lit);
+  } else if (auto binary = node_cast_ornull<ast::Binary>(expr)) {
+    PrintBinary(binary);
+  } else if (auto call = node_cast_ornull<ast::Call>(expr)) {
+    PrintCall(call);
+  } else if (auto unary = node_cast_ornull<ast::Unary>(expr)) {
+    PrintUnary(unary);
+  } else if (auto if_stmt = node_cast_ornull<ast::If>(expr)) {
+    PrintIf(if_stmt);
+  } else if (auto block = node_cast_ornull<ast::Block>(expr)) {
+    PrintBlock(block);
+  } else if (auto array = node_cast_ornull<ast::Array>(expr)) {
+    PrintArray(array);
+  } else if (auto index = node_cast_ornull<ast::Index>(expr)) {
+    PrintIndex(index);
+  } else {
+    UNREACHABLE
   }
 }
 
-void AstPrinter::PrintLit(ast::Lit *lit) {
-  if (!lit) {
-    Writeln("null");
-    return;
-  }
+void AstPrinter::PrintLit(ast::Literal *lit) {
+  NULL_CHECK(lit)
 
-  switch (lit->LitKind()) {
-    case ast::Lit::Kind::INT:
+  switch (lit->kind) {
+    case ast::Literal::Kind::INT:
       Down("LitInt {");
-      {
-        auto l = dynamic_cast<ast::Lit *>(lit);
-        Writeln("Int: " + l->val);
-        PrintPtr(l);
-        PrintLoc(l);
-      }
-      Up("}");
+      Writeln("Int: " + lit->val);
       break;
-    case ast::Lit::Kind::FLOAT:
+    case ast::Literal::Kind::FLOAT:
       Down("LitFloat {");
-      {
-        auto l = dynamic_cast<ast::Lit *>(lit);
-        Writeln("Float: " + l->val);
-        PrintPtr(l);
-        PrintLoc(l);
-      }
-      Up("}");
+      Writeln("Float: " + lit->val);
+
       break;
-    case ast::Lit::Kind::BOOL:
+    case ast::Literal::Kind::BOOL:
       Down("LitBool {");
-      {
-        auto l = dynamic_cast<ast::Lit *>(lit);
-        Writeln("Bool: " + l->val);
-        PrintPtr(l);
-        PrintLoc(l);
-      }
-      Up("}");
+      Writeln("Bool: " + lit->val);
       break;
-    case ast::Lit::Kind::CHAR:
+    case ast::Literal::Kind::CHAR:
       Down("LitChar {");
-      {
-        auto l = dynamic_cast<ast::Lit *>(lit);
-        Writeln("Char: '" + l->val + "'");
-        PrintPtr(l);
-        PrintLoc(l);
-      }
-      Up("}");
+      char c[4];
+      lit->r.encode(c);
+      Writeln("Char: '%s'", c);
       break;
-    case ast::Lit::Kind::STRING:
-      Down("LitSTR {");
-      {
-        auto l = dynamic_cast<ast::Lit *>(lit);
-        Writeln("literal: \"" + l->val + "\"");
-        PrintPtr(l);
-        PrintLoc(l);
-      }
-      Up("}");
+    case ast::Literal::Kind::STRING:
+      Down("LitString {");
+      Writeln("String: \"" + lit->val + "\"");
       break;
   }
+  PrintPtr(lit);
+  PrintLoc(lit);
+  Up("}");
+}
+
+void AstPrinter::PrintBinary(ast::Binary *binary) {
+  Down("Binary {");
+  {
+    Write("Left: ");
+    PrintExpr(binary->lhs);
+    Writeln("Op: " + ToString(binary->op->kind));
+    Write("Right: ");
+    PrintExpr(binary->rhs);
+    PrintPtr(binary);
+    PrintLoc(binary);
+  }
+  Up("}");
+}
+
+void AstPrinter::PrintCall(ast::Call *call) {
+  Down("Call {");
+  {
+    Write("Ident: ");
+    PrintIdent(call->ident);
+    Down("Args [");
+    {
+      for (int i = 0; i < call->args.size(); i++) {
+        PrintArrayIndex(i);
+        PrintExpr(call->args.at(i));
+      }
+    }
+    Up("]");
+    PrintPtr(call);
+    PrintLoc(call);
+  }
+  Up("}");
+}
+
+void AstPrinter::PrintUnary(ast::Unary *unary) {
+  Down("Unary {");
+  {
+    std::string op = unary->op->kind == ast::UnaryOp::NEG ? "-" : "!";
+    Writeln("op: %s", op.c_str());
+    PrintExpr(unary->expr);
+    PrintPtr(unary);
+    PrintLoc(unary);
+  }
+  Up("}");
+}
+
+void AstPrinter::PrintIf(ast::If *if_stmt) {
+  Down("If {");
+  {
+    Write("Cond: ");
+    PrintExpr(if_stmt->cond);
+    PrintBlock(if_stmt->block);
+    Write("Else: ");
+    PrintExpr(if_stmt->els);
+    PrintPtr(if_stmt);
+    PrintLoc(if_stmt);
+  }
+  Up("}");
+}
+
+void AstPrinter::PrintArray(ast::Array *array) {
+  Down("Array [");
+  {
+    for (int i = 0; i < array->exprs.size(); i++) {
+      PrintArrayIndex(i);
+      PrintExpr(array->exprs.at(i));
+    }
+    PrintPtr(array);
+    PrintLoc(array);
+  }
+  Up("]");
+}
+
+void AstPrinter::PrintIndex(ast::Index *index) {
+  Down("Index {");
+  {
+    Write("Expr: ");
+    PrintExpr(index->expr);
+    Write("IdxExpr: ");
+    PrintExpr(index->idx_expr);
+    PrintPtr(index);
+    PrintLoc(index);
+  }
+  Up("}");
 }
 
 }  // namespace felis
