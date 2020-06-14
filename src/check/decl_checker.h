@@ -8,7 +8,7 @@
 
 #include "check/decl.h"
 #include "check/scope.h"
-#include "check/ty.h"
+#include "check/type.h"
 #include "node/ast.h"
 #include "string/string.h"
 
@@ -32,7 +32,7 @@ class DeclChecker {
 
   std::shared_ptr<Decl> LookupVarDecl(const std::string &);
   std::shared_ptr<Decl> LookupFuncDecl(const std::string &);
-  std::shared_ptr<Ty> LookupType(const ast::AstNode *);
+  std::shared_ptr<Type> LookupType(const ast::AstNode *);
 
   void InsertDecl(std::string name, std::shared_ptr<Decl> decl) {
     current_scope_->InsertDecl(name, decl);

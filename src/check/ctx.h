@@ -6,7 +6,7 @@
 
 #include "check/decl_checker.h"
 #include "check/stmt_result.h"
-#include "check/ty_resolver.h"
+#include "macro.h"
 #include "node/ast.h"
 
 namespace felis {
@@ -20,10 +20,13 @@ class TypeCheckCtx {
 
   void RecordDecl(const ast::Ident *n, std::shared_ptr<Decl> ty) {
     ident_decl_map_[n] = ty;
+    std::cout << ty->type.get() << " is " << ToString(ty->type) << std::endl;
   }
 
   StmtResult RecordResult(const ast::AstNode *n, StmtResult result) {
     result_map_[n] = result;
+    std::cout << result.type.get() << " is " << ToString(result.type)
+              << std::endl;
     return result;
   }
 
@@ -37,30 +40,24 @@ class TypeCheckCtx {
 
   bool Is32bit() const { return is_32bit; }
 
-  bool TryResolve(std::shared_ptr<Ty> ty, std::shared_ptr<Ty> to) {
-    return resolver_.TryResolve(ty, to);
+  bool TryResolve(std::shared_ptr<Type> type, std::shared_ptr<Type> to) {
+    if (!type->Substitutable(to)) return false;
+    type->Constraint(to);
+    return true;
   }
 
-  std::shared_ptr<Ty> ResolvedType(std::shared_ptr<Ty> ty) {
-    return resolver_.ResolvedType(ty, is_32bit);
-  }
-
-  void FinalizeType() {
-    // finalize types
-    for (auto &it : ident_decl_map_) {
-      it.second->type = ResolvedType(it.second->type);
+  void ResolveTypes() {
+    for (auto it : ident_decl_map_) {
+      it.second->type->Resolve(is_32bit);
     }
-    for (auto &it : result_map_) {
-      if (it.second.IsExpr()) {
-        it.second.type = ResolvedType(it.second.type);
-      }
+    for (auto it : result_map_) {
+      if (it.second.IsExpr()) it.second.type->Resolve(is_32bit);
     }
   }
 
  private:
   IdentDeclMap ident_decl_map_;
   ResultMap result_map_;
-  TyResolver resolver_;
   const bool is_32bit;
 };
 

@@ -35,6 +35,7 @@ class Lower {
 };
 
 std::unique_ptr<mir::File> Lowering(std::unique_ptr<ast::File>, bool is_32bit);
+
 }  // namespace felis
 
 #endif  // FELIS_MIDDLE_LOWER_H_

@@ -7,7 +7,7 @@
 #include <memory>
 #include <string>
 
-#include "check/ty.h"
+#include "check/type.h"
 #include "node/ast.h"
 
 namespace felis {
@@ -17,15 +17,10 @@ enum DeclKind { EXT, FN, ARG, VAR, LET };
 struct Decl {
   const std::string name;
   const DeclKind kind;
-  std::shared_ptr<Ty> type;
+  std::shared_ptr<Type> type;
 
-  Decl(std::string name, std::shared_ptr<Ty> type, DeclKind kind)
+  Decl(std::string name, std::shared_ptr<Type> type, DeclKind kind)
       : name(std::move(name)), type(type), kind(kind) {}
-
-  std::shared_ptr<FuncTy> AsFuncTy() {
-    assert(IsFunc());
-    return std::dynamic_pointer_cast<FuncTy>(type);
-  }
 
   bool IsAssignable() {
     switch (kind) {

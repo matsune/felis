@@ -68,7 +68,7 @@ class LLVMBuilder {
     return func_map_.at(func);
   }
 
-  llvm::Type *LLVMType(const std::shared_ptr<Ty> &);
+  llvm::Type *LLVMType(const std::shared_ptr<Type> &);
   llvm::Value *GetValue(std::shared_ptr<mir::Value>, bool);
   llvm::BasicBlock *GetOrCreateBasicBlock(std::shared_ptr<mir::BB>);
   void BuildBB(std::shared_ptr<mir::BB>);

@@ -38,22 +38,22 @@ class MIRBuilder {
 
   std::shared_ptr<mir::BB> CreateBB(std::shared_ptr<mir::BB> after = nullptr);
 
-  std::shared_ptr<mir::ConstInt> CreateConstInt(std::shared_ptr<Ty>, int64_t);
-  std::shared_ptr<mir::ConstFloat> CreateConstFloat(std::shared_ptr<Ty>,
+  std::shared_ptr<mir::ConstInt> CreateConstInt(std::shared_ptr<Type>, int64_t);
+  std::shared_ptr<mir::ConstFloat> CreateConstFloat(std::shared_ptr<Type>,
                                                     double);
   std::shared_ptr<mir::ConstBool> CreateConstBool(bool);
   std::shared_ptr<mir::ConstString> CreateConstString(std::string);
-  std::shared_ptr<mir::Result> CreateAlloc(std::shared_ptr<Ty>);
+  std::shared_ptr<mir::Result> CreateAlloc(std::shared_ptr<Type>);
 
-  //  std::shared_ptr<mir::Value> CreateValue(std::shared_ptr<Ty>,bool);
-  //  std::shared_ptr<mir::RValue> CreateAllocatedRValue(std::shared_ptr<Ty>);
-  std::shared_ptr<mir::Result> CreateResult(std::shared_ptr<Ty>);
+  //  std::shared_ptr<mir::Value> CreateValue(std::shared_ptr<Type>,bool);
+  //  std::shared_ptr<mir::RValue> CreateAllocatedRValue(std::shared_ptr<Type>);
+  std::shared_ptr<mir::Result> CreateResult(std::shared_ptr<Type>);
   void CreateAssign(std::shared_ptr<mir::Value>, std::shared_ptr<mir::Value>);
 
-  std::shared_ptr<mir::Result> CreateUnary(std::shared_ptr<Ty>,
+  std::shared_ptr<mir::Result> CreateUnary(std::shared_ptr<Type>,
                                            mir::UnaryInst::Op,
                                            std::shared_ptr<mir::Value>);
-  std::shared_ptr<mir::Result> CreateBinary(std::shared_ptr<Ty>,
+  std::shared_ptr<mir::Result> CreateBinary(std::shared_ptr<Type>,
                                             mir::BinaryInst::Op,
                                             std::shared_ptr<mir::Value>,
                                             std::shared_ptr<mir::Value>);
@@ -64,7 +64,7 @@ class MIRBuilder {
       std::shared_ptr<Decl>, std::vector<std::shared_ptr<mir::Value>>);
   //
   //  std::shared_ptr<mir::Var> CreateArray(
-  //      std::shared_ptr<ArrayTy>, std::vector<std::shared_ptr<mir::Value>>);
+  //      std::shared_ptr<ArrayType>, std::vector<std::shared_ptr<mir::Value>>);
   //
 
   std::shared_ptr<mir::BrInst> CreateCond(std::shared_ptr<mir::Value>,

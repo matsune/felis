@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "check/ty.h"
+#include "check/type.h"
 
 namespace felis {
 
@@ -14,18 +14,18 @@ class StmtResult {
   // EXPR: expr statements
   enum Kind { NON_VALUE, RET, EXPR };
 
-  std::shared_ptr<Ty> type;
+  std::shared_ptr<Type> type;
 
   static StmtResult NonValue() { return StmtResult(Kind::NON_VALUE, nullptr); }
 
   static StmtResult Ret() { return StmtResult(Kind::RET, nullptr); }
 
-  static StmtResult Expr(std::shared_ptr<Ty> type) {
+  static StmtResult Expr(std::shared_ptr<Type> type) {
     return StmtResult(Kind::EXPR, type);
   }
 
   StmtResult(StmtResult::Kind kind = StmtResult::Kind::NON_VALUE,
-             std::shared_ptr<Ty> type = nullptr)
+             std::shared_ptr<Type> type = nullptr)
       : kind_(kind), type(type) {}
 
   bool IsNonValue() const { return kind_ == StmtResult::Kind::NON_VALUE; }

@@ -115,64 +115,69 @@ std::string ToString(const ast::BinaryOp::Kind &op) {
   }
 }
 
-std::string ToString(const Ty::Kind &kind) {
+std::string ToString(const Type::Kind &kind) {
   switch (kind) {
-    case Ty::Kind::UNRESOLVED:
+    case Type::Kind::UNRESOLVED:
       return "UNRESOLVED";
-    case Ty::Kind::UNTYPED_INT:
+    case Type::Kind::UNTYPED_INT:
       return "UNTYPED_INT";
-    case Ty::Kind::UNTYPED_FLOAT:
+    case Type::Kind::UNTYPED_FLOAT:
       return "UNTYPED_FLOAT";
-    case Ty::Kind::VOID:
+    case Type::Kind::VOID:
       return "void";
-    case Ty::Kind::I8:
+    case Type::Kind::I8:
       return "i8";
-    case Ty::Kind::I16:
+    case Type::Kind::I16:
       return "i16";
-    case Ty::Kind::I32:
+    case Type::Kind::I32:
       return "i32";
-    case Ty::Kind::I64:
+    case Type::Kind::I64:
       return "i64";
-    case Ty::Kind::F32:
+    case Type::Kind::F32:
       return "f32";
-    case Ty::Kind::F64:
+    case Type::Kind::F64:
       return "f64";
-    case Ty::Kind::BOOL:
+    case Type::Kind::BOOL:
       return "bool";
-    case Ty::Kind::STRING:
+    case Type::Kind::STRING:
       return "string";
-    case Ty::Kind::FUNC:
+    case Type::Kind::FUNC:
       return "func";
-    case Ty::Kind::ARRAY:
+    case Type::Kind::ARRAY:
       return "array";
-    case Ty::Kind::PTR:
+    case Type::Kind::PTR:
       return "ptr";
   };
 }
 
-std::string ToString(const std::shared_ptr<Ty> &ty) {
+std::string ToString(const std::shared_ptr<Type> &ty) {
+  if (!ty) return "null";
+
   std::stringstream ss;
-  if (auto func_ty = std::dynamic_pointer_cast<FuncTy>(ty)) {
+  if (ty->IsFunc()) {
     ss << "func (";
-    for (auto it = func_ty->args.begin(); it != func_ty->args.end(); ++it) {
-      if (it != func_ty->args.begin()) {
+    auto args = ty->GetArgs();
+    for (auto it = args.begin(); it != args.end(); ++it) {
+      if (it != args.begin()) {
         ss << ", ";
       }
       ss << ToString(*it);
     }
-    ss << ") -> " << ToString(func_ty->ret);
-  } else if (auto array_ty = std::dynamic_pointer_cast<ArrayTy>(ty)) {
-    ss << "[" << ToString(array_ty->elem) << ", " << array_ty->size << "]";
-  } else if (auto ptr_ty = std::dynamic_pointer_cast<PtrTy>(ty)) {
-    ss << ToString(ptr_ty->ref) << "*";
+    ss << ") -> " << ToString(ty->GetRet());
+  } else if (ty->IsArray()) {
+    ss << "[" << ToString(ty->GetElem()) << ", " << ty->GetSize() << "]";
+  } else if (ty->IsPtr()) {
+    ss << ToString(ty->GetElem()) << "*";
+  } else if (ty->IsUnresolved() || ty->IsUntypedInt() || ty->IsUntypedFloat()) {
+    ss << ToString(ty->GetKind());
   } else {
-    ss << ToString(ty->kind);
+    ss << ToString(ty->GetKind());
   }
   return ss.str();
 }
 
-std::string ToString(std::shared_ptr<Ty> &ty) {
-  return ToString(const_cast<const std::shared_ptr<Ty> &>(ty));
+std::string ToString(std::shared_ptr<Type> &ty) {
+  return ToString(const_cast<const std::shared_ptr<Type> &>(ty));
 }
 
 std::string ToString(const DeclKind &kind) {

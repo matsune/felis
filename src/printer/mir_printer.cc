@@ -26,7 +26,7 @@ void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
     }
     Write(ToString(fn->args.at(i)));
   }
-  Down(") -> %s {", ToString(fn->type->ret).c_str());
+  Down(") -> %s {", ToString(fn->type->GetRet()).c_str());
 
   for (auto it : fn->alloc_list) {
     Writeln(ToString(it));

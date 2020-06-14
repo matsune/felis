@@ -5,7 +5,7 @@
 #include <utility>
 
 #include "check/decl.h"
-#include "check/ty.h"
+#include "check/type.h"
 #include "node/ast.h"
 
 namespace felis {
@@ -20,9 +20,9 @@ struct Value {
   enum Kind { CONST_INT, CONST_FLOAT, CONST_BOOL, CONST_STRING, RESULT, INDEX };
   virtual Value::Kind ValueKind() const = 0;
 
-  std::shared_ptr<Ty> type;
+  std::shared_ptr<Type> type;
 
-  Value(std::shared_ptr<Ty> type) : type(type) {}
+  Value(std::shared_ptr<Type> type) : type(type) {}
 
   bool IsConstInt() const { return ValueKind() == Value::Kind::CONST_INT; }
   bool IsConstFloat() const { return ValueKind() == Value::Kind::CONST_FLOAT; }
@@ -37,7 +37,7 @@ struct Value {
 struct ConstInt : Value {
   int64_t val;
 
-  ConstInt(std::shared_ptr<Ty> type, int64_t val) : Value(type), val(val) {}
+  ConstInt(std::shared_ptr<Type> type, int64_t val) : Value(type), val(val) {}
 
   Value::Kind ValueKind() const override { return Value::Kind::CONST_INT; }
 };
@@ -45,7 +45,7 @@ struct ConstInt : Value {
 struct ConstFloat : Value {
   double val;
 
-  ConstFloat(std::shared_ptr<Ty> type, double val) : Value(type), val(val) {}
+  ConstFloat(std::shared_ptr<Type> type, double val) : Value(type), val(val) {}
 
   Value::Kind ValueKind() const override { return Value::Kind::CONST_FLOAT; }
 };
@@ -53,7 +53,7 @@ struct ConstFloat : Value {
 struct ConstBool : Value {
   bool val;
 
-  ConstBool(bool val) : Value(kTypeBool), val(val) {}
+  ConstBool(bool val) : Value(Type::MakeBool()), val(val) {}
 
   Value::Kind ValueKind() const override { return Value::Kind::CONST_BOOL; }
 };
@@ -61,7 +61,7 @@ struct ConstBool : Value {
 struct ConstString : Value {
   std::string val;
 
-  ConstString(std::string val) : Value(kTypeString), val(val) {}
+  ConstString(std::string val) : Value(Type::MakeString()), val(val) {}
 
   Value::Kind ValueKind() const override { return Value::Kind::CONST_STRING; }
 };
@@ -70,7 +70,7 @@ struct Result : Value {
   using ID = uint;
   ID id;
 
-  Result(std::shared_ptr<Ty> ty, ID id) : Value(ty), id(id) {}
+  Result(std::shared_ptr<Type> ty, ID id) : Value(ty), id(id) {}
 
   Value::Kind ValueKind() const override { return Value::Kind::RESULT; }
 };
@@ -80,7 +80,7 @@ struct Index : Value {
   std::shared_ptr<Value> val;
   std::shared_ptr<Value> idx;
 
-  Index(std::shared_ptr<Ty> ty, std::shared_ptr<Value> val,
+  Index(std::shared_ptr<Type> ty, std::shared_ptr<Value> val,
         std::shared_ptr<Value> idx)
       : Value(ty), val(val), idx(idx) {}
 
@@ -188,7 +188,7 @@ struct BrInst : Inst {
   BrInst(std::shared_ptr<Value> cond, std::shared_ptr<BB> then_bb,
          std::shared_ptr<BB> else_bb)
       : cond(cond), then_bb(then_bb), else_bb(else_bb) {
-    assert(*cond->type == *kTypeBool);
+    assert(cond->type->IsBool());
   }
 
   Inst::Kind InstKind() const override { return Inst::Kind::BR; }
@@ -239,10 +239,11 @@ struct BB {
 
 struct Func {
   std::string name;
-  std::shared_ptr<FuncTy> type;
+  std::shared_ptr<Type> type;
 
-  Func(std::string name, std::shared_ptr<FuncTy> type)
-      : name(name), type(type) {}
+  Func(std::string name, std::shared_ptr<Type> type) : name(name), type(type) {
+    assert(type->IsFunc());
+  }
 
   virtual bool IsExt() { return true; }
 };
@@ -254,11 +255,13 @@ struct Function : Func {
   std::map<std::shared_ptr<Decl>, std::shared_ptr<mir::Value>> decl_value_map;
   std::vector<std::shared_ptr<mir::Result>> alloc_list;
 
-  Function(std::string name, std::shared_ptr<FuncTy> type)
+  Function(std::string name, std::shared_ptr<Type> type)
       : Func(name, type),
         next_result_id(1),
         next_bb_id(1),
-        entry_bb(new BB(0, *this)) {}
+        entry_bb(new BB(0, *this)) {
+    assert(type->IsFunc());
+  }
 
   bool IsExt() override { return false; }
 

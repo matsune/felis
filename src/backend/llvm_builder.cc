@@ -9,36 +9,36 @@
 
 namespace felis {
 
-llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<Ty>& ty) {
-  if (auto func_type = std::dynamic_pointer_cast<FuncTy>(ty)) {
+llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<Type>& type) {
+  if (type->IsFunc()) {
     std::vector<llvm::Type*> args;
-    for (auto& arg : func_type->args) {
+    for (auto& arg : type->GetArgs()) {
       args.push_back(LLVMType(arg));
     }
-    return llvm::FunctionType::get(LLVMType(func_type->ret), args, false);
+    return llvm::FunctionType::get(LLVMType(type->GetRet()), args, false);
   }
 
-  if (auto array_type = std::dynamic_pointer_cast<ArrayTy>(ty)) {
-    auto elem_ty = LLVMType(array_type->elem);
-    return llvm::ArrayType::get(elem_ty, array_type->size);
+  if (type->IsArray()) {
+    auto elem_ty = LLVMType(type->GetElem());
+    return llvm::ArrayType::get(elem_ty, type->GetSize());
   }
 
-  if (auto ptr_type = std::dynamic_pointer_cast<PtrTy>(ty)) {
-    auto elem_ty = LLVMType(ptr_type->ref);
+  if (type->IsPtr()) {
+    auto elem_ty = LLVMType(type->GetElem());
     return elem_ty->getPointerTo();
   }
 
-  if (ty->IsBool()) return llvm::Type::getInt1Ty(ctx_);
-  if (ty->IsI8()) return llvm::Type::getInt8Ty(ctx_);
-  if (ty->IsI16()) return llvm::Type::getInt16Ty(ctx_);
-  if (ty->IsI32()) return llvm::Type::getInt32Ty(ctx_);
-  if (ty->IsI64()) return llvm::Type::getInt64Ty(ctx_);
-  if (ty->IsF32()) return llvm::Type::getFloatTy(ctx_);
-  if (ty->IsF64()) return llvm::Type::getDoubleTy(ctx_);
-  if (ty->IsString()) return llvm::Type::getInt8PtrTy(ctx_);
-  if (ty->IsVoid()) return llvm::Type::getVoidTy(ctx_);
+  if (type->IsBool()) return llvm::Type::getInt1Ty(ctx_);
+  if (type->IsI8()) return llvm::Type::getInt8Ty(ctx_);
+  if (type->IsI16()) return llvm::Type::getInt16Ty(ctx_);
+  if (type->IsI32()) return llvm::Type::getInt32Ty(ctx_);
+  if (type->IsI64()) return llvm::Type::getInt64Ty(ctx_);
+  if (type->IsF32()) return llvm::Type::getFloatTy(ctx_);
+  if (type->IsF64()) return llvm::Type::getDoubleTy(ctx_);
+  if (type->IsString()) return llvm::Type::getInt8PtrTy(ctx_);
+  if (type->IsVoid()) return llvm::Type::getVoidTy(ctx_);
 
-  std::cout << ToString(ty) << std::endl;
+  std::cout << ToString(type) << std::endl;
   UNREACHABLE
 }
 
@@ -100,7 +100,7 @@ void LLVMBuilder::Build(std::unique_ptr<mir::File> file) {
     SetCurrentFunction(std::dynamic_pointer_cast<mir::Function>(func));
 
     for (auto it : current_func_->alloc_list) {
-      auto ty = LLVMType(it->type->GetPtrElement());
+      auto ty = LLVMType(it->type->GetPtrElem());
       auto alloca = new llvm::AllocaInst(ty, 0, nullptr, GetAlign(ty));
       builder_.Insert(alloca);
       SetValue(it, alloca);
@@ -178,7 +178,7 @@ void LLVMBuilder::Assign(std::shared_ptr<mir::AssignInst> inst) {
   auto into_ty = inst->into->type;
   auto val_ty = inst->value->type;
 
-  if (*into_ty == *ToPtr(val_ty)) {
+  if (*into_ty->GetElem() == *val_ty) {
     auto val = GetValue(inst->value, false);
     builder_.CreateStore(val, into);
     return;
@@ -189,7 +189,7 @@ void LLVMBuilder::Assign(std::shared_ptr<mir::AssignInst> inst) {
 }
 
 void LLVMBuilder::Unary(std::shared_ptr<mir::UnaryInst> inst) {
-  bool is_float = inst->result->type->IsFloat();
+  bool is_float = inst->result->type->IsF32() || inst->result->type->IsF64();
   auto expr = GetValue(inst->operand, true);
   llvm::Value* val;
   switch (inst->op) {
@@ -211,7 +211,7 @@ void LLVMBuilder::Unary(std::shared_ptr<mir::UnaryInst> inst) {
 void LLVMBuilder::Binary(std::shared_ptr<mir::BinaryInst> inst) {
   auto lhs = GetValue(inst->lhs, true);
   auto rhs = GetValue(inst->rhs, true);
-  auto is_float = inst->lhs->type->IsFloat();
+  auto is_float = inst->lhs->type->IsF32() || inst->lhs->type->IsF64();
 
   llvm::Value* val;
   switch (inst->op) {
@@ -241,7 +241,7 @@ void LLVMBuilder::Binary(std::shared_ptr<mir::BinaryInst> inst) {
 void LLVMBuilder::Cmp(std::shared_ptr<mir::CmpInst> inst) {
   auto lhs = GetValue(inst->lhs, true);
   auto rhs = GetValue(inst->rhs, true);
-  auto is_float = inst->lhs->type->IsFloat();
+  auto is_float = inst->lhs->type->IsF32() || inst->lhs->type->IsF64();
 
   llvm::Value* val;
   switch (inst->op) {
@@ -289,7 +289,7 @@ void LLVMBuilder::Phi(std::shared_ptr<mir::PhiInst> inst) {
   auto phi =
       builder_.CreatePHI(LLVMType(inst->result->type), inst->nodes.size());
   for (auto pair : inst->nodes) {
-    phi->addIncoming(GetValue(pair.first, false),
+    phi->addIncoming(GetValue(pair.first, true),
                      GetOrCreateBasicBlock(pair.second));
   }
   SetValue(inst->result, phi);
