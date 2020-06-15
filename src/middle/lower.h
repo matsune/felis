@@ -22,7 +22,7 @@ class Lower {
   void LowerVarDecl(ast::VarDeclStmt *);
   void LowerAssign(ast::AssignStmt *);
 
-  std::shared_ptr<mir::Value> LowerExpr(ast::AstNode *);
+  std::shared_ptr<mir::Value> LowerExpr(ast::AstNode *, bool);
   std::shared_ptr<mir::Value> LowerLit(ast::Literal *);
   std::shared_ptr<mir::Value> ParseIntLit(ast::Literal *);
   std::shared_ptr<mir::Value> ParseFloatLit(ast::Literal *);

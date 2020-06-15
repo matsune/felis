@@ -69,12 +69,12 @@ class LLVMBuilder {
   }
 
   llvm::Type *LLVMType(const std::shared_ptr<Type> &);
-  llvm::Value *GetValue(std::shared_ptr<mir::Value>, bool);
+  llvm::Value *GetValue(std::shared_ptr<mir::Value>);
   llvm::BasicBlock *GetOrCreateBasicBlock(std::shared_ptr<mir::BB>);
   void BuildBB(std::shared_ptr<mir::BB>);
   void BuildInst(std::shared_ptr<mir::Inst>);
+  void Load(std::shared_ptr<mir::LoadInst>);
   void Assign(std::shared_ptr<mir::AssignInst>);
-  void Assign(llvm::Value *, llvm::Value *);
   void Unary(std::shared_ptr<mir::UnaryInst>);
   void Binary(std::shared_ptr<mir::BinaryInst>);
   void Cmp(std::shared_ptr<mir::CmpInst>);

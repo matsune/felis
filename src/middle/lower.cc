@@ -145,14 +145,14 @@ std::shared_ptr<mir::Value> Lower::LowerStmt(ast::AstNode* stmt) {
   } else if (auto assign = node_cast_ornull<ast::AssignStmt>(stmt)) {
     LowerAssign(assign);
   } else {
-    return LowerExpr(stmt);
+    return LowerExpr(stmt, true);
   }
   return nullptr;
 }
 
 void Lower::LowerRet(ast::RetStmt* stmt) {
   if (stmt->expr) {
-    builder_.CreateRet(LowerExpr(stmt->expr));
+    builder_.CreateRet(LowerExpr(stmt->expr, true));
   } else {
     builder_.CreateRet();
   }
@@ -160,13 +160,7 @@ void Lower::LowerRet(ast::RetStmt* stmt) {
 
 void Lower::LowerVarDecl(ast::VarDeclStmt* stmt) {
   auto decl = ctx_.GetDecl(stmt->name);
-  auto val = LowerExpr(std::move(stmt->expr));
-
-  //  if (val->IsRValue() && *ToPtr(decl->type) == *val->type) {
-  //    // array
-  //    builder_.SetDeclValue(decl, val);
-  //    return;
-  //  }
+  auto val = LowerExpr(std::move(stmt->expr), true);
 
   auto var = builder_.CreateAlloc(decl->type);
   builder_.SetDeclValue(decl, var);
@@ -177,33 +171,38 @@ void Lower::LowerAssign(ast::AssignStmt* stmt) {
   if (auto ident = node_cast_ornull<ast::Ident>(stmt)) {
     auto decl = ctx_.GetDecl(ident);
     auto value = builder_.GetDeclValue(decl);
-    auto expr_value = LowerExpr(stmt->expr);
+    auto expr_value = LowerExpr(stmt->expr, true);
     builder_.CreateAssign(value, expr_value);
   } else {
     UNIMPLEMENTED
   }
 }
 
-std::shared_ptr<mir::Value> Lower::LowerExpr(ast::AstNode* expr) {
+std::shared_ptr<mir::Value> Lower::LowerExpr(ast::AstNode* expr, bool load) {
+  std::shared_ptr<mir::Value> val;
   if (auto ident = node_cast_ornull<ast::Ident>(expr)) {
-    return builder_.GetDeclValue(ctx_.GetDecl(ident));
+    val = builder_.GetDeclValue(ctx_.GetDecl(ident));
   } else if (auto lit = node_cast_ornull<ast::Literal>(expr)) {
-    return LowerLit(lit);
+    val = LowerLit(lit);
   } else if (auto binary = node_cast_ornull<ast::Binary>(expr)) {
-    return LowerBinary(binary);
+    val = LowerBinary(binary);
   } else if (auto call = node_cast_ornull<ast::Call>(expr)) {
-    return LowerCall(call);
+    val = LowerCall(call);
   } else if (auto unary = node_cast_ornull<ast::Unary>(expr)) {
-    return LowerUnary(unary);
+    val = LowerUnary(unary);
   } else if (auto array = node_cast_ornull<ast::Array>(expr)) {
-    return LowerArray(array);
+    val = LowerArray(array);
   } else if (auto block = node_cast_ornull<ast::Block>(expr)) {
-    return LowerBlock(block);
+    val = LowerBlock(block);
   } else if (auto if_stmt = node_cast_ornull<ast::If>(expr)) {
-    return LowerIf(if_stmt);
+    val = LowerIf(if_stmt);
   } else {
     UNREACHABLE
   }
+  if (load && val->type->IsPtr()) {
+    return builder_.CreateLoad(val);
+  }
+  return val;
 }
 
 std::shared_ptr<mir::Value> Lower::LowerLit(ast::Literal* lit) {
@@ -211,14 +210,10 @@ std::shared_ptr<mir::Value> Lower::LowerLit(ast::Literal* lit) {
     case ast::Literal::Kind::CHAR: {
       auto ty = ctx_.GetResult(lit).type;
 
-      std::stringstream ss(lit->val);
-      rune r;
-      ss >> r;
-
       if (ty->IsI32() || ty->IsI64()) {
-        return builder_.CreateConstInt(ty, r);
+        return builder_.CreateConstInt(ty, lit->r);
       } else if (ty->IsF32() || ty->IsF64()) {
-        return builder_.CreateConstFloat(ty, r);
+        return builder_.CreateConstFloat(ty, lit->r);
       } else {
         UNREACHABLE
       }
@@ -265,7 +260,6 @@ std::shared_ptr<mir::Value> Lower::ParseIntLit(ast::Literal* lit) {
   } else if (ty->IsF32() || ty->IsF64()) {
     return builder_.CreateConstFloat(ty, n);
   } else {
-    std::cout << ty.get() << std::endl;
     UNREACHABLE
   }
 }
@@ -282,8 +276,8 @@ std::shared_ptr<mir::Value> Lower::ParseFloatLit(ast::Literal* lit) {
 
 std::shared_ptr<mir::Value> Lower::LowerBinary(ast::Binary* expr) {
   auto ty = ctx_.GetResult(expr).type;
-  auto lhs = LowerExpr(expr->lhs);
-  auto rhs = LowerExpr(expr->rhs);
+  auto lhs = LowerExpr(expr->lhs, true);
+  auto rhs = LowerExpr(expr->rhs, true);
   if (IsBinOp(expr->op->kind)) {
     return builder_.CreateBinary(ty, BinOp(expr->op->kind), lhs, rhs);
   } else if (IsCmpOp(expr->op->kind)) {
@@ -297,14 +291,14 @@ std::shared_ptr<mir::Value> Lower::LowerCall(ast::Call* expr) {
   auto decl = ctx_.GetDecl(expr->ident);
   std::vector<std::shared_ptr<mir::Value>> args;
   for (auto arg : expr->args) {
-    args.push_back(LowerExpr(arg));
+    args.push_back(LowerExpr(arg, true));
   }
   return builder_.CreateCall(decl, args);
 }
 
 std::shared_ptr<mir::Value> Lower::LowerUnary(ast::Unary* unary) {
   auto ty = ctx_.GetResult(unary).type;
-  auto expr = LowerExpr(unary->expr);
+  auto expr = LowerExpr(unary->expr, true);
   return builder_.CreateUnary(ty, UnaryOp(unary->op->kind), expr);
 }
 
@@ -314,7 +308,7 @@ std::shared_ptr<mir::Value> Lower::LowerArray(ast::Array* array) {
 
   std::vector<std::shared_ptr<mir::Value>> values;
   for (auto expr : array->exprs) {
-    values.push_back(LowerExpr(expr));
+    values.push_back(LowerExpr(expr, true));
   }
 
   builder_.Insert(std::make_shared<mir::ArrayInst>(var, values));
@@ -331,7 +325,7 @@ std::shared_ptr<mir::Value> Lower::LowerIf(ast::If* if_stmt) {
         std::make_shared<mir::PhiInst>(builder_.CreateResult(stmt_res.type));
   }
 
-  auto cond_expr = LowerExpr(std::move(if_stmt->cond));
+  auto cond_expr = LowerExpr(std::move(if_stmt->cond), true);
   auto then_bb = builder_.CreateBB();
 
   if (!has_else) {

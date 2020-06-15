@@ -6,6 +6,7 @@
 
 #include "check/decl_checker.h"
 #include "check/stmt_result.h"
+#include "error/error.h"
 #include "macro.h"
 #include "node/ast.h"
 
@@ -20,13 +21,10 @@ class TypeCheckCtx {
 
   void RecordDecl(const ast::Ident *n, std::shared_ptr<Decl> ty) {
     ident_decl_map_[n] = ty;
-    std::cout << ty->type.get() << " is " << ToString(ty->type) << std::endl;
   }
 
   StmtResult RecordResult(const ast::AstNode *n, StmtResult result) {
     result_map_[n] = result;
-    std::cout << result.type.get() << " is " << ToString(result.type)
-              << std::endl;
     return result;
   }
 
@@ -49,9 +47,20 @@ class TypeCheckCtx {
   void ResolveTypes() {
     for (auto it : ident_decl_map_) {
       it.second->type->Resolve(is_32bit);
+      if (!it.second->type->IsResolved()) {
+        std::cout << ToString(*it.second->type) << " " << it.first << std::endl;
+        throw LocError(it.first->begin, "cannot infer type");
+      }
     }
     for (auto it : result_map_) {
-      if (it.second.IsExpr()) it.second.type->Resolve(is_32bit);
+      if (it.second.IsExpr()) {
+        it.second.type->Resolve(is_32bit);
+        if (!it.second.type->IsResolved()) {
+          std::cout << ToString(*it.second.type) << " " << it.first
+                    << std::endl;
+          throw LocError(it.first->begin, "cannot infer type");
+        }
+      }
     }
   }
 

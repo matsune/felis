@@ -14,7 +14,7 @@ void MirPrinter::Print(const std::unique_ptr<mir::File>& file) {
 
 void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
   if (func->IsExt()) {
-    Writeln("ext %s %s", func->name.c_str(), ToString(func->type).c_str());
+    Writeln("ext %s %s", func->name.c_str(), ToString(*func->type).c_str());
     return;
   }
 
@@ -26,7 +26,7 @@ void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
     }
     Write(ToString(fn->args.at(i)));
   }
-  Down(") -> %s {", ToString(fn->type->GetRet()).c_str());
+  Down(") -> %s {", ToString(*fn->type->GetRet()).c_str());
 
   for (auto it : fn->alloc_list) {
     Writeln(ToString(it));
@@ -37,6 +37,12 @@ void MirPrinter::PrintFunc(const std::shared_ptr<mir::Func>& func) {
     Down("bb%d: {", bb->id);
     for (auto& inst : bb->instructions) {
       switch (inst->InstKind()) {
+        case mir::Inst::Kind::LOAD: {
+          auto load_inst = (std::shared_ptr<mir::LoadInst>&)inst;
+          Writeln("%s = load %s", ToString(load_inst->result).c_str(),
+                  ToString(load_inst->value).c_str());
+        } break;
+
         case mir::Inst::Kind::ASSIGN:
           PrintAssign((const std::shared_ptr<mir::AssignInst>&)inst);
           break;

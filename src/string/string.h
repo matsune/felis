@@ -24,8 +24,9 @@ std::string format(const std::string &fmt, Args... args) {
 std::string ToString(const Token::Kind &);
 std::string ToString(const ast::BinaryOp::Kind &);
 std::string ToString(const Type::Kind &);
-std::string ToString(std::shared_ptr<Type> &);
-std::string ToString(const std::shared_ptr<Type> &);
+// std::string ToString(std::shared_ptr<Type> &);
+// std::string ToString(const std::shared_ptr<Type>);
+std::string ToString(const Type);
 std::string ToString(const DeclKind &);
 std::string ToString(const std::shared_ptr<Decl> &);
 

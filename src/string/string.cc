@@ -150,35 +150,14 @@ std::string ToString(const Type::Kind &kind) {
   };
 }
 
-std::string ToString(const std::shared_ptr<Type> &ty) {
-  if (!ty) return "null";
+// std::string ToString(const std::shared_ptr<Type> ty) {
+//  if (!ty) return "null";
+//  ToString(*ty);
+//}
 
-  std::stringstream ss;
-  if (ty->IsFunc()) {
-    ss << "func (";
-    auto args = ty->GetArgs();
-    for (auto it = args.begin(); it != args.end(); ++it) {
-      if (it != args.begin()) {
-        ss << ", ";
-      }
-      ss << ToString(*it);
-    }
-    ss << ") -> " << ToString(ty->GetRet());
-  } else if (ty->IsArray()) {
-    ss << "[" << ToString(ty->GetElem()) << ", " << ty->GetSize() << "]";
-  } else if (ty->IsPtr()) {
-    ss << ToString(ty->GetElem()) << "*";
-  } else if (ty->IsUnresolved() || ty->IsUntypedInt() || ty->IsUntypedFloat()) {
-    ss << ToString(ty->GetKind());
-  } else {
-    ss << ToString(ty->GetKind());
-  }
-  return ss.str();
-}
-
-std::string ToString(std::shared_ptr<Type> &ty) {
-  return ToString(const_cast<const std::shared_ptr<Type> &>(ty));
-}
+// std::string ToString(std::shared_ptr<Type> &ty) {
+//  return ToString(const_cast<const std::shared_ptr<Type> &>(ty));
+//}
 
 std::string ToString(const DeclKind &kind) {
   switch (kind) {
@@ -195,12 +174,36 @@ std::string ToString(const DeclKind &kind) {
   };
 }
 
+std::string ToString(const Type ty) {
+  std::stringstream ss;
+  if (ty.IsFunc()) {
+    ss << "func (";
+    auto args = ty.GetArgs();
+    for (auto it = args.begin(); it != args.end(); ++it) {
+      if (it != args.begin()) {
+        ss << ", ";
+      }
+      ss << ToString(**it);
+    }
+    ss << ") -> " << (ty.GetRet() ? ToString(*ty.GetRet()) : "void");
+  } else if (ty.IsArray()) {
+    ss << "[" << ToString(*ty.GetElem()) << ", " << ty.GetSize() << "]";
+  } else if (ty.IsPtr()) {
+    ss << ToString(*ty.GetElem()) << "*";
+  } else if (ty.IsUnresolved() || ty.IsUntypedInt() || ty.IsUntypedFloat()) {
+    ss << ToString(ty.GetKind());
+  } else {
+    ss << ToString(ty.GetKind());
+  }
+  return ss.str();
+}
+
 std::string ToString(const std::shared_ptr<Decl> &decl) {
   if (!decl) return "null";
 
   std::stringstream ss;
   ss << "Decl {name: " << decl->name << ", kind: " << ToString(decl->kind)
-     << ", type: " << ToString(decl->type) << "} (" << decl.get() << ")";
+     << ", type: " << ToString(*decl->type) << "} (" << decl.get() << ")";
   return ss.str();
 }
 
@@ -210,20 +213,20 @@ std::string ToString(const std::shared_ptr<mir::Value> &value) {
   std::stringstream s;
   if (value->IsConstInt()) {
     auto const_int = std::dynamic_pointer_cast<mir::ConstInt>(value);
-    s << "const " << ToString(const_int->type) << " " << const_int->val;
+    s << "const " << ToString(*const_int->type) << " " << const_int->val;
   } else if (value->IsConstFloat()) {
     auto const_float = std::dynamic_pointer_cast<mir::ConstFloat>(value);
-    s << "const " << ToString(const_float->type) << " " << const_float->val;
+    s << "const " << ToString(*const_float->type) << " " << const_float->val;
   } else if (value->IsConstBool()) {
     auto const_bool = std::dynamic_pointer_cast<mir::ConstBool>(value);
-    s << "const " << ToString(const_bool->type) << " "
+    s << "const " << ToString(*const_bool->type) << " "
       << (const_bool->val ? "true" : "false");
   } else if (value->IsConstString()) {
     auto const_string = std::dynamic_pointer_cast<mir::ConstString>(value);
     s << "const string \"" << const_string->val << "\"";
   } else if (value->IsResult()) {
     auto result = std::dynamic_pointer_cast<mir::Result>(value);
-    s << "$" << result->id << ": " << ToString(result->type);
+    s << "$" << result->id << ": " << ToString(*result->type);
   } else if (value->IsIndex()) {
     auto index = std::dynamic_pointer_cast<mir::Index>(value);
     s << ToString(index->val) << "[" << ToString(index->idx) << "]";

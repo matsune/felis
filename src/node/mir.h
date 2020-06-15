@@ -88,9 +88,31 @@ struct Index : Value {
 };
 
 struct Inst {
-  enum Kind { ASSIGN, UNARY, BINARY, CMP, ARRAY, CALL, BR, GOTO, RET, PHI };
+  enum Kind {
+    LOAD,
+    ASSIGN,
+    UNARY,
+    BINARY,
+    CMP,
+    ARRAY,
+    CALL,
+    BR,
+    GOTO,
+    RET,
+    PHI
+  };
 
   virtual Inst::Kind InstKind() const = 0;
+};
+
+struct LoadInst : Inst {
+  std::shared_ptr<Result> result;
+  std::shared_ptr<Value> value;
+
+  LoadInst(std::shared_ptr<Result> result, std::shared_ptr<Value> value)
+      : result(result), value(value) {}
+
+  Inst::Kind InstKind() const override { return Inst::Kind::LOAD; }
 };
 
 struct AssignInst : Inst {

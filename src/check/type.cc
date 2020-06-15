@@ -1,5 +1,9 @@
 #include "type.h"
 
+#include <iostream>
+
+#include "string/string.h"
+
 namespace felis {
 
 bool Type::operator==(const Type &other) {
@@ -103,8 +107,10 @@ void Type::Resolve(bool is_32bit) {
       underlying = underlying->GetRef().get();
     }
     if (underlying->IsUntypedInt()) {
-      underlying = is_32bit ? Type::MakeI32().get() : Type::MakeI64().get();
+      *this = is_32bit ? *Type::MakeI32() : *Type::MakeI64();
+      return;
     }
+    underlying->Resolve(is_32bit);
     *this = *underlying;
     return;
   }
@@ -120,6 +126,20 @@ void Type::Resolve(bool is_32bit) {
     GetElem()->Resolve(is_32bit);
     return;
   }
+}
+
+bool Type::IsResolved() {
+  if (IsUntype()) return false;
+  if (IsArray() || IsPtr()) {
+    return GetElem()->IsResolved();
+  }
+  if (IsFunc()) {
+    for (auto arg : GetArgs()) {
+      if (!arg->IsResolved()) return false;
+    }
+    return GetRet()->IsResolved();
+  }
+  return true;
 }
 
 }  // namespace felis

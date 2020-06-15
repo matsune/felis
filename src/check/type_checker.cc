@@ -130,8 +130,8 @@ StmtResult TypeChecker::CheckVarDecl(const ast::VarDeclStmt* stmt) {
   if (!ctx_.TryResolve(decl_ty, expr_ty) &&
       !ctx_.TryResolve(expr_ty, decl_ty)) {
     throw LocError::Create(stmt->expr->begin, "mismatched decl type %s, %s",
-                           ToString(decl_ty).c_str(),
-                           ToString(expr_ty).c_str());
+                           ToString(*decl_ty).c_str(),
+                           ToString(*expr_ty).c_str());
   }
 
   auto decl = std::make_shared<Decl>(
@@ -165,7 +165,7 @@ StmtResult TypeChecker::CheckAssign(const ast::AssignStmt* stmt) {
         !ctx_.TryResolve(expr_ty, decl->type)) {
       throw LocError::Create(
           stmt->expr->begin, "mismatched assign type %s = %s ",
-          ToString(decl->type).c_str(), ToString(expr_ty).c_str());
+          ToString(*decl->type).c_str(), ToString(*expr_ty).c_str());
     }
     return StmtResult::NonValue();
   } else {

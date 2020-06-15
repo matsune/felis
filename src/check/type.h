@@ -80,12 +80,22 @@ class Type {
     return ref_;
   }
 
+  std::shared_ptr<Type> GetRef() {
+    assert(IsUntype());
+    return ref_;
+  }
+
   void SetRef(std::shared_ptr<Type> ref) {
     assert(IsUntype());
     ref_ = ref;
   }
 
   std::vector<std::shared_ptr<Type>> GetArgs() const {
+    assert(IsFunc());
+    return args_;
+  }
+
+  std::vector<std::shared_ptr<Type>> GetArgs() {
     assert(IsFunc());
     return args_;
   }
@@ -100,6 +110,11 @@ class Type {
     return ret_;
   }
 
+  std::shared_ptr<Type> GetRet() {
+    assert(IsFunc());
+    return ret_;
+  }
+
   void SetRet(std::shared_ptr<Type> ret) {
     assert(IsFunc());
     ret_ = ret;
@@ -110,7 +125,17 @@ class Type {
     return elem_;
   }
 
+  std::shared_ptr<Type> GetElem() {
+    assert(IsArray() || IsPtr());
+    return elem_;
+  }
+
   std::shared_ptr<Type> GetPtrElem() const {
+    assert(IsPtr());
+    return elem_;
+  }
+
+  std::shared_ptr<Type> GetPtrElem() {
     assert(IsPtr());
     return elem_;
   }
@@ -213,6 +238,8 @@ class Type {
   void Constraint(std::shared_ptr<Type>);
 
   void Resolve(bool);
+
+  bool IsResolved();
 
  private:
   Type::Kind kind_;

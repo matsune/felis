@@ -62,6 +62,14 @@ std::shared_ptr<mir::Result> MIRBuilder::CreateAlloc(std::shared_ptr<Type> ty) {
   return result;
 }
 
+std::shared_ptr<mir::Result> MIRBuilder::CreateLoad(
+    std::shared_ptr<mir::Value> value) {
+  auto result = std::make_shared<mir::Result>(value->type->GetElem(),
+                                              current_bb->parent.GenResultID());
+  Insert(std::make_shared<mir::LoadInst>(result, value));
+  return result;
+}
+
 void MIRBuilder::CreateAssign(std::shared_ptr<mir::Value> into,
                               std::shared_ptr<mir::Value> value) {
   Insert(std::make_shared<mir::AssignInst>(into, value));

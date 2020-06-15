@@ -45,8 +45,8 @@ class MIRBuilder {
   std::shared_ptr<mir::ConstString> CreateConstString(std::string);
   std::shared_ptr<mir::Result> CreateAlloc(std::shared_ptr<Type>);
 
-  //  std::shared_ptr<mir::Value> CreateValue(std::shared_ptr<Type>,bool);
-  //  std::shared_ptr<mir::RValue> CreateAllocatedRValue(std::shared_ptr<Type>);
+  std::shared_ptr<mir::Result> CreateLoad(std::shared_ptr<mir::Value>);
+
   std::shared_ptr<mir::Result> CreateResult(std::shared_ptr<Type>);
   void CreateAssign(std::shared_ptr<mir::Value>, std::shared_ptr<mir::Value>);
 
@@ -62,10 +62,6 @@ class MIRBuilder {
                                          std::shared_ptr<mir::Value>);
   std::shared_ptr<mir::Result> CreateCall(
       std::shared_ptr<Decl>, std::vector<std::shared_ptr<mir::Value>>);
-  //
-  //  std::shared_ptr<mir::Var> CreateArray(
-  //      std::shared_ptr<ArrayType>, std::vector<std::shared_ptr<mir::Value>>);
-  //
 
   std::shared_ptr<mir::BrInst> CreateCond(std::shared_ptr<mir::Value>,
                                           std::shared_ptr<mir::BB>,
