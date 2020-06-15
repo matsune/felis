@@ -2,6 +2,7 @@
 
 #include "error/error.h"
 #include "macro.h"
+#include "string/string.h"
 
 namespace felis {
 
@@ -243,7 +244,9 @@ StmtResult TypeChecker::CheckBinary(const ast::Binary* binary) {
   } else if (ctx_.TryResolve(rhs_ty, lhs_ty)) {
     operand_ty = lhs_ty;
   } else {
-    throw LocError::Create(binary->lhs->begin, "unmatch type");
+    throw LocError::Create(binary->lhs->begin, "unmatch type %s, %s",
+                           ToString(*lhs_ty).c_str(),
+                           ToString(*rhs_ty).c_str());
   }
 
   std::shared_ptr<Type> ty;

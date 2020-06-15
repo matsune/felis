@@ -199,7 +199,7 @@ std::shared_ptr<mir::Value> Lower::LowerExpr(ast::AstNode* expr, bool load) {
   } else {
     UNREACHABLE
   }
-  if (load && val->type->IsPtr()) {
+  if (load && val && val->type->IsPtr()) {
     return builder_.CreateLoad(val);
   }
   return val;
@@ -368,7 +368,7 @@ std::shared_ptr<mir::Value> Lower::LowerIf(ast::If* if_stmt) {
     // needs goto
     if (phi_inst && block_val) {
       // phi
-      phi_inst->nodes.push_back(std::make_pair(block_val, then_bb));
+      phi_inst->nodes.push_back(std::make_pair(block_val, builder_.current_bb));
     }
     builder_.CreateGoto(end_bb);
   }
@@ -383,7 +383,7 @@ std::shared_ptr<mir::Value> Lower::LowerIf(ast::If* if_stmt) {
   }
   if (!else_res.IsRet()) {
     if (phi_inst && else_val) {
-      phi_inst->nodes.push_back(std::make_pair(else_val, else_bb));
+      phi_inst->nodes.push_back(std::make_pair(else_val, builder_.current_bb));
     }
     builder_.CreateGoto(end_bb);
   }

@@ -1,54 +1,52 @@
-/* ext fn puts(string) -> i32 */
+ext fn puts(string) -> i32
 
-/* fn 関数1(a: i32) -> i32{ */
-/*   ret if a > 0 { */
-/*     if true { } */
-/*     3 */
-/*   } else if true { */
-/*     if true { */
-/*       if false { 30 } */
-/*     } */
-/*     4 */
-/*   } else { */
-/*     99 */
-/*   } */
-/* } */
+fn 関数1(a: i32) -> i32{
+  ret if a > 0 {
+    if true { }
+    3
+  } else if true {
+    if true {
+      if false { 30 }
+    }
+    4
+  } else {
+    99
+  }
+}
 
-/* fn b() { */
-/*   ret { */
-/*  let a =  0 */
-/*   } */
-/* } */
+fn b() {
+  ret {
+ let a =  0
+  }
+}
 
-/* fn o() { */
-/*   { */
-/*     if true { */
-/*       3 */
-/*     } else { */
-/*      let n = 3 */ 
-/*     } */
-/*   } */
-/* } */
+fn o() {
+  {
+    if true {
+      3
+    } else {
+     let n = 3 
+    }
+  }
+}
 
 fn main() ->i32 {
-var arr = [2]
-0
-  /* let n = if true { */
-  /*   let b = 4 */
-  /*   b */
-  /* } else { */
-  /*   32 */
-  /* } */
-  /* var a = 'a' */
-  /* let b = a */
-  /* b */
-  /* let c = n + a; */
-  /* let d = 関数1(c) */
-  /* let vv =  3 */
-  /* o() */
-  /* if true { */
-  /*   let str = "あいう" */
-  /*   puts(str) */
-  /* } */
-  /* ret d */
+  let n = if true {
+    let b = 4
+    b
+  } else {
+    32
+  }
+  var a = 'a'
+  let b = a
+  b
+  let c = n + a;
+  let d = 関数1(c)
+  let vv =  3
+  o()
+  if true {
+    let str = "あいう"
+    puts(str)
+  }
+  ret d
 }

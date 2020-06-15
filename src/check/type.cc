@@ -30,7 +30,30 @@ bool Type::operator==(const Type &other) {
   return GetKind() == other.GetKind();
 }
 
+std::shared_ptr<Type> Underlying(std::shared_ptr<Type> type) {
+  if (type->IsUntype()) {
+    if (type->GetRef()) return type->GetRef();
+    return type;
+  }
+  if (type->IsArray()) {
+    return Type::MakeArray(Underlying(type->GetElem()), type->GetSize());
+  }
+  if (type->IsPtr()) {
+    return Type::MakePtr(Underlying(type->GetElem()));
+  }
+  if (type->IsFunc()) {
+    auto args = type->GetArgs();
+    for (auto i = 0; i < args.size(); ++i) {
+      args.at(i) = Underlying(args.at(i));
+    }
+    return Type::MakeFunc(args, Underlying(type->GetRet()));
+  }
+  return type;
+}
+
 bool Type::Substitutable(std::shared_ptr<Type> type) {
+  type = Underlying(type);
+
   if (IsUntype()) {
     if (ref_) return ref_->Substitutable(type);
 

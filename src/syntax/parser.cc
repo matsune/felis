@@ -200,6 +200,7 @@ ast::AstNode* Parser::PrimaryExpr() {
         auto end = Bump()->end;
         std::deque<ast::AstNode*> args;
         if (Match(Token::Kind::RPAREN)) {
+          Bump();
           return new ast::Call(ident->begin, end, ident, args);
         }
         args.push_back(Expr());
