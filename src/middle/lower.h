@@ -30,6 +30,7 @@ class Lower {
   std::shared_ptr<mir::Value> LowerCall(ast::Call *);
   std::shared_ptr<mir::Value> LowerUnary(ast::Unary *);
   std::shared_ptr<mir::Value> LowerArray(ast::Array *);
+  std::shared_ptr<mir::Value> LowerIndex(ast::Index *);
   std::shared_ptr<mir::Value> LowerIf(ast::If *);
   std::shared_ptr<mir::Value> LowerBlock(ast::Block *);
 };

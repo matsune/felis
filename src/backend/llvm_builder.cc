@@ -59,7 +59,13 @@ llvm::Value* LLVMBuilder::GetValue(std::shared_ptr<mir::Value> value) {
   } else if (value->IsResult()) {
     v = value_map_.at(value);
   } else if (value->IsIndex()) {
-    v = value_map_.at(value);
+    auto index = std::dynamic_pointer_cast<mir::Index>(value);
+    auto idx = GetValue(index->idx);
+    auto val = GetValue(index->val);
+    auto ptr = builder_.CreateInBoundsGEP(
+        LLVMType(index->val->type->GetPtrElem()), val,
+        {llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(ctx_), 0), idx});
+    v = builder_.CreateLoad(ptr);
   }
   return v;
 }

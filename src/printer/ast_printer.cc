@@ -40,7 +40,7 @@ void AstPrinter::PrintExtern(ast::Extern *ext) {
   Down("Extern {");
   {
     PrintProto(ext->proto);
-    PrintLoc(ext);
+    // PrintLoc(ext);
   }
   Up("}");
 }
@@ -52,7 +52,7 @@ void AstPrinter::PrintFunc(ast::Func *fn) {
   {
     PrintProto(fn->proto);
     PrintBlock(fn->block);
-    PrintLoc(fn);
+    // PrintLoc(fn);
   }
   Up("}");
 }
@@ -82,7 +82,7 @@ void AstPrinter::PrintFnArg(ast::FnArg *arg) {
     Write("Type: ");
     PrintTypeName(arg->type);
     PrintPtr(arg);
-    PrintLoc(arg);
+    // PrintLoc(arg);
   }
   Up("}");
 }
@@ -108,7 +108,7 @@ void AstPrinter::PrintIdent(ast::Ident *ident) {
   {
     Writeln("Name: " + ident->val);
     PrintPtr(ident);
-    PrintLoc(ident);
+    // PrintLoc(ident);
   }
   Up("}");
 }
@@ -129,7 +129,7 @@ void AstPrinter::PrintTypeName(ast::AstNode *ty) {
       UNREACHABLE
     }
     PrintPtr(ty);
-    PrintLoc(ty);
+    // PrintLoc(ty);
   }
   Up("}");
 }
@@ -140,7 +140,7 @@ void AstPrinter::PrintRet(ast::RetStmt *stmt) {
     Write("Expr: ");
     PrintExpr(stmt->expr);
     PrintPtr(stmt);
-    PrintLoc(stmt);
+    // PrintLoc(stmt);
   }
   Up("}");
 }
@@ -156,7 +156,7 @@ void AstPrinter::PrintVarDecl(ast::VarDeclStmt *stmt) {
     Write("Expr: ");
     PrintExpr(stmt->expr);
     PrintPtr(stmt);
-    PrintLoc(stmt);
+    // PrintLoc(stmt);
   }
   Up("}");
 }
@@ -169,7 +169,7 @@ void AstPrinter::PrintAssign(ast::AssignStmt *stmt) {
     Write("Expr: ");
     PrintExpr(stmt->expr);
     PrintPtr(stmt);
-    PrintLoc(stmt);
+    // PrintLoc(stmt);
   }
   Up("}");
 }
@@ -243,7 +243,7 @@ void AstPrinter::PrintLit(ast::Literal *lit) {
       break;
   }
   PrintPtr(lit);
-  PrintLoc(lit);
+  // PrintLoc(lit);
   Up("}");
 }
 
@@ -256,7 +256,7 @@ void AstPrinter::PrintBinary(ast::Binary *binary) {
     Write("Right: ");
     PrintExpr(binary->rhs);
     PrintPtr(binary);
-    PrintLoc(binary);
+    // PrintLoc(binary);
   }
   Up("}");
 }
@@ -275,7 +275,7 @@ void AstPrinter::PrintCall(ast::Call *call) {
     }
     Up("]");
     PrintPtr(call);
-    PrintLoc(call);
+    // PrintLoc(call);
   }
   Up("}");
 }
@@ -287,7 +287,7 @@ void AstPrinter::PrintUnary(ast::Unary *unary) {
     Writeln("op: %s", op.c_str());
     PrintExpr(unary->expr);
     PrintPtr(unary);
-    PrintLoc(unary);
+    // PrintLoc(unary);
   }
   Up("}");
 }
@@ -301,7 +301,7 @@ void AstPrinter::PrintIf(ast::If *if_stmt) {
     Write("Else: ");
     PrintExpr(if_stmt->els);
     PrintPtr(if_stmt);
-    PrintLoc(if_stmt);
+    // PrintLoc(if_stmt);
   }
   Up("}");
 }
@@ -314,7 +314,7 @@ void AstPrinter::PrintArray(ast::Array *array) {
       PrintExpr(array->exprs.at(i));
     }
     PrintPtr(array);
-    PrintLoc(array);
+    // PrintLoc(array);
   }
   Up("]");
 }
@@ -327,7 +327,7 @@ void AstPrinter::PrintIndex(ast::Index *index) {
     Write("IdxExpr: ");
     PrintExpr(index->idx_expr);
     PrintPtr(index);
-    PrintLoc(index);
+    // PrintLoc(index);
   }
   Up("}");
 }

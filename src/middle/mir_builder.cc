@@ -16,7 +16,7 @@ std::shared_ptr<mir::BB> MIRBuilder::GetBeforeBB(std::shared_ptr<mir::BB> bb) {
 }
 
 std::shared_ptr<mir::Func> MIRBuilder::CreateFunc(std::shared_ptr<Decl> decl) {
-  bool is_ext = decl->kind == DeclKind::EXT;
+  bool is_ext = decl->kind == Decl::Kind::EXT;
   auto func = is_ext ? std::make_shared<mir::Func>(decl->name, decl->type)
                      : std::make_shared<mir::Function>(decl->name, decl->type);
   file->funcs.push_back(func);

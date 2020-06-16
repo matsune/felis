@@ -28,7 +28,7 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
     for (auto& arg : fn->proto->args->list) {
       // arg-name duplication is already checked in parser
       auto arg_decl = std::make_shared<Decl>(
-          arg->name->val, decl_ck_.LookupType(arg->type), DeclKind::ARG);
+          arg->name->val, decl_ck_.LookupType(arg->type), Decl::Kind::ARG);
       ctx_.RecordDecl(arg->name, arg_decl);
       decl_ck_.InsertDecl(arg->name->val, arg_decl);
     }
@@ -136,7 +136,7 @@ StmtResult TypeChecker::CheckVarDecl(const ast::VarDeclStmt* stmt) {
   }
 
   auto decl = std::make_shared<Decl>(
-      name, decl_ty, stmt->is_let ? DeclKind::LET : DeclKind::VAR);
+      name, decl_ty, stmt->is_let ? Decl::Kind::LET : Decl::Kind::VAR);
   decl_ck_.InsertDecl(name, decl);
   ctx_.RecordDecl(stmt->name, decl);
   return StmtResult::NonValue();
@@ -191,6 +191,8 @@ StmtResult TypeChecker::CheckExpr(const ast::AstNode* expr) {
     return CheckIf(if_stmt);
   } else if (auto block = node_cast_ornull<ast::Block>(expr)) {
     return CheckBlock(block);
+  } else if (auto index = node_cast_ornull<ast::Index>(expr)) {
+    return CheckIndex(index);
   } else {
     UNREACHABLE
   }
@@ -337,6 +339,22 @@ StmtResult TypeChecker::CheckArray(const ast::Array* array) {
                            StmtResult::Expr(Type::MakeArray(elem_ty, size)));
 }
 
+StmtResult TypeChecker::CheckIndex(const ast::Index* index) {
+  auto expr_res = CheckExpr(index->expr);
+  if (!expr_res.IsExpr()) {
+    throw LocError::Create(index->expr->begin, "index expr not type");
+  }
+  if (!Underlying(expr_res.type)->IsArray()) {
+    throw LocError::Create(index->expr->begin, "not array");
+  }
+  auto idx_res = CheckExpr(index->idx_expr);
+  if (!idx_res.IsExpr()) {
+    throw LocError::Create(index->expr->begin, "index idx not type");
+  }
+  return ctx_.RecordResult(
+      index, StmtResult::Expr(Underlying(expr_res.type)->GetArrayElem()));
+}
+
 StmtResult TypeChecker::CheckIf(const ast::If* e) {
   auto cond_stmt_ty = CheckExpr(e->cond);
   if (!cond_stmt_ty.IsExpr()) {
@@ -373,7 +391,7 @@ StmtResult TypeChecker::CheckIf(const ast::If* e) {
     return ctx_.RecordResult(e, StmtResult::Ret());
   }
 
-  std::shared_ptr<Type> whole_ty = Type::MakeVoid();
+  std::shared_ptr<Type> whole_ty;
   if (block_stmt_ty.IsRet()) {
     whole_ty = els_stmt_ty.type;
   } else if (els_stmt_ty.IsRet()) {

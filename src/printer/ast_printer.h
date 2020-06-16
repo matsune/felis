@@ -37,7 +37,8 @@ class AstPrinter : public Printer<ast::File> {
 
   void PrintArrayIndex(int);
 
-  void PrintLoc(ast::AstNode *n) { Writeln("Loc: %d-%d", n->begin, n->end); }
+  //  void PrintLoc(ast::AstNode *n) { Writeln("Loc: %d-%d", n->begin, n->end);
+  //  }
 };
 
 }  // namespace felis

@@ -54,6 +54,7 @@ std::shared_ptr<Type> DeclChecker::LookupType(const ast::AstNode* node) {
       if (ty) return ty;
       scope = scope->GetParent();
     }
+    return nullptr;
   } else {
     auto array = node_cast<ast::ArrayType>(node);
     auto elem = LookupType(array->elem);
@@ -117,8 +118,8 @@ std::shared_ptr<Decl> DeclChecker::MakeFnDecl(bool is_ext,
     ret_ty = Type::MakeVoid();
   }
   auto fn_type = Type::MakeFunc(args, ret_ty);
-  DeclKind kind = is_ext ? DeclKind::EXT : DeclKind::FN;
-  return std::make_shared<Decl>(proto->name->val, fn_type, kind);
+  return std::make_shared<Decl>(proto->name->val, fn_type,
+                                is_ext ? Decl::Kind::EXT : Decl::Kind::FN);
 }
 
 }  // namespace felis

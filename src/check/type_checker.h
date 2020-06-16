@@ -34,6 +34,7 @@ class TypeChecker {
   StmtResult CheckUnary(const ast::Unary *);
   StmtResult CheckCall(const ast::Call *);
   StmtResult CheckArray(const ast::Array *);
+  StmtResult CheckIndex(const ast::Index *);
   StmtResult CheckIf(const ast::If *);
 };
 

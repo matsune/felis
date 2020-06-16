@@ -159,17 +159,17 @@ std::string ToString(const Type::Kind &kind) {
 //  return ToString(const_cast<const std::shared_ptr<Type> &>(ty));
 //}
 
-std::string ToString(const DeclKind &kind) {
+std::string ToString(const Decl::Kind &kind) {
   switch (kind) {
-    case DeclKind::EXT:
+    case Decl::Kind::EXT:
       return "EXT";
-    case DeclKind::FN:
+    case Decl::Kind::FN:
       return "FN";
-    case DeclKind::ARG:
+    case Decl::Kind::ARG:
       return "ARG";
-    case DeclKind::VAR:
+    case Decl::Kind::VAR:
       return "VAR";
-    case DeclKind::LET:
+    case Decl::Kind::LET:
       return "LET";
   };
 }

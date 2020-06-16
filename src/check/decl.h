@@ -12,21 +12,21 @@
 
 namespace felis {
 
-enum DeclKind { EXT, FN, ARG, VAR, LET };
-
 struct Decl {
+  enum Kind { EXT, FN, ARG, VAR, LET };
+
   const std::string name;
-  const DeclKind kind;
+  const Decl::Kind kind;
   std::shared_ptr<Type> type;
 
-  Decl(std::string name, std::shared_ptr<Type> type, DeclKind kind)
-      : name(std::move(name)), type(type), kind(kind) {}
+  Decl(std::string name, std::shared_ptr<Type> type, Decl::Kind kind)
+      : name(name), type(type), kind(kind) {}
 
   bool IsAssignable() {
     switch (kind) {
-      case DeclKind::EXT:
-      case DeclKind::FN:
-      case DeclKind::LET:
+      case Decl::Kind::EXT:
+      case Decl::Kind::FN:
+      case Decl::Kind::LET:
         return false;
       default:
         return true;
@@ -35,8 +35,19 @@ struct Decl {
 
   bool IsFunc() {
     switch (kind) {
-      case DeclKind::EXT:
-      case DeclKind::FN:
+      case Decl::Kind::EXT:
+      case Decl::Kind::FN:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  bool IsVariable() {
+    switch (kind) {
+      case Decl::Kind::ARG:
+      case Decl::Kind::VAR:
+      case Decl::Kind::LET:
         return true;
       default:
         return false;

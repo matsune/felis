@@ -196,6 +196,8 @@ std::shared_ptr<mir::Value> Lower::LowerExpr(ast::AstNode* expr, bool load) {
     val = LowerBlock(block);
   } else if (auto if_stmt = node_cast_ornull<ast::If>(expr)) {
     val = LowerIf(if_stmt);
+  } else if (auto index = node_cast_ornull<ast::Index>(expr)) {
+    val = LowerIndex(index);
   } else {
     UNREACHABLE
   }
@@ -313,6 +315,13 @@ std::shared_ptr<mir::Value> Lower::LowerArray(ast::Array* array) {
 
   builder_.Insert(std::make_shared<mir::ArrayInst>(var, values));
   return var;
+}
+
+std::shared_ptr<mir::Value> Lower::LowerIndex(ast::Index* index) {
+  auto type = ctx_.GetResult(index).type;
+  auto var = LowerExpr(index->expr, false);
+  auto idx = LowerExpr(index->idx_expr, true);
+  return std::make_shared<mir::Index>(type, var, idx);
 }
 
 std::shared_ptr<mir::Value> Lower::LowerIf(ast::If* if_stmt) {

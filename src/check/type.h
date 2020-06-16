@@ -257,6 +257,8 @@ class Type {
   int size_;
 };
 
+std::shared_ptr<Type> Underlying(std::shared_ptr<Type>);
+
 }  // namespace felis
 
 #endif  // FELIS_CHECK_TYPE_H_
