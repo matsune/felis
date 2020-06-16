@@ -1,6 +1,7 @@
 #ifndef FELIS_CHECK_TYPE_H_
 #define FELIS_CHECK_TYPE_H_
 
+#include <cassert>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -214,6 +215,7 @@ class Type {
 
   static std::shared_ptr<Type> MakeFunc(std::vector<std::shared_ptr<Type>> args,
                                         std::shared_ptr<Type> ret) {
+    if (!ret) ret = MakeVoid();
     auto func = std::make_shared<Type>(Type::Kind::FUNC);
     func->SetArgs(args);
     func->SetRet(ret);

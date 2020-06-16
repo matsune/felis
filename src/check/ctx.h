@@ -5,7 +5,7 @@
 #include <memory>
 
 #include "check/decl_checker.h"
-#include "check/stmt_result.h"
+#include "check/eval.h"
 #include "error/error.h"
 #include "macro.h"
 #include "node/ast.h"
@@ -15,7 +15,7 @@ namespace felis {
 class TypeCheckCtx {
  public:
   using IdentDeclMap = std::map<const ast::Ident *, std::shared_ptr<Decl>>;
-  using ResultMap = std::map<const ast::AstNode *, StmtResult>;
+  using ResultMap = std::map<const ast::AstNode *, Eval>;
 
   TypeCheckCtx(bool is_32bit) : is_32bit(is_32bit) {}
 
@@ -23,7 +23,7 @@ class TypeCheckCtx {
     ident_decl_map_[n] = ty;
   }
 
-  StmtResult RecordResult(const ast::AstNode *n, StmtResult result) {
+  Eval RecordResult(const ast::AstNode *n, Eval result) {
     result_map_[n] = result;
     return result;
   }
@@ -32,9 +32,7 @@ class TypeCheckCtx {
     return ident_decl_map_.at(t);
   }
 
-  StmtResult GetResult(const ast::AstNode *n) const {
-    return result_map_.at(n);
-  }
+  Eval GetResult(const ast::AstNode *n) const { return result_map_.at(n); }
 
   bool Is32bit() const { return is_32bit; }
 

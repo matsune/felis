@@ -23,26 +23,26 @@ void DeclChecker::InsertBuiltinTypes() {
   current_scope_->InsertType("int", Type::MakeArchInt(is_32bit));
 }
 
-std::shared_ptr<Decl> DeclChecker::LookupDecl(const std::string& name) {
+std::shared_ptr<Decl> DeclChecker::LookupDecl(const std::string& name,
+                                              bool is_func) {
   auto scope = current_scope_;
   while (scope) {
-    auto def = scope->FindDecl(name);
-    if (def) return def;
+    auto decl = scope->FindDecl(name);
+    if (decl) {
+      if (is_func && decl->IsFunc()) return decl;
+      if (!is_func && decl->IsVariable()) return decl;
+    }
     scope = scope->GetParent();
   }
   return nullptr;
 }
 
 std::shared_ptr<Decl> DeclChecker::LookupVarDecl(const std::string& name) {
-  auto decl = LookupDecl(name);
-  if (!decl) return nullptr;
-  return decl->IsFunc() ? nullptr : decl;
+  return LookupDecl(name, false);
 }
 
 std::shared_ptr<Decl> DeclChecker::LookupFuncDecl(const std::string& name) {
-  auto decl = LookupDecl(name);
-  if (!decl) return nullptr;
-  return decl->IsFunc() ? decl : nullptr;
+  return LookupDecl(name, true);
 }
 
 std::shared_ptr<Type> DeclChecker::LookupType(const ast::AstNode* node) {

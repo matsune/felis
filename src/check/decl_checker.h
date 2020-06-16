@@ -45,7 +45,7 @@ class DeclChecker {
   // Insert builtin types into global scope.
   void InsertBuiltinTypes();
 
-  std::shared_ptr<Decl> LookupDecl(const std::string &);
+  std::shared_ptr<Decl> LookupDecl(const std::string &, bool);
 
   // Checking below and create Decl if all passed.
   // - Function name uniqueness
