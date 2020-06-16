@@ -31,16 +31,14 @@ fn o() {
 }
 
 fn main() ->i32 {
-  let n = if true {
-    let b = 4
-    b
+  var b = [1,2,3]
+b[0] =  if true {
+  ret 3
   } else {
-    32
+     4
   }
   var a = 'a'
-  let b = a
-  b
-  let c = n + a;
+  let c = 8 + a;
   let d = 関数1(c)
   let vv =  3
   o()
@@ -48,5 +46,5 @@ fn main() ->i32 {
     let str = "あいう"
     puts(str)
   }
-  ret d
+  ret b[0]
 }

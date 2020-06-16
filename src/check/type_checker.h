@@ -4,21 +4,22 @@
 #include <map>
 #include <memory>
 
-#include "check/ctx.h"
 #include "check/decl_checker.h"
 #include "check/eval.h"
+#include "check/type_maps.h"
 #include "node/ast.h"
 
 namespace felis {
 
 class TypeChecker {
  public:
-  TypeChecker(TypeCheckCtx &ctx) : ctx_(ctx), decl_ck_(ctx.Is32bit()) {}
+  TypeChecker(TypeMaps &type_maps)
+      : type_maps_(type_maps), decl_ck_(type_maps_.Is32bit()) {}
 
   void Check(const std::unique_ptr<ast::File> &);
 
  private:
-  TypeCheckCtx &ctx_;
+  TypeMaps &type_maps_;
   DeclChecker decl_ck_;
   std::shared_ptr<Type> current_func_;
 
@@ -36,6 +37,8 @@ class TypeChecker {
   Eval CheckArray(const ast::Array *);
   Eval CheckIndex(const ast::Index *);
   Eval CheckIf(const ast::If *, bool needs_type);
+
+  std::shared_ptr<Type> GetLValue(const ast::AstNode *);
 };
 
 }  // namespace felis

@@ -7,9 +7,8 @@
 #include "backend/target.h"
 #include "error/error.h"
 #include "loc.h"
-#include "middle/lower.h"
+#include "check/type_checker.h"
 #include "printer/ast_printer.h"
-#include "printer/mir_printer.h"
 #include "syntax/parser.h"
 #include "unique.h"
 
@@ -60,11 +59,10 @@ class Session {
     return std::move(machine);
   }
 
-  void Build(std::unique_ptr<llvm::TargetMachine> machine,
-             std::unique_ptr<felis::mir::File> mir) {
-    auto builder = std::make_unique<felis::LLVMBuilder>(
-        "felis", opts->Filepath(), std::move(machine));
-    builder->Build(std::move(mir));
+  void Build(std::unique_ptr<felis::LLVMBuilder> builder,
+             std::unique_ptr<felis::ast::File> ast) {
+    
+    builder->Build(std::move(ast));
 
     if (opts->IsEmit(EmitType::LLVM_IR)) {
       builder->EmitLLVMIR(opts->OutputName(EmitType::LLVM_IR));
@@ -104,13 +102,12 @@ class Session {
 
       if (opts->IsPrintAst()) felis::AstPrinter().Print(ast);
 
-      auto mir = felis::Lowering(std::move(ast), is_32bit);
-      if (!mir) return 1;
+      felis::TypeMaps type_maps(is_32bit);
+      felis::TypeChecker(type_maps).Check(ast);
+      type_maps.ResolveTypes();
 
-      if (opts->IsPrintMir()) {
-        felis::MirPrinter().Print(mir);
-      }
-      Build(std::move(machine), std::move(mir));
+      Build(std::make_unique<felis::LLVMBuilder>(
+      "felis", opts->Filepath(), std::move(machine),type_maps), std::move(ast));
 
     } catch (felis::LocError &err) {
       exit = Report(err);

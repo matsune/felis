@@ -2,7 +2,7 @@ ext fn puts(string) -> i32
 
 fn main()  {
  let a: i32 = 32
- let b: i64 = 64
+ let b: i64 =if a > 20 {  64 } else if false { 32 } else { 31 }
  let c: f32 = 2
  let d: f64 = 33
  let e: string = "dadfs"

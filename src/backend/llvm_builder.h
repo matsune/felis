@@ -11,24 +11,27 @@
 #include <memory>
 #include <string>
 
+#include "check/type_maps.h"
 #include "error/error.h"
-#include "node/mir.h"
+#include "node/ast.h"
 
 namespace felis {
 
 class LLVMBuilder {
  public:
   LLVMBuilder(std::string module_name, std::string file_name,
-              std::unique_ptr<llvm::TargetMachine> machine)
+              std::unique_ptr<llvm::TargetMachine> machine, TypeMaps &type_maps)
       : module_(module_name, ctx_),
         builder_(ctx_),
-        machine_(std::move(machine)) {
+        machine_(std::move(machine)),
+        type_maps_(type_maps) {
     module_.setSourceFileName(file_name);
     module_.setDataLayout(machine_->createDataLayout());
     module_.setTargetTriple(machine_->getTargetTriple().str());
   };
 
-  void Build(std::unique_ptr<mir::File>);
+  void Build(std::unique_ptr<ast::File>);
+
   void EmitLLVMIR(std::string filename);
   void EmitLLVMBC(std::string filename);
   void EmitASM(std::string filename);
@@ -40,50 +43,30 @@ class LLVMBuilder {
   llvm::IRBuilder<> builder_;
   std::unique_ptr<llvm::TargetMachine> machine_;
 
-  std::shared_ptr<mir::Function> current_func_;
-  std::map<std::shared_ptr<mir::Func>, llvm::Function *> func_map_;
-  std::map<std::shared_ptr<mir::BB>, llvm::BasicBlock *> bb_map_;
-  std::map<std::shared_ptr<mir::Value>, llvm::Value *> value_map_;
-
-  void SetValue(std::shared_ptr<mir::Value> val, llvm::Value *value) {
-    value_map_[val] = value;
-  }
-
-  void ClearLocalMaps() {
-    bb_map_.clear();
-    value_map_.clear();
-  }
-
-  void SetCurrentFunction(std::shared_ptr<mir::Function> function) {
-    current_func_ = function;
-
-    ClearLocalMaps();
-
-    auto bb = function->entry_bb;
-    builder_.SetInsertPoint(GetOrCreateBasicBlock(bb));
-  }
-
-  llvm::Function *GetLLVMFunc(std::shared_ptr<mir::Func> func = nullptr) {
-    if (!func) func = current_func_;
-    return func_map_.at(func);
-  }
+  TypeMaps &type_maps_;
+  llvm::Function *function_;
+  std::map<std::shared_ptr<Decl>, llvm::Value *> decl_value_map_;
 
   llvm::Type *LLVMType(const std::shared_ptr<Type> &);
-  llvm::Value *GetValue(std::shared_ptr<mir::Value>);
-  llvm::BasicBlock *GetOrCreateBasicBlock(std::shared_ptr<mir::BB>);
-  void BuildBB(std::shared_ptr<mir::BB>);
-  void BuildInst(std::shared_ptr<mir::Inst>);
-  void Load(std::shared_ptr<mir::LoadInst>);
-  void Assign(std::shared_ptr<mir::AssignInst>);
-  void Unary(std::shared_ptr<mir::UnaryInst>);
-  void Binary(std::shared_ptr<mir::BinaryInst>);
-  void Cmp(std::shared_ptr<mir::CmpInst>);
-  void Array(std::shared_ptr<mir::ArrayInst>);
-  void Phi(std::shared_ptr<mir::PhiInst>);
-  void Call(std::shared_ptr<mir::CallInst>);
-  void Br(std::shared_ptr<mir::BrInst>);
-  void Goto(std::shared_ptr<mir::GotoInst>);
-  void Ret(std::shared_ptr<mir::RetInst>);
+
+  llvm::Function *CreateFunc(ast::FnProto *);
+  llvm::Value *BuildBlock(ast::Block *);
+  llvm::Value *BuildStmt(ast::AstNode *);
+  void BuildRet(ast::RetStmt *);
+  void BuildVarDecl(ast::VarDeclStmt *);
+  void BuildAssign(ast::AssignStmt *);
+  llvm::Value *GetLValue(ast::AstNode *);
+  llvm::Value *BuildExpr(ast::AstNode *);
+  llvm::Value *BuildLit(ast::Literal *);
+  llvm::Value *ParseIntLit(ast::Literal *);
+  llvm::Value *ParseFloatLit(ast::Literal *);
+  llvm::Value *BuildIdent(ast::Ident *);
+  llvm::Value *BuildBinary(ast::Binary *);
+  llvm::Value *BuildUnary(ast::Unary *);
+  llvm::Value *BuildArray(ast::Array *);
+  llvm::Value *BuildIf(ast::If *);
+  llvm::Value *BuildIndex(ast::Index *);
+
   void EmitCodeGen(std::string, llvm::CodeGenFileType);
 };
 

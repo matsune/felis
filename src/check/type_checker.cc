@@ -13,14 +13,14 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
   // Connects node and decl
   for (auto& fn : file->externs) {
     auto decl = decl_ck_.LookupFuncDecl(fn->proto->name->val);
-    ctx_.RecordDecl(fn->proto->name, decl);
+    type_maps_.RecordDecl(fn->proto->name, decl);
   }
 
   // Delve into each function blocks.
   // Check declaration, infer and check type at the same type.
   for (auto& fn : file->funcs) {
     auto decl = decl_ck_.LookupFuncDecl(fn->proto->name->val);
-    ctx_.RecordDecl(fn->proto->name, decl);
+    type_maps_.RecordDecl(fn->proto->name, decl);
     current_func_ = decl->type;
 
     decl_ck_.OpenScope();
@@ -31,7 +31,7 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
       }
       auto arg_decl = std::make_shared<Decl>(
           arg->name->val, decl_ck_.LookupType(arg->type), Decl::Kind::ARG);
-      ctx_.RecordDecl(arg->name, arg_decl);
+      type_maps_.RecordDecl(arg->name, arg_decl);
       decl_ck_.InsertDecl(arg->name->val, arg_decl);
     }
 
@@ -48,7 +48,7 @@ void TypeChecker::Check(const std::unique_ptr<ast::File>& file) {
       // void function discards the value
       if (!current_func_->GetRet()->IsVoid()) {
         // resolve type
-        if (!ctx_.TryResolve(result.type, current_func_->GetRet())) {
+        if (!type_maps_.TryResolve(result.type, current_func_->GetRet())) {
           throw LocError::Create(fn->block->end, "mismatch ret type");
         }
       }
@@ -68,7 +68,7 @@ Eval TypeChecker::CheckBlock(const ast::Block* block, bool needs_type,
     }
   }
   if (open_scope) decl_ck_.CloseScope();
-  return ctx_.RecordResult(block, result);
+  return type_maps_.RecordResult(block, result);
 }
 
 Eval TypeChecker::CheckStmt(const ast::AstNode* stmt, bool needs_type) {
@@ -101,7 +101,7 @@ Eval TypeChecker::CheckRet(const ast::RetStmt* stmt) {
     if (result.IsStmt()) {
       throw LocError::Create(stmt->expr->begin, "cannot return void type");
     } else if (result.IsExpr()) {
-      if (!ctx_.TryResolve(result.type, current_func_->GetRet())) {
+      if (!type_maps_.TryResolve(result.type, current_func_->GetRet())) {
         throw LocError::Create(stmt->expr->begin, "mismatch ret ty");
       }
     }
@@ -132,8 +132,8 @@ Eval TypeChecker::CheckVarDecl(const ast::VarDeclStmt* stmt) {
   auto expr_ty = stmt_ty.type;
 
   // resolve type constraints between decl and expr
-  if (!ctx_.TryResolve(decl_ty, expr_ty) &&
-      !ctx_.TryResolve(expr_ty, decl_ty)) {
+  if (!type_maps_.TryResolve(decl_ty, expr_ty) &&
+      !type_maps_.TryResolve(expr_ty, decl_ty)) {
     throw LocError::Create(stmt->expr->begin, "mismatched decl type %s, %s",
                            ToString(*decl_ty).c_str(),
                            ToString(*expr_ty).c_str());
@@ -142,40 +142,58 @@ Eval TypeChecker::CheckVarDecl(const ast::VarDeclStmt* stmt) {
   auto decl = std::make_shared<Decl>(
       name, decl_ty, stmt->is_let ? Decl::Kind::LET : Decl::Kind::VAR);
   decl_ck_.InsertDecl(name, decl);
-  ctx_.RecordDecl(stmt->name, decl);
+  type_maps_.RecordDecl(stmt->name, decl);
   return Eval::Stmt();
 }
 
-Eval TypeChecker::CheckAssign(const ast::AssignStmt* stmt) {
-  if (node_isa<ast::Ident>(stmt->left)) {
-    auto ident = node_cast<ast::Ident>(stmt->left);
-    std::string& name = ident->val;
+std::shared_ptr<Type> TypeChecker::GetLValue(const ast::AstNode* node) {
+  if (auto ident = node_cast_ornull<ast::Ident>(node)) {
+    auto& name = ident->val;
     auto decl = decl_ck_.LookupVarDecl(name);
     if (!decl) {
-      throw LocError::Create(stmt->begin, "undeclared var %s", name.c_str());
+      throw LocError::Create(node->begin, "undeclared var %s", name.c_str());
     }
     if (!decl->IsAssignable()) {
-      throw LocError::Create(stmt->begin, "%s is declared as mutable variable",
+      throw LocError::Create(node->begin, "%s is declared as mutable variable",
                              name.c_str());
     }
-    ctx_.RecordDecl(ident, decl);
+    type_maps_.RecordDecl(ident, decl);
 
-    auto stmt_ty = CheckExpr(stmt->expr, true);
-    if (!stmt_ty.IsExpr()) {
-      throw LocError::Create(stmt->begin, "cannot assign no type var");
+    return decl->type;
+  } else if (auto index = node_cast_ornull<ast::Index>(node)) {
+    auto expr_ty = GetLValue(index->expr);
+    if (!Underlying(expr_ty)->IsArray()) {
+      throw LocError::Create(index->expr->begin, "not array type");
     }
-    auto expr_ty = stmt_ty.type;
-
-    if (!ctx_.TryResolve(decl->type, expr_ty) &&
-        !ctx_.TryResolve(expr_ty, decl->type)) {
-      throw LocError::Create(
-          stmt->expr->begin, "mismatched assign type %s = %s ",
-          ToString(*decl->type).c_str(), ToString(*expr_ty).c_str());
+    auto idx_eval = CheckExpr(index->idx_expr, true);
+    if (!idx_eval.IsExpr()) {
+      throw LocError::Create(index->idx_expr->begin, "index is not expr");
     }
-    return Eval::Stmt();
+    if (Underlying(idx_eval.type)->IsInt()) {
+      throw LocError::Create(index->idx_expr->begin, "index is not int");
+    }
+    return Underlying(expr_ty)->GetArrayElem();
   } else {
-    UNIMPLEMENTED
+    throw LocError::Create(node->begin, "assigning non lvalue expr");
   }
+}
+
+Eval TypeChecker::CheckAssign(const ast::AssignStmt* stmt) {
+  auto decl_ty = GetLValue(stmt->left);
+
+  auto stmt_ty = CheckExpr(stmt->expr, true);
+  if (!stmt_ty.IsExpr()) {
+    throw LocError::Create(stmt->begin, "cannot assign no type var");
+  }
+  auto expr_ty = stmt_ty.type;
+
+  if (!type_maps_.TryResolve(decl_ty, expr_ty) &&
+      !type_maps_.TryResolve(expr_ty, decl_ty)) {
+    throw LocError::Create(stmt->expr->begin, "mismatched assign type %s = %s ",
+                           ToString(*decl_ty).c_str(),
+                           ToString(*expr_ty).c_str());
+  }
+  return Eval::Stmt();
 }
 
 Eval TypeChecker::CheckExpr(const ast::AstNode* expr, bool needs_type) {
@@ -219,7 +237,7 @@ Eval TypeChecker::CheckLit(const ast::Literal* lit) {
       ty = Type::MakeUntypedFloat();
       break;
   }
-  return ctx_.RecordResult(lit, Eval::Expr(ty));
+  return type_maps_.RecordResult(lit, Eval::Expr(ty));
 }
 
 Eval TypeChecker::CheckIdent(const ast::Ident* ident) {
@@ -228,8 +246,8 @@ Eval TypeChecker::CheckIdent(const ast::Ident* ident) {
     throw LocError::Create(ident->begin, "undefined function %s",
                            ident->val.c_str());
   }
-  ctx_.RecordDecl(ident, decl);
-  return ctx_.RecordResult(ident, Eval::Expr(decl->type));
+  type_maps_.RecordDecl(ident, decl);
+  return type_maps_.RecordResult(ident, Eval::Expr(decl->type));
 }
 
 Eval TypeChecker::CheckBinary(const ast::Binary* binary) {
@@ -245,9 +263,9 @@ Eval TypeChecker::CheckBinary(const ast::Binary* binary) {
   auto rhs_ty = rhs_stmt_ty.type;
 
   std::shared_ptr<Type> operand_ty;
-  if (ctx_.TryResolve(lhs_ty, rhs_ty)) {
+  if (type_maps_.TryResolve(lhs_ty, rhs_ty)) {
     operand_ty = rhs_ty;
-  } else if (ctx_.TryResolve(rhs_ty, lhs_ty)) {
+  } else if (type_maps_.TryResolve(rhs_ty, lhs_ty)) {
     operand_ty = lhs_ty;
   } else {
     throw LocError::Create(binary->lhs->begin, "unmatch type %s, %s",
@@ -289,7 +307,7 @@ Eval TypeChecker::CheckBinary(const ast::Binary* binary) {
       ty = operand_ty;
       break;
   }
-  return ctx_.RecordResult(binary, Eval::Expr(ty));
+  return type_maps_.RecordResult(binary, Eval::Expr(ty));
 }
 
 Eval TypeChecker::CheckUnary(const ast::Unary* unary) {
@@ -297,7 +315,7 @@ Eval TypeChecker::CheckUnary(const ast::Unary* unary) {
   if (!stmt_ty.IsExpr()) {
     throw LocError::Create(unary->begin, "non type unary ty");
   }
-  return ctx_.RecordResult(unary, Eval::Expr(stmt_ty.type));
+  return type_maps_.RecordResult(unary, Eval::Expr(stmt_ty.type));
 }
 
 Eval TypeChecker::CheckCall(const ast::Call* call) {
@@ -318,12 +336,12 @@ Eval TypeChecker::CheckCall(const ast::Call* call) {
       throw LocError::Create(arg->begin, "non type arg ty");
     }
     auto arg_ty = stmt_ty.type;
-    if (!ctx_.TryResolve(arg_ty, fn_type->GetArgs().at(i))) {
+    if (!type_maps_.TryResolve(arg_ty, fn_type->GetArgs().at(i))) {
       throw LocError::Create(arg->begin, "mismatched arg ty");
     }
   }
-  ctx_.RecordDecl(call->ident, decl);
-  return ctx_.RecordResult(call, Eval::Expr(fn_type->GetRet()));
+  type_maps_.RecordDecl(call->ident, decl);
+  return type_maps_.RecordResult(call, Eval::Expr(fn_type->GetRet()));
 }
 
 Eval TypeChecker::CheckArray(const ast::Array* array) {
@@ -334,12 +352,13 @@ Eval TypeChecker::CheckArray(const ast::Array* array) {
     if (!stmt_ty.IsExpr()) {
       throw LocError::Create(expr->begin, "array expr not type");
     }
-    if (!ctx_.TryResolve(elem_ty, stmt_ty.type)) {
+    if (!type_maps_.TryResolve(elem_ty, stmt_ty.type)) {
       throw LocError::Create(expr->begin, "mismatch element type");
     }
     elem_ty = stmt_ty.type;
   }
-  return ctx_.RecordResult(array, Eval::Expr(Type::MakeArray(elem_ty, size)));
+  return type_maps_.RecordResult(array,
+                                 Eval::Expr(Type::MakeArray(elem_ty, size)));
 }
 
 Eval TypeChecker::CheckIndex(const ast::Index* index) {
@@ -354,7 +373,7 @@ Eval TypeChecker::CheckIndex(const ast::Index* index) {
   if (!idx_res.IsExpr()) {
     throw LocError::Create(index->expr->begin, "index idx not type");
   }
-  return ctx_.RecordResult(
+  return type_maps_.RecordResult(
       index, Eval::Expr(Underlying(expr_res.type)->GetArrayElem()));
 }
 
@@ -364,7 +383,7 @@ Eval TypeChecker::CheckIf(const ast::If* e, bool needs_type) {
     throw LocError::Create(e->cond->begin, "cond is not type");
   }
   auto cond_ty = cond_stmt_ty.type;
-  if (!ctx_.TryResolve(cond_ty, Type::MakeBool())) {
+  if (!type_maps_.TryResolve(cond_ty, Type::MakeBool())) {
     throw LocError::Create(e->cond->begin,
                            "if-statement condition must be bool type");
   }
@@ -373,7 +392,7 @@ Eval TypeChecker::CheckIf(const ast::If* e, bool needs_type) {
 
   if (!e->HasElse()) {
     // Incomp
-    return ctx_.RecordResult(e, Eval::Stmt());
+    return type_maps_.RecordResult(e, Eval::Stmt());
   }
 
   // comp
@@ -391,15 +410,15 @@ Eval TypeChecker::CheckIf(const ast::If* e, bool needs_type) {
     //   } else {
     //     3          // EXPR
     //   }
-    return ctx_.RecordResult(e, Eval::Stmt());
+    return type_maps_.RecordResult(e, Eval::Stmt());
   }
 
   if (block_stmt_ty.IsRet() && els_stmt_ty.IsRet()) {
-    return ctx_.RecordResult(e, Eval::Ret());
+    return type_maps_.RecordResult(e, Eval::Ret());
   }
 
   if (!needs_type) {
-    return ctx_.RecordResult(e, Eval::Stmt());
+    return type_maps_.RecordResult(e, Eval::Stmt());
   }
 
   std::shared_ptr<Type> whole_ty;
@@ -412,15 +431,15 @@ Eval TypeChecker::CheckIf(const ast::If* e, bool needs_type) {
     // resolve type
     auto block_ty = block_stmt_ty.type;
     auto els_ty = els_stmt_ty.type;
-    if (ctx_.TryResolve(block_ty, els_ty)) {
+    if (type_maps_.TryResolve(block_ty, els_ty)) {
       whole_ty = els_ty;
-    } else if (ctx_.TryResolve(els_ty, block_ty)) {
+    } else if (type_maps_.TryResolve(els_ty, block_ty)) {
       whole_ty = block_ty;
     } else {
       throw LocError::Create(e->begin, "unmatched els branches types");
     }
   }
-  return ctx_.RecordResult(e, Eval::Expr(whole_ty));
+  return type_maps_.RecordResult(e, Eval::Expr(whole_ty));
 }
 
 }  // namespace felis

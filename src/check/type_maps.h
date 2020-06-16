@@ -1,5 +1,5 @@
-#ifndef FELIS_CHECK_CTX_H_
-#define FELIS_CHECK_CTX_H_
+#ifndef FELIS_CHECK_TYPE_MAPS_H_
+#define FELIS_CHECK_TYPE_MAPS_H_
 
 #include <map>
 #include <memory>
@@ -12,12 +12,12 @@
 
 namespace felis {
 
-class TypeCheckCtx {
+class TypeMaps {
  public:
   using IdentDeclMap = std::map<const ast::Ident *, std::shared_ptr<Decl>>;
   using ResultMap = std::map<const ast::AstNode *, Eval>;
 
-  TypeCheckCtx(bool is_32bit) : is_32bit(is_32bit) {}
+  TypeMaps(bool is_32bit) : is_32bit(is_32bit) {}
 
   void RecordDecl(const ast::Ident *n, std::shared_ptr<Decl> ty) {
     ident_decl_map_[n] = ty;
@@ -70,4 +70,4 @@ class TypeCheckCtx {
 
 }  // namespace felis
 
-#endif  // FELIS_CHECK_CTX_H_
+#endif  // FELIS_CHECK_TYPE_MAPS_H_
