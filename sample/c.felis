@@ -1,8 +1,9 @@
 fn main() -> i32 {
   let a = (1 + 4) + 3
-  if a > 0 {
+ let n = if 0<a {
     2 + 4 + a
   } else {
     5
   }
+  n
 }

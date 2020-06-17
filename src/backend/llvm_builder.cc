@@ -10,6 +10,15 @@
 
 namespace felis {
 
+llvm::Type* UnwrapArray(llvm::Type* type) {
+  bool arr = false;
+  while (type->isArrayTy()) {
+    type = type->getArrayElementType();
+    arr = true;
+  }
+  return arr ? type->getPointerTo() : type;
+}
+
 llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<Type>& type) {
   if (type->IsBool()) return llvm::Type::getInt1Ty(ctx_);
   if (type->IsI8()) return llvm::Type::getInt8Ty(ctx_);
@@ -28,25 +37,41 @@ llvm::Type* LLVMBuilder::LLVMType(const std::shared_ptr<Type>& type) {
     return llvm::FunctionType::get(LLVMType(type->GetRet()), args, false);
   }
   if (type->IsArray()) {
-    auto elem_ty = LLVMType(type->GetElem());
-    return llvm::ArrayType::get(elem_ty, type->GetSize());
+    return llvm::ArrayType::get(LLVMType(type->GetElem()), type->GetSize());
   }
   if (type->IsPtr()) {
-    auto elem_ty = LLVMType(type->GetElem());
-    return elem_ty->getPointerTo();
+    return LLVMType(type->GetElem())->getPointerTo();
   }
   UNREACHABLE
 }
 
-llvm::Align GetAlign(llvm::Type* ty) {
-  if (ty->isArrayTy()) return GetAlign(ty->getArrayElementType());
-  if (ty->isPointerTy()) return GetAlign(ty->getPointerElementType());
-  return llvm::Align(ty->getPrimitiveSizeInBits() / 8);
+llvm::FunctionType* LLVMBuilder::LLVMFuncType(
+    const std::shared_ptr<Type>& type) {
+  std::vector<llvm::Type*> args;
+  for (auto& arg : type->GetArgs()) {
+    args.push_back(UnwrapArray(LLVMType(arg)));
+  }
+  return llvm::FunctionType::get(UnwrapArray(LLVMType(type->GetRet())), args,
+                                 false);
+}
+
+llvm::Align LLVMBuilder::GetAlign(llvm::Type* ty) {
+  return llvm::Align(module_.getDataLayout().getPrefTypeAlignment(ty));
+}
+
+llvm::AllocaInst* LLVMBuilder::Alloca(llvm::Type* ty) {
+  return new llvm::AllocaInst(ty, 0, nullptr, GetAlign(ty));
+}
+
+llvm::AllocaInst* LLVMBuilder::CreateAlloca(llvm::Type* ty) {
+  auto alloca = Alloca(ty);
+  builder_.Insert(alloca);
+  return alloca;
 }
 
 llvm::Function* LLVMBuilder::CreateFunc(ast::FnProto* proto) {
   auto decl = type_maps_.GetDecl(proto->name);
-  auto type = llvm::cast<llvm::FunctionType>(LLVMType(decl->type));
+  auto type = LLVMFuncType(decl->type);
   return llvm::Function::Create(type, llvm::GlobalValue::ExternalLinkage,
                                 proto->name->val, module_);
 }
@@ -64,16 +89,12 @@ void LLVMBuilder::Build(std::unique_ptr<ast::File> file) {
   for (auto func : file->funcs) {
     auto func_decl = type_maps_.GetDecl(func->proto->name);
     function_ = llvm::cast<llvm::Function>(decl_value_map_.at(func_decl));
-    auto bb = llvm::BasicBlock::Create(ctx_, "", function_);
-    builder_.SetInsertPoint(bb);
+    builder_.SetInsertPoint(llvm::BasicBlock::Create(ctx_, "", function_));
 
     for (auto i = 0; i < func->proto->args->list.size(); ++i) {
       auto arg = func->proto->args->list.at(i);
       auto decl = type_maps_.GetDecl(arg->name);
-      auto alloca =
-          new llvm::AllocaInst(function_->getArg(i)->getType(), 0, nullptr,
-                               GetAlign(function_->getArg(i)->getType()));
-      builder_.Insert(alloca);
+      auto alloca = CreateAlloca(function_->getArg(i)->getType());
       builder_.CreateStore(function_->getArg(i), alloca);
       decl_value_map_[decl] = alloca;
     }
@@ -83,7 +104,7 @@ void LLVMBuilder::Build(std::unique_ptr<ast::File> file) {
       if (func_decl->type->GetRet()->IsVoid()) {
         builder_.CreateRetVoid();
       } else {
-        builder_.CreateRet(value);
+        BuildRetValue(value);
       }
     }
   }
@@ -111,48 +132,47 @@ llvm::Value* LLVMBuilder::BuildStmt(ast::AstNode* stmt) {
 }
 
 void LLVMBuilder::BuildRet(ast::RetStmt* stmt) {
+  llvm::Value* value = nullptr;
   if (stmt->expr) {
-    builder_.CreateRet(BuildExpr(stmt->expr));
+    value = BuildExpr(stmt->expr);
+  }
+  BuildRetValue(value);
+}
+
+void LLVMBuilder::BuildRetValue(llvm::Value* value) {
+  if (value) {
+    if (value->getType() != function_->getReturnType()) {
+      value = builder_.CreatePointerCast(value, function_->getReturnType());
+    }
+    builder_.CreateRet(value);
   } else {
     builder_.CreateRetVoid();
   }
 }
 
-llvm::Value* LLVMBuilder::GetLValue(ast::AstNode* expr) {
-  if (auto ident = node_cast_ornull<ast::Ident>(expr)) {
-    auto decl = type_maps_.GetDecl(ident);
-    return decl_value_map_.at(decl);
-  } else if (auto index = node_cast_ornull<ast::Index>(expr)) {
-    auto val = GetLValue(index->expr);
-    auto idx = BuildExpr(index->idx_expr);
-    return builder_.CreateInBoundsGEP(
-        val->getType()->getPointerElementType(), val,
-        {llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(ctx_), 0), idx});
-  } else {
-    UNREACHABLE
-  }
-}
-
 void LLVMBuilder::BuildVarDecl(ast::VarDeclStmt* stmt) {
   auto val = BuildExpr(stmt->expr);
-  auto alloca = new llvm::AllocaInst(val->getType(), 0, nullptr,
-                                     GetAlign(val->getType()));
-  builder_.Insert(alloca);
+  auto alloca = CreateAlloca(val->getType());
   builder_.CreateStore(val, alloca);
   decl_value_map_[type_maps_.GetDecl(stmt->name)] = alloca;
 }
 
 void LLVMBuilder::BuildAssign(ast::AssignStmt* stmt) {
-  auto lval = GetLValue(stmt->left);
+  auto lval = BuildExpr(stmt->left, false);
   auto val = BuildExpr(stmt->expr);
   builder_.CreateStore(val, lval);
 }
 
-llvm::Value* LLVMBuilder::BuildExpr(ast::AstNode* expr) {
+llvm::Value* LLVMBuilder::BuildExpr(ast::AstNode* expr, bool load) {
   if (auto lit = node_cast_ornull<ast::Literal>(expr)) {
     return BuildLit(lit);
   } else if (auto ident = node_cast_ornull<ast::Ident>(expr)) {
-    return builder_.CreateLoad(BuildIdent(ident));
+    auto decl = type_maps_.GetDecl(ident);
+    auto lval = decl_value_map_.at(decl);
+    if (load) {
+      return builder_.CreateLoad(lval);
+    }
+    return lval;
   } else if (auto binary = node_cast_ornull<ast::Binary>(expr)) {
     return BuildBinary(binary);
   } else if (auto unary = node_cast_ornull<ast::Unary>(expr)) {
@@ -172,7 +192,18 @@ llvm::Value* LLVMBuilder::BuildExpr(ast::AstNode* expr) {
   } else if (auto block = node_cast_ornull<ast::Block>(expr)) {
     return BuildBlock(block);
   } else if (auto index = node_cast_ornull<ast::Index>(expr)) {
-    return BuildIndex(index);
+    auto val = BuildExpr(index->expr, false);
+    auto idx = BuildExpr(index->idx_expr);
+
+    auto ptr_val = builder_.CreatePointerCast(
+        val, LLVMType(type_maps_.GetResult(index->expr).type)->getPointerTo());
+
+    auto lval = builder_.CreateGEP(
+        ptr_val,
+        {llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(ctx_), 0), idx});
+
+    if (load) return builder_.CreateLoad(lval);
+    return lval;
   } else {
     UNREACHABLE
   }
@@ -248,11 +279,6 @@ llvm::Value* LLVMBuilder::ParseFloatLit(ast::Literal* lit) {
   return llvm::ConstantFP::get(LLVMType(ty), n);
 }
 
-llvm::Value* LLVMBuilder::BuildIdent(ast::Ident* ident) {
-  auto decl = type_maps_.GetDecl(ident);
-  return decl_value_map_.at(decl);
-}
-
 llvm::Value* LLVMBuilder::BuildBinary(ast::Binary* binary) {
   auto lhs = BuildExpr(binary->lhs);
   auto rhs = BuildExpr(binary->rhs);
@@ -316,16 +342,25 @@ llvm::Value* LLVMBuilder::BuildUnary(ast::Unary* unary) {
 
 llvm::Value* LLVMBuilder::BuildArray(ast::Array* array) {
   auto type = type_maps_.GetResult(array).type;
-  auto alloca = builder_.CreateAlloca(LLVMType(type));
+  auto alloca = CreateAlloca(LLVMType(type));
   for (unsigned long idx = 0; idx < array->exprs.size(); ++idx) {
-    auto gep = builder_.CreateInBoundsGEP(
+    llvm::Value* gep = builder_.CreateInBoundsGEP(
         alloca->getType()->getPointerElementType(), alloca,
         {llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(ctx_), 0),
          llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(ctx_), idx)});
-    auto val = BuildExpr(array->exprs.at(idx));
-    builder_.CreateStore(val, gep);
+    llvm::Value* val = BuildExpr(array->exprs.at(idx));
+
+    if (val->getType()->isPointerTy() &&
+        val->getType()->getPointerElementType()->isArrayTy()) {
+      auto align = GetAlign(val->getType());
+      builder_.CreateMemCpy(
+          gep, align, val, align,
+          module_.getDataLayout().getTypeAllocSize(LLVMType(type)));
+    } else {
+      builder_.CreateStore(val, gep);
+    }
   }
-  return builder_.CreateLoad(alloca);
+  return alloca;
 }
 
 llvm::Value* LLVMBuilder::BuildIf(ast::If* if_stmt) {
@@ -412,11 +447,6 @@ llvm::Value* LLVMBuilder::BuildIf(ast::If* if_stmt) {
     return phi;
   }
   return nullptr;
-}
-
-llvm::Value* LLVMBuilder::BuildIndex(ast::Index* index) {
-  auto lval = GetLValue(index);
-  return builder_.CreateLoad(lval);
 }
 
 void LLVMBuilder::EmitLLVMIR(std::string filename) {
