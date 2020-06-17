@@ -195,8 +195,15 @@ llvm::Value* LLVMBuilder::BuildExpr(ast::AstNode* expr, bool load) {
     auto val = BuildExpr(index->expr, false);
     auto idx = BuildExpr(index->idx_expr);
 
-    auto ptr_val = builder_.CreatePointerCast(
-        val, LLVMType(type_maps_.GetResult(index->expr).type)->getPointerTo());
+    std::shared_ptr<Type> type;
+    if (auto ident = node_cast_ornull<ast::Ident>(index->expr)) {
+      auto decl = type_maps_.GetDecl(ident);
+      type = decl->type;
+    } else {
+      type = type_maps_.GetResult(index->expr).type;
+    }
+    auto ptr_val =
+        builder_.CreatePointerCast(val, LLVMType(type)->getPointerTo());
 
     auto lval = builder_.CreateGEP(
         ptr_val,
