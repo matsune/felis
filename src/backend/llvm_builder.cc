@@ -69,6 +69,10 @@ llvm::AllocaInst* LLVMBuilder::CreateAlloca(llvm::Type* ty) {
   return alloca;
 }
 
+llvm::BasicBlock* LLVMBuilder::CreateBB() {
+  return llvm::BasicBlock::Create(ctx_, "bb", function_);
+}
+
 llvm::Function* LLVMBuilder::CreateFunc(ast::FnProto* proto) {
   auto decl = type_maps_.GetDecl(proto->name);
   auto type = LLVMFuncType(decl->type);
@@ -89,7 +93,7 @@ void LLVMBuilder::Build(std::unique_ptr<ast::File> file) {
   for (auto func : file->funcs) {
     auto func_decl = type_maps_.GetDecl(func->proto->name);
     function_ = llvm::cast<llvm::Function>(decl_value_map_.at(func_decl));
-    builder_.SetInsertPoint(llvm::BasicBlock::Create(ctx_, "", function_));
+    builder_.SetInsertPoint(CreateBB());
 
     for (auto i = 0; i < func->proto->args->list.size(); ++i) {
       auto arg = func->proto->args->list.at(i);
@@ -379,12 +383,12 @@ llvm::Value* LLVMBuilder::BuildIf(ast::If* if_stmt) {
 
   // build cond and then-block
   auto cond = BuildExpr(if_stmt->cond);
-  auto then_bb = llvm::BasicBlock::Create(ctx_, "", function_);
+  auto then_bb = CreateBB();
   builder_.SetInsertPoint(then_bb);
   auto block_val = BuildBlock(if_stmt->block);
 
   if (!has_else) {
-    llvm::BasicBlock* end_bb = llvm::BasicBlock::Create(ctx_, "", function_);
+    llvm::BasicBlock* end_bb = CreateBB();
     if (!builder_.GetInsertBlock()->getTerminator()) {
       builder_.CreateBr(end_bb);
     }
@@ -399,7 +403,7 @@ llvm::Value* LLVMBuilder::BuildIf(ast::If* if_stmt) {
 
   if (stmt_res.IsRet()) {
     // terminating
-    auto else_bb = llvm::BasicBlock::Create(ctx_, "", function_);
+    auto else_bb = CreateBB();
     builder_.SetInsertPoint(else_bb);
     if (if_stmt->IsElseIf()) {
       BuildIf(node_cast<ast::If>(if_stmt->els));
@@ -417,7 +421,7 @@ llvm::Value* LLVMBuilder::BuildIf(ast::If* if_stmt) {
   auto block_res = type_maps_.GetResult(if_stmt->block);
   auto block_phi_bb = builder_.GetInsertBlock();
 
-  auto else_bb = llvm::BasicBlock::Create(ctx_, "", function_);
+  auto else_bb = CreateBB();
   builder_.SetInsertPoint(else_bb);
   llvm::Value* else_val;
   if (if_stmt->IsElseIf()) {
@@ -428,7 +432,7 @@ llvm::Value* LLVMBuilder::BuildIf(ast::If* if_stmt) {
   auto else_res = type_maps_.GetResult(if_stmt->els);
   auto else_phi_bb = builder_.GetInsertBlock();
 
-  auto end_bb = llvm::BasicBlock::Create(ctx_, "", function_);
+  auto end_bb = CreateBB();
   // after creating all blocks, back to each block and create br
   if (!block_phi_bb->getTerminator()) {
     builder_.SetInsertPoint(block_phi_bb);
@@ -448,9 +452,15 @@ llvm::Value* LLVMBuilder::BuildIf(ast::If* if_stmt) {
     auto nodes = 0;
     if (block_res.IsExpr()) ++nodes;
     if (else_res.IsExpr()) ++nodes;
-    auto phi = builder_.CreatePHI(LLVMType(stmt_res.type), nodes);
-    if (block_res.IsExpr()) phi->addIncoming(block_val, block_phi_bb);
-    if (else_res.IsExpr()) phi->addIncoming(else_val, else_phi_bb);
+    llvm::PHINode* phi = nullptr;
+    if (block_res.IsExpr()) {
+      if (!phi) phi = builder_.CreatePHI(block_val->getType(), nodes);
+      phi->addIncoming(block_val, block_phi_bb);
+    }
+    if (else_res.IsExpr()) {
+      if (!phi) phi = builder_.CreatePHI(else_val->getType(), nodes);
+      phi->addIncoming(else_val, else_phi_bb);
+    }
     return phi;
   }
   return nullptr;

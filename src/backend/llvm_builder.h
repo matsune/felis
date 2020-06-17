@@ -52,6 +52,7 @@ class LLVMBuilder {
   llvm::Align GetAlign(llvm::Type *);
   llvm::AllocaInst *Alloca(llvm::Type *);
   llvm::AllocaInst *CreateAlloca(llvm::Type *);
+  llvm::BasicBlock *CreateBB();
 
   llvm::Function *CreateFunc(ast::FnProto *);
   llvm::Value *BuildBlock(ast::Block *);

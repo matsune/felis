@@ -248,7 +248,7 @@ ast::AstNode* Parser::PrimaryExpr() {
 //                  | <postfix-expr> '[' <expr> ']'
 ast::AstNode* Parser::PostfixExpr() {
   ast::AstNode* expr = PrimaryExpr();
-  while (Match(Token::Kind::LBRACK)) {
+  while (!Peek()->nl && Match(Token::Kind::LBRACK)) {
     Bump();
     auto idx_expr = Expr();
     auto end = Must(Token::Kind::RBRACK)->end;
