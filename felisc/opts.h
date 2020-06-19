@@ -1,4 +1,5 @@
 #include <string>
+#include <filesystem>
 
 enum EmitType {
   LINK = (1u << 0),
@@ -10,23 +11,10 @@ enum EmitType {
 
 using Emits = uint8_t;
 
-std::string fileBase(std::string path) {
-  if (path == "") {
-    return ".";
-  }
-  while (!path.empty() && (path[path.size() - 1] == '/')) {
-    path = path.substr(0, path.size() - 1);
-  }
-  path = path.substr(path.rfind("/") + 1);
-  if (path == "") {
-    return "/";
-  }
-  return path;
-}
-
-std::string fileStem(std::string path) {
-  path = fileBase(path);
-  return path.substr(0, path.rfind("."));
+std::string replaceExt(std::string path,std::string ext) {
+  auto filepath = std::filesystem::path(path).stem();
+  filepath.replace_extension(ext);
+  return filepath;
 }
 
 std::string extOfEmit(EmitType emit) {
@@ -56,10 +44,10 @@ class Opts {
 
   std::string OutputName(EmitType emit) {
     if (output_.empty()) {
-      return fileStem(filepath_) + extOfEmit(emit);
+      return replaceExt(filepath_, extOfEmit(emit));
     }
     if (IsMultiEmits()) {
-      return fileStem(output_) + extOfEmit(emit);
+      return replaceExt(output_, extOfEmit(emit));
     } else {
       return output_;
     }
