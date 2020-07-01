@@ -32,19 +32,18 @@ fn o() {
 
 fn main() ->i32 {
   var b = [1,2,3]
-b[0] =  if true {
-  ret 3
+  b[0] = if true {
+   3
   } else {
      4
   }
   var a = 'a'
-  let c = 8 + a;
+  puts("@@@@@@")
   let d = 関数1(-20)
-  let vv =  3
   o()
   if true {
     let str = "あいう"
     puts(str)
   }
-  ret d
+  ret b[0]
 }

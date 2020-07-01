@@ -13,6 +13,7 @@
 
 #include "check/type_maps.h"
 #include "error/error.h"
+#include "internal/felis_lib.h"
 #include "node/ast.h"
 
 namespace felis {
@@ -24,7 +25,8 @@ class LLVMBuilder {
       : module_(module_name, ctx_),
         builder_(ctx_),
         machine_(std::move(machine)),
-        type_maps_(type_maps) {
+        type_maps_(type_maps),
+        lib_(ctx_, module_, builder_) {
     module_.setSourceFileName(file_name);
     module_.setDataLayout(machine_->createDataLayout());
     module_.setTargetTriple(machine_->getTargetTriple().str());
@@ -42,6 +44,12 @@ class LLVMBuilder {
   llvm::Module module_;
   llvm::IRBuilder<> builder_;
   std::unique_ptr<llvm::TargetMachine> machine_;
+  FelisLib lib_;
+
+  void SetFunction(llvm::Function *fn) {
+    function_ = fn;
+    builder_.SetInsertPoint(CreateBB());
+  }
 
   TypeMaps &type_maps_;
   llvm::Function *function_;
@@ -52,7 +60,8 @@ class LLVMBuilder {
   llvm::Align GetAlign(llvm::Type *);
   llvm::AllocaInst *Alloca(llvm::Type *);
   llvm::AllocaInst *CreateAlloca(llvm::Type *);
-  llvm::BasicBlock *CreateBB();
+  llvm::BasicBlock *CreateBB(std::string = "");
+  llvm::CallInst *CreateIntrinsic(llvm::Intrinsic::ID);
 
   llvm::Function *CreateFunc(ast::FnProto *);
   llvm::Value *BuildBlock(ast::Block *);
@@ -69,6 +78,8 @@ class LLVMBuilder {
   llvm::Value *BuildUnary(ast::Unary *);
   llvm::Value *BuildArray(ast::Array *);
   llvm::Value *BuildIf(ast::If *);
+
+  void CreatePanicIf(llvm::Value *, std::string);
 
   void EmitCodeGen(std::string, llvm::CodeGenFileType);
 };

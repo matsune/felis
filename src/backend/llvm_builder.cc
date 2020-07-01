@@ -69,8 +69,9 @@ llvm::AllocaInst* LLVMBuilder::CreateAlloca(llvm::Type* ty) {
   return alloca;
 }
 
-llvm::BasicBlock* LLVMBuilder::CreateBB() {
-  return llvm::BasicBlock::Create(ctx_, "bb", function_);
+llvm::BasicBlock* LLVMBuilder::CreateBB(std::string name) {
+  if (name.empty()) name = "bb";
+  return llvm::BasicBlock::Create(ctx_, name, function_);
 }
 
 llvm::Function* LLVMBuilder::CreateFunc(ast::FnProto* proto) {
@@ -92,8 +93,7 @@ void LLVMBuilder::Build(std::unique_ptr<ast::File> file) {
 
   for (auto func : file->funcs) {
     auto func_decl = type_maps_.GetDecl(func->proto->name);
-    function_ = llvm::cast<llvm::Function>(decl_value_map_.at(func_decl));
-    builder_.SetInsertPoint(CreateBB());
+    SetFunction(llvm::cast<llvm::Function>(decl_value_map_.at(func_decl)));
 
     for (auto i = 0; i < func->proto->args->list.size(); ++i) {
       auto arg = func->proto->args->list.at(i);
@@ -290,10 +290,22 @@ llvm::Value* LLVMBuilder::ParseFloatLit(ast::Literal* lit) {
   return llvm::ConstantFP::get(LLVMType(ty), n);
 }
 
+void LLVMBuilder::CreatePanicIf(llvm::Value* obit, std::string msg) {
+  auto overflow_bb = CreateBB("overflow");
+  auto normal_bb = CreateBB();
+  builder_.CreateCondBr(obit, overflow_bb, normal_bb);
+
+  builder_.SetInsertPoint(overflow_bb);
+  builder_.CreateCall(lib_.Panic(), {builder_.CreateGlobalStringPtr(msg)});
+  builder_.CreateUnreachable();
+
+  builder_.SetInsertPoint(normal_bb);
+}
+
 llvm::Value* LLVMBuilder::BuildBinary(ast::Binary* binary) {
   auto lhs = BuildExpr(binary->lhs);
   auto rhs = BuildExpr(binary->rhs);
-  bool is_float = type_maps_.GetResult(binary).type->IsFloat();
+  bool is_float = lhs->getType()->isFloatTy();
   switch (binary->op->kind) {
     case ast::BinaryOp::Kind::EQEQ:
       return is_float ? builder_.CreateFCmpOEQ(lhs, rhs)
@@ -313,25 +325,35 @@ llvm::Value* LLVMBuilder::BuildBinary(ast::Binary* binary) {
     case ast::BinaryOp::Kind::GE:
       return is_float ? builder_.CreateFCmpOGE(lhs, rhs)
                       : builder_.CreateICmpSGE(lhs, rhs);
-    case ast::BinaryOp::Kind::ADD:
-      return is_float ? builder_.CreateFAdd(lhs, rhs)
-                      : builder_.CreateAdd(lhs, rhs);
-      break;
-    case ast::BinaryOp::Kind::SUB:
-      return is_float ? builder_.CreateFSub(lhs, rhs)
-                      : builder_.CreateSub(lhs, rhs);
-      break;
-    case ast::BinaryOp::Kind::MUL:
-      return is_float ? builder_.CreateFMul(lhs, rhs)
-                      : builder_.CreateMul(lhs, rhs);
-      break;
+    case ast::BinaryOp::Kind::ADD: {
+      auto res = builder_.CreateBinaryIntrinsic(
+          llvm::Intrinsic::sadd_with_overflow, lhs, rhs);
+      auto v = builder_.CreateExtractValue(res, 0);
+      auto obit = builder_.CreateExtractValue(res, 1);
+      CreatePanicIf(obit, "overflow add");
+      return v;
+    } break;
+    case ast::BinaryOp::Kind::SUB: {
+      auto res = builder_.CreateBinaryIntrinsic(
+          llvm::Intrinsic::ssub_with_overflow, lhs, rhs);
+      auto v = builder_.CreateExtractValue(res, 0);
+      auto obit = builder_.CreateExtractValue(res, 1);
+      CreatePanicIf(obit, "overflow sub");
+      return v;
+    }
+    case ast::BinaryOp::Kind::MUL: {
+      auto res = builder_.CreateBinaryIntrinsic(
+          llvm::Intrinsic::smul_with_overflow, lhs, rhs);
+      auto v = builder_.CreateExtractValue(res, 0);
+      auto obit = builder_.CreateExtractValue(res, 1);
+      CreatePanicIf(obit, "overflow mul");
+      return v;
+    }
     case ast::BinaryOp::Kind::DIV:
       return is_float ? builder_.CreateFDiv(lhs, rhs)
                       : builder_.CreateSDiv(lhs, rhs);
-      break;
     case ast::BinaryOp::Kind::MOD:
       return builder_.CreateSRem(lhs, rhs);
-      break;
   }
 }
 

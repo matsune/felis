@@ -1,0 +1,7 @@
+ext fn puts(string) -> i32
+ext fn exit(int)
+
+fn __panic(msg: string) {
+  puts(msg)
+  exit(1)
+}

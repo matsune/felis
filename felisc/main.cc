@@ -5,9 +5,9 @@
 #include "args.h"
 #include "backend/llvm_builder.h"
 #include "backend/target.h"
+#include "check/type_checker.h"
 #include "error/error.h"
 #include "loc.h"
-#include "check/type_checker.h"
 #include "printer/ast_printer.h"
 #include "syntax/parser.h"
 #include "unique.h"
@@ -61,7 +61,6 @@ class Session {
 
   void Build(std::unique_ptr<felis::LLVMBuilder> builder,
              std::unique_ptr<felis::ast::File> ast) {
-    
     builder->Build(std::move(ast));
 
     if (opts->IsEmit(EmitType::LLVM_IR)) {
@@ -73,19 +72,8 @@ class Session {
     if (opts->IsEmit(EmitType::ASM)) {
       builder->EmitASM(opts->OutputName(EmitType::ASM));
     }
-    bool emit_obj = opts->IsEmit(EmitType::OBJ);
-    bool emit_link = opts->IsEmit(EmitType::LINK);
-
-    bool has_obj = false;
-    std::string obj_path = opts->OutputName(EmitType::OBJ);
-    if (emit_obj || emit_link) {
-      builder->EmitOBJ(obj_path);
-      has_obj = true;
-    }
-    if (emit_link) {
-      std::string out = opts->OutputName(EmitType::LINK);
-      std::string s = "gcc " + obj_path + " -o " + out;
-      system(s.c_str());
+    if (opts->IsEmit(EmitType::OBJ)) {
+      builder->EmitOBJ(opts->OutputName(EmitType::OBJ));
     }
   }
 
@@ -106,8 +94,9 @@ class Session {
       felis::TypeChecker(type_maps).Check(ast);
       type_maps.ResolveTypes();
 
-      Build(std::make_unique<felis::LLVMBuilder>(
-      "felis", opts->Filepath(), std::move(machine),type_maps), std::move(ast));
+      Build(std::make_unique<felis::LLVMBuilder>("felis", opts->Filepath(),
+                                                 std::move(machine), type_maps),
+            std::move(ast));
 
     } catch (felis::LocError &err) {
       exit = Report(err);

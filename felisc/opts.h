@@ -1,8 +1,7 @@
-#include <string>
 #include <filesystem>
+#include <string>
 
 enum EmitType {
-  LINK = (1u << 0),
   LLVM_IR = (1u << 1),
   LLVM_BC = (1u << 2),
   ASM = (1u << 3),
@@ -11,7 +10,7 @@ enum EmitType {
 
 using Emits = uint8_t;
 
-std::string replaceExt(std::string path,std::string ext) {
+std::string replaceExt(std::string path, std::string ext) {
   auto filepath = std::filesystem::path(path).stem();
   filepath.replace_extension(ext);
   return filepath;
@@ -27,8 +26,6 @@ std::string extOfEmit(EmitType emit) {
       return ".s";
     case EmitType::OBJ:
       return ".o";
-    case EmitType::LINK:
-      return "";
   }
 }
 
@@ -59,11 +56,10 @@ class Opts {
 
   bool IsPrintAst() { return print_ast_; }
 
-
   bool IsMultiEmits() {
-    return emits_ != 0 && emits_ != EmitType::LINK &&
-           emits_ != EmitType::LLVM_IR && emits_ != EmitType::LLVM_BC &&
-           emits_ != EmitType::ASM && emits_ != EmitType::OBJ;
+    return emits_ != 0 && emits_ != EmitType::LLVM_IR &&
+           emits_ != EmitType::LLVM_BC && emits_ != EmitType::ASM &&
+           emits_ != EmitType::OBJ;
   }
 
   bool IsEmit(EmitType emit) { return emits_ & emit; }
@@ -75,4 +71,3 @@ class Opts {
   bool print_ast_;
   Emits emits_;
 };
-
